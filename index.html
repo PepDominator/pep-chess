@@ -2580,6 +2580,7 @@ if (typeof define !== 'undefined')
                     callback(snap.exists() ? snap.data() : null);
                 }, (err) => {
                     console.error('Ошибка подписки на партию:', err);
+                    if (typeof window.onOnlineChessListenError === 'function') window.onOnlineChessListenError(err);
                 });
             },
 
@@ -2698,6 +2699,7 @@ if (typeof define !== 'undefined')
         let onlineAppliedMoveNumber = 0;// номер последнего хода, который мы уже применили локально
         let onlineOpponentName = null;
         let onlineUnsub = null;
+        let onlinePollInterval = null;
         let botMoveTimer = null; // id таймера, запланированного вызова botMove(), чтобы можно было отменить
 
         // ---- Премоув (заранее запланированный ход, как на Lichess) ----
@@ -3423,6 +3425,7 @@ if (typeof define !== 'undefined')
             // и возвращаем элементы интерфейса, которые скрываются во время онлайн-игры
             // (ассистент движка, взятие хода назад — нечестно/невозможно в игре с человеком).
             if (onlineUnsub) { onlineUnsub(); onlineUnsub = null; }
+            if (onlinePollInterval) { clearInterval(onlinePollInterval); onlinePollInterval = null; }
             onlineGameId = null;
             onlineMyColor = null;
             onlineMoveNumber = 0;
@@ -3790,6 +3793,15 @@ if (typeof define !== 'undefined')
                 // Гость: подписки ещё не было — создаём её один раз, и дальше она живёт всю партию.
                 onlineUnsub = window.OnlineChess.listenGame(gameId, handleOnlineGameUpdate);
             }
+
+            // Подстраховка: раз в 3 секунды дополнительно напрямую запрашиваем состояние партии.
+            // Если по какой-то причине живая подписка выше молча перестанет доставлять события —
+            // игра всё равно продолжит синхронизироваться, просто чуть менее мгновенно.
+            if (onlinePollInterval) clearInterval(onlinePollInterval);
+            onlinePollInterval = setInterval(() => {
+                if (gameMode !== 'online' || !onlineGameId) return;
+                window.OnlineChess.peekGame(onlineGameId).then((d) => { if (d) handleOnlineGameUpdate(d); }).catch(() => {});
+            }, 3000);
         }
 
         function handleOnlineGameUpdate(data) {
@@ -3871,9 +3883,25 @@ if (typeof define !== 'undefined')
             }
         }
 
+        window.onOnlineChessListenError = function (err) {
+            if (gameMode === 'online') showOnlineSyncError('получить обновление партии (подписка оборвалась)', err);
+        };
+
+        // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
+        // чтобы было видно даже без DevTools, что именно и почему не отправилось.
+        function showOnlineSyncError(action, err) {
+            console.error(action, err);
+            const banner = document.getElementById('online-banner');
+            if (!banner) return;
+            const detail = (err && (err.code || err.message)) ? String(err.code || err.message) : 'неизвестная ошибка';
+            banner.style.display = 'flex';
+            banner.innerHTML = `<span style="color:#A23B33">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}</span>`;
+        }
+
         function sendOnlineMove(move) {
             if (!onlineGameId) return;
             onlineMoveNumber += 1;
+            const myMoveNumber = onlineMoveNumber;
             const promotion = move.flags && move.flags.includes('p') ? (move.promotion || 'q') : null;
             window.OnlineChess.sendMove(onlineGameId, {
                 fen: game.fen(),
@@ -3881,23 +3909,23 @@ if (typeof define !== 'undefined')
                 turn: game.turn(),
                 whiteTimeMs: Math.round(timers.w * 1000),
                 blackTimeMs: Math.round(timers.b * 1000),
-                moveNumber: onlineMoveNumber
-            }).catch((err) => console.error('Не удалось отправить ход:', err));
+                moveNumber: myMoveNumber
+            }).catch((err) => showOnlineSyncError('отправить ваш ход сопернику', err));
             onlineAppliedMoveNumber = onlineMoveNumber;
         }
 
         function sendOnlineDrawOffer() {
             if (!onlineGameId) return;
-            window.OnlineChess.sendDrawOffer(onlineGameId, onlineMyColor).catch((err) => console.error(err));
+            window.OnlineChess.sendDrawOffer(onlineGameId, onlineMyColor).catch((err) => showOnlineSyncError('отправить предложение ничьи', err));
             updateOnlineBanner({ drawOfferBy: onlineMyColor });
         }
 
         function respondOnlineDraw(accept) {
             if (!onlineGameId) return;
             if (accept) {
-                window.OnlineChess.sendResult(onlineGameId, { winner: 'draw', reason: 'по соглашению' }).catch((err) => console.error(err));
+                window.OnlineChess.sendResult(onlineGameId, { winner: 'draw', reason: 'по соглашению' }).catch((err) => showOnlineSyncError('принять ничью', err));
             } else {
-                window.OnlineChess.clearDrawOffer(onlineGameId).catch((err) => console.error(err));
+                window.OnlineChess.clearDrawOffer(onlineGameId).catch((err) => showOnlineSyncError('отклонить ничью', err));
                 document.getElementById('online-banner').style.display = 'none';
             }
         }
@@ -3910,7 +3938,7 @@ if (typeof define !== 'undefined')
             if (resultCode === 'draw') winner = 'draw';
             else if (resultCode === 'win') winner = onlineMyColor;
             else winner = onlineMyColor === 'w' ? 'b' : 'w';
-            window.OnlineChess.sendResult(onlineGameId, { winner, reason: message }).catch((err) => console.error(err));
+            window.OnlineChess.sendResult(onlineGameId, { winner, reason: message }).catch((err) => showOnlineSyncError('сообщить результат партии', err));
         }
 
         checkUrlForOnlineInvite();
