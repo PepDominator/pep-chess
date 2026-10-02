@@ -2,16 +2,30 @@
 
 ### Browser chess powered by Stockfish
 
-Play against Stockfish, analyze your games, review your history and install the app for offline play.
+Play against Stockfish, challenge another player online, analyze your games, review your history and install the app for offline play.
 
-> [!NOTE]
-> Pep Chess is built as a lightweight browser application. The chess engine runs directly on your device through WebAssembly.
+![Stockfish](https://img.shields.io/badge/Engine-Stockfish%2019-4B7399?style=flat-square)
+![PWA](https://img.shields.io/badge/PWA-Ready-success?style=flat-square)
+![Offline](https://img.shields.io/badge/Offline-Ready-success?style=flat-square)
+![Multiplayer](https://img.shields.io/badge/Online%20Multiplayer-Ready-success?style=flat-square)
 
 ---
 
-## ✨ Features
+## About
 
-### ♟ Play Against Stockfish
+**Pep Chess** is a lightweight browser chess application built around Stockfish.
+
+You can play against the engine directly on your device, challenge another player online, analyze positions and review previous games.
+
+Stockfish runs in the browser through WebAssembly, so local games and analysis do not require a chess server.
+
+No account is required for local play.
+
+---
+
+## Features
+
+### Play Against Stockfish
 
 - Stockfish.js 19
 - 8 difficulty levels
@@ -22,73 +36,69 @@ Play against Stockfish, analyze your games, review your history and install the 
 - Premoves
 - Move history
 - Draw offers
-- Resignation and rematches
+- Resignation
+- Rematches
 
-### 🔎 Game Analysis
+### Online Multiplayer
 
-Analyze positions without leaving the app.
+Play against another person directly from Pep Chess.
 
-- Live engine evaluation
+- Create an online game
+- Invite another player with a link
+- Join using a game code
+- Player nicknames
+- Synchronized moves
+- Chess clocks
+- Draw offers
+- Resignation
+- Online game history
+- Rematches
+
+Online game synchronization is handled through Firebase Firestore.
+
+An internet connection is required for multiplayer games.
+
+### Game Analysis
+
+Analyze games and positions with Stockfish without leaving the app.
+
+- Engine evaluation
 - Multiple Stockfish lines
 - Move-by-move navigation
 - Explore alternative moves
-- Continue from previous positions
-- Board arrows and square highlights
+- Return to earlier positions
+- Continue analysis from any position
+- Board arrows
+- Square highlighting
 
-### 📚 Game History
+### Game History
 
-Completed games are saved locally in your browser.
+Completed games are stored locally in your browser.
 
-You can open previous games, replay the moves and analyze the final result.
+You can reopen previous games, replay the moves and analyze the position afterward.
 
 No account is required.
 
-### 📱 PWA and Offline Play
+### PWA and Offline Play
 
 Pep Chess can be installed as a Progressive Web App.
 
-After the application has been loaded and cached, you can play against Stockfish even without an internet connection.
+After the required files and chess engine have been cached, local games against Stockfish can be played without an internet connection.
 
 ---
 
-## 🌐 Online Multiplayer
-
-> [!WARNING]
-> **Online multiplayer is currently a work in progress.**
->
-> It is experimental and may contain bugs, synchronization issues or incomplete behavior.
-
-The current multiplayer implementation allows two players to create and join a game through an invite link or game code.
-
-Online synchronization is handled through Firebase Firestore.
-
-Current multiplayer work includes:
-
-- game creation through invite links
-- joining by link or game code
-- player nicknames
-- synchronized moves
-- chess clocks
-- draw offers
-- resignations
-- online game history
-
-The online mode is still under development and should not yet be considered stable.
-
----
-
-## 🤖 Chess Engine
+## Chess Engine
 
 Pep Chess uses **Stockfish.js 19** compiled to WebAssembly.
 
-The engine runs directly inside the browser and is used for:
+The engine runs directly inside the browser and handles:
 
 - computer moves
 - position evaluation
-- post-game analysis
+- game analysis
 - principal variations
 
-The playing strength can be adjusted across 8 difficulty levels.
+Pep Chess has 8 engine difficulty levels.
 
 | Level | Stockfish Skill |
 |:---:|:---:|
@@ -103,7 +113,7 @@ The playing strength can be adjusted across 8 difficulty levels.
 
 ---
 
-## ⏱ Time Controls
+## Time Controls
 
 Pep Chess includes several ready-to-use time controls:
 
@@ -125,24 +135,44 @@ You can also create a custom time control with your own base time and increment.
 
 ---
 
-## 🖍 Board Tools
+## Board Tools
 
-Pep Chess includes simple tools for exploring positions directly on the board.
+Pep Chess includes tools for exploring and marking positions directly on the board.
 
 - Premoves
 - Colored arrows
 - Square highlighting
 - Last-move highlighting
 - Check indication
-- Board orientation based on your side
+- Automatic board orientation based on your side
 
-Board annotations support multiple colors, making them useful during analysis.
+Board annotations can be used during position analysis.
 
 ---
 
-## 💾 Offline Support
+## Online Architecture
 
-The application uses a Service Worker to cache the files needed for local play.
+Online multiplayer uses **Firebase Firestore** to synchronize game state between players.
+
+The online mode handles:
+
+- game creation
+- joining games
+- move synchronization
+- player information
+- chess clocks
+- draw offers
+- resignation
+- game state
+- game history
+
+The chess rules themselves are still handled locally by the application.
+
+---
+
+## Offline Support
+
+Pep Chess uses a Service Worker to cache the files required for local play.
 
 | Feature | Offline |
 |---|:---:|
@@ -158,7 +188,7 @@ Online multiplayer requires an internet connection.
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |---|---|
@@ -170,11 +200,11 @@ Online multiplayer requires an internet connection.
 | Offline support | Service Worker |
 | Installation | PWA |
 
-The project intentionally keeps most of the application inside a single `index.html` file, including the chess logic integration, interface and embedded Stockfish engine.
+Pep Chess keeps most of the application inside a single `index.html` file, including the interface, chess integration, Stockfish integration and multiplayer client.
 
 ---
 
-## 🚀 Running Locally
+## Running Locally
 
 Clone the repository:
 
@@ -197,11 +227,11 @@ Then open:
 http://localhost:8000
 ```
 
-Using an HTTP server is recommended because Service Workers and PWA functionality are restricted when the application is opened directly through `file://`.
+Using a local HTTP server is recommended because Service Workers and PWA functionality are restricted when the application is opened directly through `file://`.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 pep-chess/
@@ -215,7 +245,7 @@ pep-chess/
 
 ### `index.html`
 
-Contains the main application, user interface, chess logic integration, Stockfish engine and online game client.
+Contains the main application, interface, chess logic integration, Stockfish engine integration and online multiplayer client.
 
 ### `manifest.json`
 
@@ -223,15 +253,16 @@ Defines Pep Chess as an installable Progressive Web App.
 
 ### `service-worker.js`
 
-Caches the application files so local games can continue to work offline.
+Caches application files for offline local play.
 
 ---
 
-## 🚧 Project Status
+## Project Status
 
 | Component | Status |
 |---|:---:|
 | Stockfish gameplay | ✅ Ready |
+| Online multiplayer | ✅ Ready |
 | Chess clocks | ✅ Ready |
 | Game analysis | ✅ Ready |
 | Game history | ✅ Ready |
@@ -239,25 +270,23 @@ Caches the application files so local games can continue to work offline.
 | Board annotations | ✅ Ready |
 | PWA | ✅ Ready |
 | Offline play | ✅ Ready |
-| Online multiplayer | 🚧 WIP |
-
-The main focus right now is improving and stabilizing online multiplayer.
 
 ---
 
-## 🧩 Built With
+## Built With
 
 Pep Chess uses open-source software including:
 
-- **chess.js** for chess rules and move validation
-- **Stockfish** for the chess engine
-- **Stockfish.js** for running Stockfish in the browser
+- [chess.js](https://github.com/jhlywa/chess.js)
+- [Stockfish](https://stockfishchess.org/)
+- [Stockfish.js](https://github.com/nmrugg/stockfish.js)
+- [Firebase](https://firebase.google.com/)
 
-Stockfish.js 19 is distributed under the GPLv3 license. chess.js includes its respective BSD license notice in the project source.
+Third-party components remain subject to their respective licenses.
 
 ---
 
-## 📜 License
+## License
 
 Pep Chess does not currently include a separate project license.
 
@@ -265,6 +294,6 @@ Third-party components remain subject to their respective licenses.
 
 ---
 
-## ♙ Pep Chess
+# ♙ Pep Chess
 
-**Play. Analyze. Improve.**
+**Play locally. Play online. Analyze. Improve.**
