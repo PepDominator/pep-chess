@@ -2695,8 +2695,8 @@ if (typeof define !== 'undefined')
         let gameMode = 'bot';           // 'bot' | 'online'
         let onlineGameId = null;
         let onlineMyColor = null;
-        let onlineMoveNumber = 0;       // номер последнего хода, который МЫ отправили
-        let onlineAppliedMoveNumber = 0;// номер последнего хода, который мы уже применили локально
+        let onlineMoveNumber = 0;       // номер последнего хода в партии, известный ЭТОМУ клиенту —
+                                         // обновляется и когда мы сами ходим, и когда применяем ход соперника
         let onlineOpponentName = null;
         let onlineUnsub = null;
         let onlinePollInterval = null;
@@ -3430,7 +3430,6 @@ if (typeof define !== 'undefined')
             onlineMyColor = null;
             onlineMoveNumber = 0;
             onlineOpponentName = null;
-            onlineAppliedMoveNumber = 0;
             analysisEnabled = false;
             const analysisCheckbox = document.getElementById('analysis-checkbox');
             if (analysisCheckbox) analysisCheckbox.checked = false;
@@ -3748,7 +3747,6 @@ if (typeof define !== 'undefined')
             onlineOpponentName = opponentName;
             inc = timeControl.inc;
             onlineMoveNumber = data.moveNumber || 0;
-            onlineAppliedMoveNumber = data.moveNumber || 0;
 
             timers.w = (data.whiteTimeMs != null ? data.whiteTimeMs : timeControl.minutes * 60000) / 1000;
             timers.b = (data.blackTimeMs != null ? data.blackTimeMs : timeControl.minutes * 60000) / 1000;
@@ -3808,8 +3806,15 @@ if (typeof define !== 'undefined')
             if (!data || gameMode !== 'online') return;
 
             // Входящий ход соперника — применяем локально, если ещё не применяли
-            if (data.moveNumber > onlineAppliedMoveNumber && data.lastMove) {
-                onlineAppliedMoveNumber = data.moveNumber;
+            if (data.moveNumber > onlineMoveNumber && data.lastMove) {
+                onlineMoveNumber = data.moveNumber;
+                // Часы пересинхронизируем ТОЛЬКО здесь, вместе с реальным новым ходом — его серверная
+                // метка времени свежая и достоверная. Если делать это при каждом обновлении (включая
+                // резервный опрос раз в 3 секунды), текущий тикающий локально таймер будет постоянно
+                // затираться устаревшим снимком из последнего хода, и время будет дёргаться туда-сюда.
+                if (typeof data.whiteTimeMs === 'number') timers.w = data.whiteTimeMs / 1000;
+                if (typeof data.blackTimeMs === 'number') timers.b = data.blackTimeMs / 1000;
+                lastTickAt = null;
                 const { from, to, promotion } = data.lastMove;
                 const move = game.move({ from, to, promotion: promotion || 'q' });
                 if (move) {
@@ -3846,11 +3851,6 @@ if (typeof define !== 'undefined')
                     if (!gameOver) tryExecutePremove();
                 }
             }
-
-            // Ресинхронизация часов с сервером (защита от расхождения/подкрутки на клиенте)
-            if (typeof data.whiteTimeMs === 'number') timers.w = data.whiteTimeMs / 1000;
-            if (typeof data.blackTimeMs === 'number') timers.b = data.blackTimeMs / 1000;
-            lastTickAt = null;
 
             updateOnlineBanner(data);
             updateBotStatus();
@@ -3911,7 +3911,6 @@ if (typeof define !== 'undefined')
                 blackTimeMs: Math.round(timers.b * 1000),
                 moveNumber: myMoveNumber
             }).catch((err) => showOnlineSyncError('отправить ваш ход сопернику', err));
-            onlineAppliedMoveNumber = onlineMoveNumber;
         }
 
         function sendOnlineDrawOffer() {
