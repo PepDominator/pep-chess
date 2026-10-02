@@ -182,7 +182,7 @@ Pep Chess uses a Service Worker to cache the files required for local play.
 | Game history | ✅ |
 | Board annotations | ✅ |
 | PWA | ✅ |
-| Online multiplayer | ❌ |
+| Online multiplayer | ✅ |
 
 Online multiplayer requires an internet connection.
 
