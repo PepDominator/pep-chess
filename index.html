@@ -1842,6 +1842,24 @@ if (typeof define !== 'undefined')
         }
         .modal button, .modal input { font-family: inherit; }
 
+        .account-bar {
+            display: flex; justify-content: center; padding: 14px 24px 0; min-height: 20px;
+        }
+        .account-signin-btn {
+            display: flex; align-items: center; gap: 8px; background: #FDFDFA; border: 1px solid var(--border);
+            border-radius: 3px; padding: 6px 14px; font-size: 13px; color: var(--text); cursor: pointer;
+            font-family: 'Noto Sans', sans-serif; transition: background 120ms, border-color 120ms;
+        }
+        .account-signin-btn:hover { background: #F3F2EA; border-color: #B7BAA5; }
+        .account-user { display: flex; align-items: center; gap: 8px; }
+        .account-avatar { width: 22px; height: 22px; border-radius: 50%; }
+        .account-name { font-size: 13px; color: var(--text); font-weight: 600; }
+        .account-signout-btn {
+            background: transparent; border: none; color: var(--ink-muted); font-size: 12px; cursor: pointer;
+            text-decoration: underline; font-family: 'Noto Sans', sans-serif; padding: 0;
+        }
+        .account-signout-btn:hover { color: var(--text); }
+
         .brand-title {
             text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
             color: var(--green); padding-top: 24px; display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -2292,6 +2310,17 @@ if (typeof define !== 'undefined')
 
     <!-- НАСТРОЙКИ -->
     <div id="setup" class="modal">
+        <div id="account-bar" class="account-bar">
+            <button class="account-signin-btn" id="account-signin-btn" onclick="handleSignIn()">
+                <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+                Войти через Google
+            </button>
+            <div class="account-user" id="account-user" style="display:none;">
+                <img id="account-avatar" class="account-avatar" src="" alt="">
+                <span id="account-name" class="account-name"></span>
+                <button class="account-signout-btn" onclick="handleSignOut()">Выйти</button>
+            </div>
+        </div>
         <div class="brand-title">Pep Chess</div>
         <h2>Параметры игры</h2>
         <div class="setup-content">
@@ -2388,6 +2417,7 @@ if (typeof define !== 'undefined')
                 </div>
 
                 <button class="history-link-btn" onclick="openHistoryScreen()">История партий</button>
+                <button class="history-link-btn" id="my-games-link" style="display:none;" onclick="openMyGamesScreen()">Мои онлайн-партии</button>
             </div>
 
             <!-- ЭКРАН ОЖИДАНИЯ: игра создана, ждём пока соперник перейдёт по ссылке -->
@@ -2427,6 +2457,14 @@ if (typeof define !== 'undefined')
             <div id="history-list"></div>
         </div>
         <button class="start-btn" onclick="closeHistoryScreen()">Назад</button>
+    </div>
+
+    <div id="my-games-screen" class="modal" style="display:none;">
+        <h2>Мои онлайн-партии</h2>
+        <div class="setup-content">
+            <div id="my-games-list"></div>
+        </div>
+        <button class="start-btn" onclick="closeMyGamesScreen()">Назад</button>
     </div>
 
     <!-- ИГРА -->
@@ -2513,8 +2551,12 @@ if (typeof define !== 'undefined')
         // только к этому объекту и ничего не знает про Firebase напрямую.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
-            getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, deleteField
+            getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, deleteField,
+            collection, query, orderBy, limit, getDocs
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import {
+            getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY",
@@ -2538,17 +2580,20 @@ if (typeof define !== 'undefined')
             ready: false,
             initError: null,
 
-            async createGame({ minutes, inc, hostColor, hostName }) {
+            async createGame({ minutes, inc, hostColor, hostName, hostUid }) {
                 const gameId = randomGameId();
                 await setDoc(doc(db, 'games', gameId), {
                     createdAt: serverTimestamp(),
                     status: 'waiting',
                     hostColor,
                     hostName: hostName || 'Хост',
+                    hostUid: hostUid || null,
                     guestName: null,
+                    guestUid: null,
                     timeControl: { minutes, inc },
                     fen: STARTING_FEN,
                     lastMove: null,
+                    moves: [],
                     moveNumber: 0,
                     turn: 'w',
                     whiteTimeMs: minutes * 60000,
@@ -2565,13 +2610,13 @@ if (typeof define !== 'undefined')
                 return snap.exists() ? snap.data() : null;
             },
 
-            async joinGame(gameId, guestName) {
+            async joinGame(gameId, guestName, guestUid) {
                 const ref = doc(db, 'games', gameId);
                 const snap = await getDoc(ref);
                 if (!snap.exists()) return { ok: false, reason: 'not_found' };
                 const data = snap.data();
                 if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', startedAt: serverTimestamp() });
+                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, startedAt: serverTimestamp() });
                 return { ok: true, data };
             },
 
@@ -2584,10 +2629,10 @@ if (typeof define !== 'undefined')
                 });
             },
 
-            async sendMove(gameId, { fen, from, to, promotion, turn, whiteTimeMs, blackTimeMs, moveNumber }) {
+            async sendMove(gameId, { fen, from, to, promotion, turn, whiteTimeMs, blackTimeMs, moveNumber, moves }) {
                 await updateDoc(doc(db, 'games', gameId), {
                     fen, lastMove: { from, to, promotion: promotion || null }, turn,
-                    whiteTimeMs, blackTimeMs, moveNumber,
+                    whiteTimeMs, blackTimeMs, moveNumber, moves: moves || [],
                     lastMoveAt: serverTimestamp(), drawOfferBy: null
                 });
             },
@@ -2606,13 +2651,48 @@ if (typeof define !== 'undefined')
 
             async sendTimeUpdate(gameId, { whiteTimeMs, blackTimeMs }) {
                 await updateDoc(doc(db, 'games', gameId), { whiteTimeMs, blackTimeMs });
+            },
+
+            // ---- Аккаунт (вход через Google) ----
+            currentUser: null,
+
+            async signIn() {
+                const result = await signInWithPopup(auth, new GoogleAuthProvider());
+                return result.user;
+            },
+
+            async signOutUser() {
+                await fbSignOut(auth);
+            },
+
+            // ---- История партий конкретного игрока (доступна только ему самому, см. правила Firestore) ----
+            async saveMyGameHistory(uid, gameId, record) {
+                if (!uid) return; // не вошёл — просто не сохраняем, это ок (гостевая игра без истории)
+                await setDoc(doc(db, 'playerGames', uid, 'games', gameId), {
+                    ...record,
+                    finishedAt: serverTimestamp()
+                });
+            },
+
+            async listMyGames(uid, max) {
+                if (!uid) return [];
+                const q = query(collection(db, 'playerGames', uid, 'games'), orderBy('finishedAt', 'desc'), limit(max || 50));
+                const snap = await getDocs(q);
+                const out = [];
+                snap.forEach((d) => out.push({ id: d.id, ...d.data() }));
+                return out;
             }
         };
 
-        let db;
+        let db, auth;
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
+            auth = getAuth(app);
+            onAuthStateChanged(auth, (user) => {
+                OnlineChess.currentUser = user ? { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL } : null;
+                window.dispatchEvent(new Event('onlinechess-auth-changed'));
+            });
             OnlineChess.ready = true;
         } catch (err) {
             console.error('Не удалось инициализировать Firebase:', err);
@@ -3599,7 +3679,8 @@ if (typeof define !== 'undefined')
             const startBtn = document.getElementById('start-btn');
             startBtn.disabled = true;
             try {
-                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName });
+                const hostUid = (window.OnlineChess.currentUser && window.OnlineChess.currentUser.uid) || null;
+                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid });
                 const link = location.origin + location.pathname + '?game=' + gameId;
                 document.getElementById('online-link-box').value = link;
                 document.getElementById('setup-view-config').style.display = 'none';
@@ -3719,7 +3800,8 @@ if (typeof define !== 'undefined')
             const nickname = (document.getElementById('join-nickname-input').value || '').trim() || 'Игрок';
             try { localStorage.setItem('chessNickname', nickname); } catch (e) { /* localStorage недоступен — не критично */ }
             const gameId = pendingJoinGameId;
-            const result = await window.OnlineChess.joinGame(gameId, nickname);
+            const guestUid = (window.OnlineChess.currentUser && window.OnlineChess.currentUser.uid) || null;
+            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid);
             if (!result.ok) {
                 document.getElementById('setup-view-join-prompt').style.display = 'none';
                 document.getElementById('setup-view-config').style.display = '';
@@ -3909,7 +3991,8 @@ if (typeof define !== 'undefined')
                 turn: game.turn(),
                 whiteTimeMs: Math.round(timers.w * 1000),
                 blackTimeMs: Math.round(timers.b * 1000),
-                moveNumber: myMoveNumber
+                moveNumber: myMoveNumber,
+                moves: historySAN.slice()
             }).catch((err) => showOnlineSyncError('отправить ваш ход сопернику', err));
         }
 
@@ -3939,6 +4022,59 @@ if (typeof define !== 'undefined')
             else winner = onlineMyColor === 'w' ? 'b' : 'w';
             window.OnlineChess.sendResult(onlineGameId, { winner, reason: message }).catch((err) => showOnlineSyncError('сообщить результат партии', err));
         }
+
+        // ==================== АККАУНТ (вход через Google) ====================
+
+        async function handleSignIn() {
+            if (!onlineChessAvailable()) {
+                const available = await waitForOnlineChess();
+                if (!available) { alert('Не удалось подключиться к серверу. Проверьте интернет.'); return; }
+            }
+            try {
+                await window.OnlineChess.signIn();
+                // обновление виджета придёт само через событие onlinechess-auth-changed
+            } catch (err) {
+                if (err && err.code === 'auth/popup-closed-by-user') return; // просто закрыли окно входа — не ошибка
+                console.error('Не удалось войти через Google:', err);
+                alert('Не удалось войти через Google. Попробуйте ещё раз.');
+            }
+        }
+
+        async function handleSignOut() {
+            try { await window.OnlineChess.signOutUser(); } catch (err) { console.error(err); }
+        }
+
+        function updateAccountBar() {
+            const user = window.OnlineChess && window.OnlineChess.currentUser;
+            const signinBtn = document.getElementById('account-signin-btn');
+            const userBox = document.getElementById('account-user');
+            if (!signinBtn || !userBox) return;
+            if (user) {
+                signinBtn.style.display = 'none';
+                userBox.style.display = 'flex';
+                document.getElementById('account-avatar').src = user.photoURL || '';
+                document.getElementById('account-avatar').style.display = user.photoURL ? '' : 'none';
+                document.getElementById('account-name').innerText = user.displayName || 'Игрок';
+                // Если вошли — подставляем имя из Google как никнейм по умолчанию (можно изменить вручную)
+                const nickInput = document.getElementById('nickname-input');
+                if (nickInput && !nickInput.value) nickInput.value = (user.displayName || '').split(' ')[0] || '';
+                refreshMyGamesLinkVisibility();
+            } else {
+                signinBtn.style.display = 'flex';
+                userBox.style.display = 'none';
+                refreshMyGamesLinkVisibility();
+            }
+        }
+
+        function refreshMyGamesLinkVisibility() {
+            const link = document.getElementById('my-games-link');
+            if (!link) return;
+            const user = window.OnlineChess && window.OnlineChess.currentUser;
+            link.style.display = user ? '' : 'none';
+        }
+
+        window.addEventListener('onlinechess-auth-changed', updateAccountBar);
+        window.addEventListener('onlinechess-ready', updateAccountBar);
 
         checkUrlForOnlineInvite();
 
@@ -4709,7 +4845,29 @@ if (typeof define !== 'undefined')
             if (gameMode === 'online' && !suppressOnlineReport) {
                 reportOnlineResultIfNeeded(message, resultCode);
             }
+            if (gameMode === 'online') {
+                saveOnlineGameToMyHistory(message, resultCode);
+            }
             suppressOnlineReport = false;
+        }
+
+        // Сохраняет завершённую сетевую партию в облачную историю ТЕКУЩЕГО игрока — доступно
+        // только вошедшим через Google (у каждого игрока своя приватная история, см. правила Firestore).
+        function saveOnlineGameToMyHistory(message, resultCode) {
+            const user = window.OnlineChess && window.OnlineChess.currentUser;
+            if (!user || !onlineGameId) return;
+            const record = {
+                date: new Date().toISOString(),
+                userColor: userCol,
+                level: null,
+                opponent: onlineOpponentName || 'Соперник',
+                result: resultCode || 'unknown',
+                resultText: message,
+                moves: historySAN.slice(),
+                finalFen: game.fen()
+            };
+            window.OnlineChess.saveMyGameHistory(user.uid, onlineGameId, record)
+                .catch((err) => console.error('Не удалось сохранить партию в облачную историю:', err));
         }
 
         function scoreLineForResult(resultCode) {
@@ -4933,6 +5091,67 @@ if (typeof define !== 'undefined')
             container.appendChild(clearBtn);
         }
 
+        async function openMyGamesScreen() {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('my-games-screen').style.display = 'block';
+            const container = document.getElementById('my-games-list');
+            container.innerHTML = '<div class="history-empty">Загрузка…</div>';
+            const user = window.OnlineChess && window.OnlineChess.currentUser;
+            if (!user) { container.innerHTML = '<div class="history-empty">Войдите через Google, чтобы видеть свою историю</div>'; return; }
+            try {
+                const games = await window.OnlineChess.listMyGames(user.uid, 50);
+                renderMyGamesList(games);
+            } catch (err) {
+                console.error('Не удалось загрузить облачную историю:', err);
+                container.innerHTML = '<div class="history-empty">Не удалось загрузить историю. Проверьте интернет.</div>';
+            }
+        }
+
+        function closeMyGamesScreen() {
+            document.getElementById('my-games-screen').style.display = 'none';
+            document.getElementById('setup').style.display = 'block';
+        }
+
+        function renderMyGamesList(games) {
+            const container = document.getElementById('my-games-list');
+            if (!games.length) {
+                container.innerHTML = '<div class="history-empty">Здесь пока нет завершённых сетевых партий</div>';
+                return;
+            }
+            container.innerHTML = '';
+            games.forEach((record) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.onclick = () => viewGameRecord(record);
+
+                const dot = document.createElement('div');
+                dot.className = 'history-result-dot ' + (record.result || 'draw');
+                item.appendChild(dot);
+
+                const info = document.createElement('div');
+                info.className = 'history-info';
+
+                const resultText = document.createElement('div');
+                resultText.className = 'history-result-text';
+                resultText.innerText = record.resultText || 'Партия завершена';
+                info.appendChild(resultText);
+
+                const meta = document.createElement('div');
+                meta.className = 'history-meta';
+                const colorWord = record.userColor === 'w' ? 'белыми' : 'чёрными';
+                meta.innerText = `${formatHistoryDate(record.date)} · вы играли ${colorWord} · против ${record.opponent || 'соперника'} (по сети)`;
+                info.appendChild(meta);
+
+                const movesPreview = document.createElement('div');
+                movesPreview.className = 'history-moves-preview';
+                movesPreview.innerText = sanListToPairs(record.moves || []);
+                info.appendChild(movesPreview);
+
+                item.appendChild(info);
+                container.appendChild(item);
+            });
+        }
+
         function sanListToPairs(moves) {
             const parts = [];
             for (let i = 0; i < moves.length; i += 2) {
@@ -4947,8 +5166,14 @@ if (typeof define !== 'undefined')
             const list = loadGameHistory();
             const record = list[idx];
             if (!record) return;
+            viewGameRecord(record);
+        }
 
+        // То же самое, но принимает запись партии напрямую — используется и локальной историей,
+        // и облачной историей сетевых партий (см. "Мои онлайн-партии").
+        function viewGameRecord(record) {
             document.getElementById('history-screen').style.display = 'none';
+            document.getElementById('my-games-screen').style.display = 'none';
             document.getElementById('game-ui').style.display = 'flex';
             const menuBgEl = document.querySelector('.menu-bg'); if (menuBgEl) menuBgEl.style.display = 'none';
 

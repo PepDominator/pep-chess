@@ -1,6 +1,9 @@
-// Простой service worker: кэширует само приложение (всё уже встроено в один HTML-файл,
-// включая движок и фигуры), чтобы после первого открытия игра работала полностью офлайн.
-const CACHE_NAME = 'pep-chess-v1';
+// Service worker: кэширует приложение, чтобы после первого открытия игра работала
+// полностью офлайн — но при этом, пока есть интернет, ВСЕГДА предпочитает свежую версию
+// с сервера, а не кэш. Кэш используется только как резерв на случай отсутствия сети.
+// Благодаря этому новую версию index.html не нужно вручную "продавливать" через
+// очистку кэша браузера — она подхватывается сама при следующем открытии с интернетом.
+const CACHE_NAME = 'pep-chess-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -27,15 +30,21 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Запросы к сторонним сервисам (Firebase и т.п.) не трогаем — пусть идут как обычно,
+  // без офлайн-кэширования; это актуально только для файлов самого приложения.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        // Кэшируем и всё новое по пути (на случай переименования/дополнительных файлов)
+    fetch(event.request)
+      .then((response) => {
+        // Сеть доступна — отдаём свежий ответ и заодно обновляем кэш для будущего офлайна.
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => {
+        // Сети нет — используем то, что успели закэшировать раньше.
+        return caches.match(event.request);
+      })
   );
 });
