@@ -1944,6 +1944,52 @@ if (typeof define !== 'undefined')
         .history-link-btn:hover { color: var(--text); }
         .history-link-btn:hover::after { width: 60%; left: 20%; }
 
+        /* Переключатель режима партии (бот / сеть) */
+        .mode-tabs { display: flex; background: #F3F2EA; border: 1px solid var(--border); border-radius: 3px; margin-bottom: 22px; overflow: hidden; }
+        .mode-tab {
+            flex: 1; border: none; background: transparent; color: var(--ink-muted); padding: 9px 0; cursor: pointer;
+            font-size: 14px; font-weight: 700; font-family: 'Noto Sans', sans-serif; transition: background 120ms, color 120ms;
+        }
+        .mode-tab:hover:not(.active) { background: #EAEADF; color: var(--text); }
+        .mode-tab.active { background: var(--green); color: #fff; }
+
+        .online-divider { display: flex; align-items: center; text-align: center; color: var(--ink-muted); font-size: 12px; margin: 14px 0; }
+        .online-divider::before, .online-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .online-divider span { padding: 0 10px; }
+
+        .online-join-field { display: flex; gap: 8px; margin-top: 6px; }
+        .online-join-field .nickname-input { margin-top: 0; }
+        .online-join-btn {
+            background: var(--green); border: none; color: #fff; padding: 0 18px; border-radius: 2px; cursor: pointer;
+            font-size: 14px; font-weight: 700; font-family: 'Noto Sans', sans-serif; flex-shrink: 0;
+            transition: background 120ms;
+        }
+        .online-join-btn:hover { background: #2E4A3A; }
+        .online-error { color: #A23B33; font-size: 13px; margin-top: 8px; }
+
+        #setup-view-waiting, #setup-view-join-prompt { text-align: center; padding-bottom: 8px; }
+        .online-waiting-icon {
+            font-size: 40px; color: var(--green); margin-bottom: 8px;
+            animation: waiting-pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes waiting-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+        .online-waiting-title { font-size: 20px; color: var(--text); font-family: Georgia, 'Times New Roman', serif; font-style: italic; margin-bottom: 8px; }
+        .online-waiting-sub { font-size: 13px; color: var(--ink-muted); margin-bottom: 20px; line-height: 1.5; }
+        .online-link-row { display: flex; gap: 8px; margin-bottom: 18px; }
+        .online-link-row .nickname-input { margin-top: 0; text-align: center; font-family: 'Roboto Mono', monospace; font-size: 13px; }
+
+        /* Статус соперника и предложения ничьи/заявки в сетевой игре */
+        .online-banner {
+            background: #F3F2EA; border-top: 1px solid var(--border); padding: 10px 16px; display: flex;
+            align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text);
+        }
+        .online-banner-btn {
+            border: none; border-radius: 2px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+            font-family: 'Noto Sans', sans-serif;
+        }
+        .online-banner-accept { background: var(--green); color: #fff; }
+        .online-banner-decline { background: #EAEADF; color: var(--text); }
+
         /* Экран истории партий */
         #history-screen .setup-content { max-height: 480px; overflow-y: auto; }
         #history-list { display: flex; flex-direction: column; gap: 8px; }
@@ -2250,77 +2296,127 @@ if (typeof define !== 'undefined')
         <h2>Параметры игры</h2>
         <div class="setup-content">
 
-            <div class="nickname-section">
-                <label class="time-label" for="nickname-input">Ваш никнейм</label>
-                <input type="text" id="nickname-input" class="nickname-input" placeholder="Вы" maxlength="20"
-                    oninput="saveNickname()" autocomplete="off" value="">
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="mode-tab-bot" onclick="setGameModeUI('bot')">Компьютер</button>
+                <button class="mode-tab" id="mode-tab-online" onclick="setGameModeUI('online')">Играть по сети</button>
             </div>
 
-            <div class="time-section">
-                <div class="time-col">
-                    <div class="time-label">Минут на партию</div>
-                    <div class="time-values">
-                        <span class="val-box" id="v-time">10</span>
+            <!-- ОСНОВНОЙ ВИД: настройка партии (против бота или создание сетевой игры) -->
+            <div id="setup-view-config">
+
+                <div class="nickname-section">
+                    <label class="time-label" for="nickname-input">Ваш никнейм</label>
+                    <input type="text" id="nickname-input" class="nickname-input" placeholder="Вы" maxlength="20"
+                        oninput="saveNickname()" autocomplete="off" value="">
+                </div>
+
+                <div class="time-section">
+                    <div class="time-col">
+                        <div class="time-label">Минут на партию</div>
+                        <div class="time-values">
+                            <span class="val-box" id="v-time">10</span>
+                        </div>
+                        <input type="range" id="in-time" min="1" max="180" value="10" oninput="updateLabels()">
                     </div>
-                    <input type="range" id="in-time" min="1" max="180" value="10" oninput="updateLabels()">
-                </div>
-                <div class="time-col">
-                    <div class="time-label">Добавление секунд на ход</div>
-                    <div class="time-values">
-                        <span class="val-box" id="v-inc">5</span>
+                    <div class="time-col">
+                        <div class="time-label">Добавление секунд на ход</div>
+                        <div class="time-values">
+                            <span class="val-box" id="v-inc">5</span>
+                        </div>
+                        <input type="range" id="in-inc" min="0" max="60" value="5" oninput="updateLabels()">
                     </div>
-                    <input type="range" id="in-inc" min="0" max="60" value="5" oninput="updateLabels()">
                 </div>
+
+                <div class="presets" id="presets"></div>
+
+                <div id="custom-time-row" class="custom-time-row" style="display:none;">
+                    <div class="custom-time-field">
+                        <label>Минут</label>
+                        <input type="number" id="custom-time-min" min="1" max="999" value="10" oninput="applyCustomTime()">
+                    </div>
+                    <div class="custom-time-field">
+                        <label>Добавление, сек</label>
+                        <input type="number" id="custom-time-inc" min="0" max="999" value="5" oninput="applyCustomTime()">
+                    </div>
+                </div>
+
+                <div id="level-section">
+                    <div class="section-title">Сложность</div>
+                    <div class="level-row" id="level-row"></div>
+                </div>
+
+                <div class="section-title" id="side-section-title">Сторона</div>
+                <div class="side-row">
+                    <div class="side-btn" id="s-b" onclick="setSide('b')">
+                        <span class="king-icon">♚</span>
+                        <span class="label">Чёрные</span>
+                    </div>
+                    <div class="side-btn active" id="s-r" onclick="setSide('r')">
+                        <span class="king-icon">♚</span>
+                        <span class="label">Случайный цвет</span>
+                    </div>
+                    <div class="side-btn" id="s-w" onclick="setSide('w')">
+                        <span class="king-icon">♔</span>
+                        <span class="label">Белые</span>
+                    </div>
+                </div>
+
+                <button class="start-btn" id="start-btn" onclick="handleStartClick()">
+                    <svg class="cpu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="6" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+                        <rect x="9.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/>
+                        <line x1="9" y1="2" x2="9" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="15" y1="2" x2="15" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="9" y1="18" x2="9" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="15" y1="18" x2="15" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="2" y1="9" x2="6" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="2" y1="15" x2="6" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="18" y1="9" x2="22" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <line x1="18" y1="15" x2="22" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                    <span id="start-btn-label">Сыграть с компьютером</span>
+                </button>
+
+                <div id="online-join-row" style="display:none;">
+                    <div class="online-divider"><span>или</span></div>
+                    <label class="time-label" for="join-code-input">Код игры от друга</label>
+                    <div class="online-join-field">
+                        <input type="text" id="join-code-input" class="nickname-input" placeholder="Вставьте код или ссылку" autocomplete="off">
+                        <button class="online-join-btn" onclick="joinOnlineGameFromInput()">Войти</button>
+                    </div>
+                    <div id="online-join-error" class="online-error" style="display:none;"></div>
+                </div>
+
+                <button class="history-link-btn" onclick="openHistoryScreen()">История партий</button>
             </div>
 
-            <div class="presets" id="presets"></div>
-
-            <div id="custom-time-row" class="custom-time-row" style="display:none;">
-                <div class="custom-time-field">
-                    <label>Минут</label>
-                    <input type="number" id="custom-time-min" min="1" max="999" value="10" oninput="applyCustomTime()">
+            <!-- ЭКРАН ОЖИДАНИЯ: игра создана, ждём пока соперник перейдёт по ссылке -->
+            <div id="setup-view-waiting" style="display:none;">
+                <div class="online-waiting-icon">♟</div>
+                <div class="online-waiting-title">Ждём соперника…</div>
+                <div class="online-waiting-sub">Отправьте эту ссылку другу — игра начнётся, как только он откроет её</div>
+                <div class="online-link-row">
+                    <input type="text" id="online-link-box" class="nickname-input" readonly onclick="this.select()">
+                    <button class="online-join-btn" onclick="copyOnlineLink()" id="copy-link-btn">Копировать</button>
                 </div>
-                <div class="custom-time-field">
-                    <label>Добавление, сек</label>
-                    <input type="number" id="custom-time-inc" min="0" max="999" value="5" oninput="applyCustomTime()">
-                </div>
+                <button class="history-link-btn" onclick="cancelOnlineWaiting()">Отменить</button>
             </div>
 
-            <div class="section-title">Сложность</div>
-            <div class="level-row" id="level-row"></div>
-
-            <div class="section-title">Сторона</div>
-            <div class="side-row">
-                <div class="side-btn" id="s-b" onclick="setSide('b')">
-                    <span class="king-icon">♚</span>
-                    <span class="label">Чёрные</span>
+            <!-- ЭКРАН ПРИСОЕДИНЕНИЯ: открыли ссылку от друга -->
+            <div id="setup-view-join-prompt" style="display:none;">
+                <div class="online-waiting-icon">♟</div>
+                <div class="online-waiting-title">Вас пригласили на партию</div>
+                <div class="online-waiting-sub" id="join-prompt-details"></div>
+                <div class="nickname-section">
+                    <label class="time-label" for="join-nickname-input">Ваш никнейм</label>
+                    <input type="text" id="join-nickname-input" class="nickname-input" placeholder="Вы" maxlength="20" autocomplete="off">
                 </div>
-                <div class="side-btn active" id="s-r" onclick="setSide('r')">
-                    <span class="king-icon">♚</span>
-                    <span class="label">Случайный цвет</span>
-                </div>
-                <div class="side-btn" id="s-w" onclick="setSide('w')">
-                    <span class="king-icon">♔</span>
-                    <span class="label">Белые</span>
-                </div>
+                <button class="start-btn" onclick="confirmJoinFromPrompt()">
+                    <span>Присоединиться и начать</span>
+                </button>
+                <button class="history-link-btn" onclick="declineJoinPrompt()">Не сейчас</button>
             </div>
 
-            <button class="start-btn" onclick="initGame()">
-                <svg class="cpu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="6" y="6" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-                    <rect x="9.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/>
-                    <line x1="9" y1="2" x2="9" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="15" y1="2" x2="15" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="9" y1="18" x2="9" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="15" y1="18" x2="15" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="2" y1="9" x2="6" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="2" y1="15" x2="6" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="18" y1="9" x2="22" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="18" y1="15" x2="22" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
-                Сыграть с компьютером
-            </button>
-            <button class="history-link-btn" onclick="openHistoryScreen()">История партий</button>
         </div>
     </div>
 
@@ -2365,7 +2461,7 @@ if (typeof define !== 'undefined')
                 <span>Stockfish уровня <span id="cur-lv">3</span></span>
             </div>
 
-            <div class="analysis-bar">
+            <div class="analysis-bar" id="analysis-bar-row">
                 <label class="analysis-toggle">
                     <input type="checkbox" id="analysis-checkbox" onchange="toggleAnalysis()">
                     <span class="toggle-slider"></span>
@@ -2375,6 +2471,7 @@ if (typeof define !== 'undefined')
                 <span id="analysis-pv" class="analysis-pv" onclick="toggleAnalysisLines()" style="cursor:pointer;"></span>
             </div>
             <div id="analysis-lines" class="analysis-lines"></div>
+            <div id="online-banner" class="online-banner" style="display:none;"></div>
 
             <div class="nav-bar">
                 <button class="nav-btn" id="nav-first" onclick="goFirst()">⏮</button>
@@ -2393,9 +2490,9 @@ if (typeof define !== 'undefined')
                 </div>
             </div>
 
-            <div class="action-bar">
+            <div class="action-bar" id="action-bar">
                 <button class="action-btn" title="Взять ход назад" id="takeback-btn" onclick="takeBackMove()">↩</button>
-                <button class="action-btn" title="Предложить ничью" onclick="offerDraw()">½</button>
+                <button class="action-btn" title="Предложить ничью" id="draw-offer-btn" onclick="offerDraw()">½</button>
                 <button class="action-btn" title="Сдаться" onclick="resignGame()">⚐</button>
             </div>
 
@@ -2408,6 +2505,122 @@ if (typeof define !== 'undefined')
             </div>
         </div>
     </div>
+
+    <script type="module">
+        // ---- Сетевая игра: тонкий слой поверх Firebase Firestore ----
+        // Выделен в отдельный module-скрипт (нужно для import), который кладёт готовый API
+        // в window.OnlineChess — весь остальной (классический, не-module) код обращается
+        // только к этому объекту и ничего не знает про Firebase напрямую.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import {
+            getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, deleteField
+        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY",
+            authDomain: "pep-chess-2026.firebaseapp.com",
+            projectId: "pep-chess-2026",
+            storageBucket: "pep-chess-2026.firebasestorage.app",
+            messagingSenderId: "170856560854",
+            appId: "1:170856560854:web:d9b6b766cbd56780ecf177"
+        };
+
+        const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+        function randomGameId(len = 8) {
+            const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789'; // без похожих символов (l,1,0,o)
+            const bytes = new Uint8Array(len);
+            crypto.getRandomValues(bytes);
+            return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+        }
+
+        const OnlineChess = {
+            ready: false,
+            initError: null,
+
+            async createGame({ minutes, inc, hostColor, hostName }) {
+                const gameId = randomGameId();
+                await setDoc(doc(db, 'games', gameId), {
+                    createdAt: serverTimestamp(),
+                    status: 'waiting',
+                    hostColor,
+                    hostName: hostName || 'Хост',
+                    guestName: null,
+                    timeControl: { minutes, inc },
+                    fen: STARTING_FEN,
+                    lastMove: null,
+                    moveNumber: 0,
+                    turn: 'w',
+                    whiteTimeMs: minutes * 60000,
+                    blackTimeMs: minutes * 60000,
+                    lastMoveAt: null,
+                    drawOfferBy: null,
+                    result: null
+                });
+                return gameId;
+            },
+
+            async peekGame(gameId) {
+                const snap = await getDoc(doc(db, 'games', gameId));
+                return snap.exists() ? snap.data() : null;
+            },
+
+            async joinGame(gameId, guestName) {
+                const ref = doc(db, 'games', gameId);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) return { ok: false, reason: 'not_found' };
+                const data = snap.data();
+                if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
+                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', startedAt: serverTimestamp() });
+                return { ok: true, data };
+            },
+
+            listenGame(gameId, callback) {
+                return onSnapshot(doc(db, 'games', gameId), (snap) => {
+                    callback(snap.exists() ? snap.data() : null);
+                }, (err) => {
+                    console.error('Ошибка подписки на партию:', err);
+                });
+            },
+
+            async sendMove(gameId, { fen, from, to, promotion, turn, whiteTimeMs, blackTimeMs, moveNumber }) {
+                await updateDoc(doc(db, 'games', gameId), {
+                    fen, lastMove: { from, to, promotion: promotion || null }, turn,
+                    whiteTimeMs, blackTimeMs, moveNumber,
+                    lastMoveAt: serverTimestamp(), drawOfferBy: null
+                });
+            },
+
+            async sendDrawOffer(gameId, byColor) {
+                await updateDoc(doc(db, 'games', gameId), { drawOfferBy: byColor });
+            },
+
+            async clearDrawOffer(gameId) {
+                await updateDoc(doc(db, 'games', gameId), { drawOfferBy: deleteField() });
+            },
+
+            async sendResult(gameId, result) {
+                await updateDoc(doc(db, 'games', gameId), { status: 'finished', result });
+            },
+
+            async sendTimeUpdate(gameId, { whiteTimeMs, blackTimeMs }) {
+                await updateDoc(doc(db, 'games', gameId), { whiteTimeMs, blackTimeMs });
+            }
+        };
+
+        let db;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            OnlineChess.ready = true;
+        } catch (err) {
+            console.error('Не удалось инициализировать Firebase:', err);
+            OnlineChess.initError = err;
+        }
+
+        window.OnlineChess = OnlineChess;
+        window.dispatchEvent(new Event('onlinechess-ready'));
+    </script>
 
     <script>
         // GenericNotify.mp3 — тот самый звук, которым Lichess отмечает любое уведомление, включая
@@ -2477,6 +2690,14 @@ if (typeof define !== 'undefined')
         let analysisFreePlay = false; // true в режиме анализа партии — можно ходить за обе стороны, бот не отвечает
         let analysisCameFromHistory = false; // true, если в анализ зашли через партию из истории (а не сразу после игры)
         let botThinking = false;
+        // --- Состояние сетевой игры ---
+        let gameMode = 'bot';           // 'bot' | 'online'
+        let onlineGameId = null;
+        let onlineMyColor = null;
+        let onlineMoveNumber = 0;       // номер последнего хода, который МЫ отправили
+        let onlineAppliedMoveNumber = 0;// номер последнего хода, который мы уже применили локально
+        let onlineOpponentName = null;
+        let onlineUnsub = null;
         let botMoveTimer = null; // id таймера, запланированного вызова botMove(), чтобы можно было отменить
 
         // ---- Премоув (заранее запланированный ход, как на Lichess) ----
@@ -3198,6 +3419,29 @@ if (typeof define !== 'undefined')
             lastEndedGameResultCode = null;
             document.getElementById('game-ui').classList.remove('analysis-mode');
 
+            // Сброс сетевого состояния — отписываемся от предыдущей партии, если была,
+            // и возвращаем элементы интерфейса, которые скрываются во время онлайн-игры
+            // (ассистент движка, взятие хода назад — нечестно/невозможно в игре с человеком).
+            if (onlineUnsub) { onlineUnsub(); onlineUnsub = null; }
+            onlineGameId = null;
+            onlineMyColor = null;
+            onlineMoveNumber = 0;
+            onlineOpponentName = null;
+            onlineAppliedMoveNumber = 0;
+            analysisEnabled = false;
+            const analysisCheckbox = document.getElementById('analysis-checkbox');
+            if (analysisCheckbox) analysisCheckbox.checked = false;
+            const analysisBarRow = document.getElementById('analysis-bar-row');
+            if (analysisBarRow) analysisBarRow.style.display = '';
+            const actionBarEl = document.getElementById('action-bar');
+            if (actionBarEl) actionBarEl.style.display = '';
+            const takebackBtnEl = document.getElementById('takeback-btn');
+            if (takebackBtnEl) takebackBtnEl.style.display = '';
+            const drawOfferBtnEl = document.getElementById('draw-offer-btn');
+            if (drawOfferBtnEl) drawOfferBtnEl.style.display = '';
+            const onlineBannerEl = document.getElementById('online-banner');
+            if (onlineBannerEl) { onlineBannerEl.style.display = 'none'; onlineBannerEl.innerHTML = ''; }
+
             const newGameBtn = document.getElementById('new-game-btn');
             if (newGameBtn) newGameBtn.remove();
             const postGameButtons = document.getElementById('post-game-buttons');
@@ -3222,6 +3466,7 @@ if (typeof define !== 'undefined')
 
         function initGame(overrideSettings) {
             resetGameState();
+            gameMode = 'bot';
             if (overrideSettings) {
                 userCol = overrideSettings.userCol;
                 level = overrideSettings.level;
@@ -3287,6 +3532,356 @@ if (typeof define !== 'undefined')
                 if (statusBar) statusBar.innerHTML = `<span style="color:#e0584b">Ошибка загрузки движка</span>`;
             });
         }
+
+        // ==================== СЕТЕВАЯ ИГРА ====================
+
+        function onlineChessAvailable() {
+            return !!(window.OnlineChess && window.OnlineChess.ready);
+        }
+
+        function waitForOnlineChess() {
+            // Модуль с Firebase грузится асинхронно (отдельный <script type="module">) — на случай,
+            // если пользователь кликнул очень быстро, ждём события готовности (с разумным таймаутом).
+            if (onlineChessAvailable()) return Promise.resolve(true);
+            if (window.OnlineChess && window.OnlineChess.initError) return Promise.resolve(false);
+            return new Promise((resolve) => {
+                const onReady = () => { clearTimeout(timer); resolve(onlineChessAvailable()); };
+                window.addEventListener('onlinechess-ready', onReady, { once: true });
+                const timer = setTimeout(() => { window.removeEventListener('onlinechess-ready', onReady); resolve(onlineChessAvailable()); }, 6000);
+            });
+        }
+
+        function setGameModeUI(mode) {
+            document.getElementById('mode-tab-bot').classList.toggle('active', mode === 'bot');
+            document.getElementById('mode-tab-online').classList.toggle('active', mode === 'online');
+            document.getElementById('level-section').style.display = mode === 'online' ? 'none' : '';
+            document.getElementById('online-join-row').style.display = mode === 'online' ? '' : 'none';
+            document.getElementById('side-section-title').innerText = mode === 'online' ? 'Ваш цвет' : 'Сторона';
+            document.getElementById('start-btn-label').innerText = mode === 'online' ? 'Создать игру по ссылке' : 'Сыграть с компьютером';
+            document.getElementById('online-join-error').style.display = 'none';
+            uiGameMode = mode;
+        }
+        let uiGameMode = 'bot'; // режим, выбранный переключателем в меню (ещё до старта партии)
+
+        function handleStartClick() {
+            if (uiGameMode === 'online') startOnlineGameFlow();
+            else initGame();
+        }
+
+        function readSelectedTimeControl() {
+            let minutes, incSec;
+            if (document.getElementById('custom-time-row').style.display !== 'none') {
+                incSec = Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0);
+                minutes = Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1);
+            } else {
+                incSec = parseInt(document.getElementById('in-inc').value);
+                minutes = parseInt(document.getElementById('in-time').value);
+            }
+            return { minutes, incSec };
+        }
+
+        async function startOnlineGameFlow() {
+            const errEl = document.getElementById('online-join-error');
+            errEl.style.display = 'none';
+            const available = await waitForOnlineChess();
+            if (!available) {
+                errEl.innerText = 'Не удалось подключиться к серверу сетевой игры. Проверьте интернет и попробуйте ещё раз.';
+                errEl.style.display = '';
+                return;
+            }
+            const { minutes, incSec } = readSelectedTimeControl();
+            let hostColor = userCol;
+            if (hostColor === 'r') hostColor = Math.random() > 0.5 ? 'w' : 'b';
+            const hostName = (document.getElementById('nickname-input').value || '').trim() || 'Игрок';
+
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = true;
+            try {
+                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName });
+                const link = location.origin + location.pathname + '?game=' + gameId;
+                document.getElementById('online-link-box').value = link;
+                document.getElementById('setup-view-config').style.display = 'none';
+                document.getElementById('setup-view-waiting').style.display = '';
+
+                pendingOnlineHost = { gameId, hostColor, minutes, inc: incSec, hostName };
+                onlineUnsub = window.OnlineChess.listenGame(gameId, (data) => {
+                    if (!data) return;
+                    if (data.status === 'active' && pendingOnlineHost) {
+                        if (onlineUnsub) { onlineUnsub(); onlineUnsub = null; }
+                        const guestName = data.guestName;
+                        pendingOnlineHost = null;
+                        startOnlineMatch({ gameId, myColor: hostColor, timeControl: { minutes, inc: incSec }, opponentName: guestName, data });
+                    }
+                });
+            } catch (err) {
+                console.error('Не удалось создать сетевую игру:', err);
+                errEl.innerText = 'Не удалось создать игру. Попробуйте ещё раз.';
+                errEl.style.display = '';
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+        let pendingOnlineHost = null;
+
+        function cancelOnlineWaiting() {
+            if (onlineUnsub) { onlineUnsub(); onlineUnsub = null; }
+            pendingOnlineHost = null;
+            document.getElementById('setup-view-waiting').style.display = 'none';
+            document.getElementById('setup-view-config').style.display = '';
+        }
+
+        function copyOnlineLink() {
+            const box = document.getElementById('online-link-box');
+            box.select();
+            navigator.clipboard?.writeText(box.value).then(() => {
+                const btn = document.getElementById('copy-link-btn');
+                const original = btn.innerText;
+                btn.innerText = 'Скопировано!';
+                setTimeout(() => { btn.innerText = original; }, 1500);
+            }).catch(() => {
+                document.execCommand('copy');
+            });
+        }
+
+        let pendingJoinGameId = null;
+
+        async function checkUrlForOnlineInvite() {
+            const params = new URLSearchParams(location.search);
+            const gameId = params.get('game');
+            if (!gameId) return;
+            const available = await waitForOnlineChess();
+            if (!available) return;
+            try {
+                const data = await window.OnlineChess.peekGame(gameId);
+                if (!data) return; // игры не существует (например, ссылка устарела) — просто остаёмся на обычном меню
+                if (data.status !== 'waiting') return; // партия уже началась или завершилась — тоже молча игнорируем
+                pendingJoinGameId = gameId;
+                const tc = data.timeControl || { minutes: 10, inc: 0 };
+                document.getElementById('join-prompt-details').innerText =
+                    `${data.hostName || 'Игрок'} приглашает вас на партию (${tc.minutes}+${tc.inc}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+                document.getElementById('join-nickname-input').value = loadNickname();
+                document.getElementById('setup-view-config').style.display = 'none';
+                document.getElementById('setup-view-join-prompt').style.display = '';
+            } catch (err) {
+                console.error('Не удалось проверить приглашение:', err);
+            }
+        }
+
+        function declineJoinPrompt() {
+            pendingJoinGameId = null;
+            document.getElementById('setup-view-join-prompt').style.display = 'none';
+            document.getElementById('setup-view-config').style.display = '';
+            history.replaceState(null, '', location.pathname);
+        }
+
+        async function joinOnlineGameFromInput() {
+            const errEl = document.getElementById('online-join-error');
+            errEl.style.display = 'none';
+            const raw = (document.getElementById('join-code-input').value || '').trim();
+            if (!raw) return;
+            // Допускаем вставку как голого кода, так и полной ссылки — достаём ?game=... если это ссылка
+            let gameId = raw;
+            try {
+                if (raw.includes('://') || raw.includes('?')) {
+                    const url = new URL(raw, location.href);
+                    gameId = url.searchParams.get('game') || raw;
+                }
+            } catch (e) { /* не похоже на URL — используем как есть */ }
+
+            const available = await waitForOnlineChess();
+            if (!available) {
+                errEl.innerText = 'Не удалось подключиться к серверу сетевой игры. Проверьте интернет.';
+                errEl.style.display = '';
+                return;
+            }
+            const data = await window.OnlineChess.peekGame(gameId);
+            if (!data) { errEl.innerText = 'Игра с таким кодом не найдена.'; errEl.style.display = ''; return; }
+            if (data.status !== 'waiting') { errEl.innerText = 'Эта игра уже началась или завершилась.'; errEl.style.display = ''; return; }
+
+            pendingJoinGameId = gameId;
+            const tc = data.timeControl || { minutes: 10, inc: 0 };
+            document.getElementById('join-prompt-details').innerText =
+                `${data.hostName || 'Игрок'} приглашает вас на партию (${tc.minutes}+${tc.inc}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+            document.getElementById('join-nickname-input').value = loadNickname();
+            document.getElementById('setup-view-config').style.display = 'none';
+            document.getElementById('setup-view-join-prompt').style.display = '';
+        }
+
+        async function confirmJoinFromPrompt() {
+            if (!pendingJoinGameId) return;
+            const nickname = (document.getElementById('join-nickname-input').value || '').trim() || 'Игрок';
+            try { localStorage.setItem('chessNickname', nickname); } catch (e) { /* localStorage недоступен — не критично */ }
+            const gameId = pendingJoinGameId;
+            const result = await window.OnlineChess.joinGame(gameId, nickname);
+            if (!result.ok) {
+                document.getElementById('setup-view-join-prompt').style.display = 'none';
+                document.getElementById('setup-view-config').style.display = '';
+                alert(result.reason === 'already_started' ? 'Эта игра уже началась или завершилась.' : 'Эту игру не удалось найти — возможно, ссылка устарела.');
+                return;
+            }
+            const myColor = result.data.hostColor === 'w' ? 'b' : 'w';
+            startOnlineMatch({
+                gameId, myColor,
+                timeControl: result.data.timeControl,
+                opponentName: result.data.hostName,
+                data: result.data
+            });
+        }
+
+        function startOnlineMatch({ gameId, myColor, timeControl, opponentName, data }) {
+            resetGameState();
+            gameMode = 'online';
+            userCol = myColor;
+            onlineGameId = gameId;
+            onlineMyColor = myColor;
+            onlineOpponentName = opponentName;
+            inc = timeControl.inc;
+            onlineMoveNumber = data.moveNumber || 0;
+            onlineAppliedMoveNumber = data.moveNumber || 0;
+
+            timers.w = (data.whiteTimeMs != null ? data.whiteTimeMs : timeControl.minutes * 60000) / 1000;
+            timers.b = (data.blackTimeMs != null ? data.blackTimeMs : timeControl.minutes * 60000) / 1000;
+
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('setup-view-waiting').style.display = 'none';
+            document.getElementById('setup-view-join-prompt').style.display = 'none';
+            document.getElementById('setup-view-config').style.display = '';
+            document.getElementById('game-ui').style.display = 'flex';
+            const menuBgEl = document.querySelector('.menu-bg'); if (menuBgEl) menuBgEl.style.display = 'none';
+            history.replaceState(null, '', location.pathname);
+
+            // Скрываем элементы, бессмысленные или нечестные в игре с живым человеком
+            document.getElementById('analysis-bar-row').style.display = 'none';
+            document.getElementById('analysis-lines').classList.remove('visible');
+            document.getElementById('takeback-btn').style.display = 'none';
+
+            [sounds.move, sounds.capture, sounds.check, sounds.end].forEach((audio) => {
+                audio.play().then(() => audio.pause()).catch(() => {});
+                audio.currentTime = 0;
+            });
+            sounds.start.currentTime = 0;
+            sounds.start.play().catch(() => {});
+
+            historyFens = [game.fen()];
+            historySAN = [];
+
+            updateWelcomeInfo();
+            render();
+            updateTimerLabels();
+            updateTimerDisplay();
+            lastTickAt = null;
+            gameTickInterval = setInterval(tick, 100);
+            updateBotStatus();
+
+            if (onlineUnsub) onlineUnsub();
+            onlineUnsub = window.OnlineChess.listenGame(gameId, handleOnlineGameUpdate);
+        }
+
+        function handleOnlineGameUpdate(data) {
+            if (!data || gameMode !== 'online') return;
+
+            // Входящий ход соперника — применяем локально, если ещё не применяли
+            if (data.moveNumber > onlineAppliedMoveNumber && data.lastMove) {
+                onlineAppliedMoveNumber = data.moveNumber;
+                const { from, to, promotion } = data.lastMove;
+                const move = game.move({ from, to, promotion: promotion || 'q' });
+                if (move) {
+                    lastMoveSquares = { from: move.from, to: move.to };
+                    highlightedSquares = {};
+                    arrows = [];
+                    playSound(move);
+                    historyFens.push(game.fen());
+                    historySAN.push(move.san);
+                    viewIndex = -1;
+                    updateHistory();
+                    render();
+                    botThinking = false;
+                    checkGameOver();
+                    if (!gameOver) tryExecutePremove();
+                }
+            }
+
+            // Ресинхронизация часов с сервером (защита от расхождения/подкрутки на клиенте)
+            if (typeof data.whiteTimeMs === 'number') timers.w = data.whiteTimeMs / 1000;
+            if (typeof data.blackTimeMs === 'number') timers.b = data.blackTimeMs / 1000;
+            lastTickAt = null;
+
+            updateOnlineBanner(data);
+            updateBotStatus();
+
+            if (data.status === 'finished' && data.result && !gameOver) {
+                const iWon = data.result.winner === onlineMyColor;
+                const isDraw = data.result.winner === 'draw';
+                const msg = isDraw ? (data.result.reason || 'Ничья') : (iWon ? 'Вы выиграли' : 'Вы проиграли') + (data.result.reason ? ' — ' + data.result.reason : '');
+                suppressOnlineReport = true;
+                endGame(msg, isDraw ? 'draw' : (iWon ? 'win' : 'loss'));
+            }
+        }
+
+        function updateOnlineBanner(data) {
+            const banner = document.getElementById('online-banner');
+            if (!banner) return;
+            if (data.drawOfferBy && data.drawOfferBy !== onlineMyColor && !gameOver) {
+                banner.style.display = 'flex';
+                banner.innerHTML = `<span>Соперник предлагает ничью</span>
+                    <span>
+                        <button class="online-banner-btn online-banner-accept" onclick="respondOnlineDraw(true)">Принять</button>
+                        <button class="online-banner-btn online-banner-decline" onclick="respondOnlineDraw(false)">Отклонить</button>
+                    </span>`;
+            } else if (data.drawOfferBy === onlineMyColor && !gameOver) {
+                banner.style.display = 'flex';
+                banner.innerHTML = `<span>Предложение ничьи отправлено…</span>`;
+            } else {
+                banner.style.display = 'none';
+                banner.innerHTML = '';
+            }
+        }
+
+        function sendOnlineMove(move) {
+            if (!onlineGameId) return;
+            onlineMoveNumber += 1;
+            const promotion = move.flags && move.flags.includes('p') ? (move.promotion || 'q') : null;
+            window.OnlineChess.sendMove(onlineGameId, {
+                fen: game.fen(),
+                from: move.from, to: move.to, promotion,
+                turn: game.turn(),
+                whiteTimeMs: Math.round(timers.w * 1000),
+                blackTimeMs: Math.round(timers.b * 1000),
+                moveNumber: onlineMoveNumber
+            }).catch((err) => console.error('Не удалось отправить ход:', err));
+            onlineAppliedMoveNumber = onlineMoveNumber;
+        }
+
+        function sendOnlineDrawOffer() {
+            if (!onlineGameId) return;
+            window.OnlineChess.sendDrawOffer(onlineGameId, onlineMyColor).catch((err) => console.error(err));
+            updateOnlineBanner({ drawOfferBy: onlineMyColor });
+        }
+
+        function respondOnlineDraw(accept) {
+            if (!onlineGameId) return;
+            if (accept) {
+                window.OnlineChess.sendResult(onlineGameId, { winner: 'draw', reason: 'по соглашению' }).catch((err) => console.error(err));
+            } else {
+                window.OnlineChess.clearDrawOffer(onlineGameId).catch((err) => console.error(err));
+                document.getElementById('online-banner').style.display = 'none';
+            }
+        }
+
+        // Если партия в онлайн-режиме закончилась (мат/пат/время) локально раньше, чем пришло
+        // обновление от соперника — сообщаем результат на сервер, чтобы соперник тоже его увидел.
+        function reportOnlineResultIfNeeded(message, resultCode) {
+            if (gameMode !== 'online' || !onlineGameId) return;
+            let winner;
+            if (resultCode === 'draw') winner = 'draw';
+            else if (resultCode === 'win') winner = onlineMyColor;
+            else winner = onlineMyColor === 'w' ? 'b' : 'w';
+            window.OnlineChess.sendResult(onlineGameId, { winner, reason: message }).catch((err) => console.error(err));
+        }
+
+        checkUrlForOnlineInvite();
+
+        // ==================== /СЕТЕВАЯ ИГРА ====================
 
         function updateWelcomeInfo() {
             const welcomeEl = document.getElementById('welcome-info');
@@ -3741,7 +4336,12 @@ if (typeof define !== 'undefined')
                 updateHistory();
                 render();
                 checkGameOver();
-                if (!gameOver && game.turn() !== userCol) botMoveTimer = setTimeout(botMove, 600);
+                if (gameMode === 'online') {
+                    sendOnlineMove(move);
+                    if (!gameOver) { botThinking = true; updateBotStatus(); }
+                } else if (!gameOver && game.turn() !== userCol) {
+                    botMoveTimer = setTimeout(botMove, 600);
+                }
             }
         }
 
@@ -3778,6 +4378,10 @@ if (typeof define !== 'undefined')
                     gameOver = false;
                     const statusBar = document.querySelector('.status-bar');
                     if (statusBar) statusBar.innerHTML = `<span style="color:#8a8782">Режим анализа — играйте за обе стороны</span>`;
+                } else if (gameMode === 'online') {
+                    checkGameOver();
+                    sendOnlineMove(move);
+                    if (!gameOver) { botThinking = true; updateBotStatus(); }
                 } else {
                     checkGameOver();
                     if (!gameOver && game.turn() !== userCol) botMoveTimer = setTimeout(botMove, 600);
@@ -3934,11 +4538,26 @@ if (typeof define !== 'undefined')
         function updateBotStatus() {
             const statusBar = document.querySelector('.status-bar');
             if (!statusBar || gameOver) return;
+            if (gameMode === 'online') {
+                const name = onlineOpponentName || 'Соперник';
+                if (botThinking) {
+                    statusBar.innerHTML = `<div class="dot" style="background:#e0a800"></div><span>Ход соперника (${escapeHtml(name)})…</span>`;
+                } else {
+                    statusBar.innerHTML = `<div class="dot"></div><span>Игра по сети с ${escapeHtml(name)}</span>`;
+                }
+                return;
+            }
             if (botThinking) {
                 statusBar.innerHTML = `<div class="dot" style="background:#e0a800"></div><span>Stockfish уровня ${level} думает…</span>`;
             } else {
                 statusBar.innerHTML = `<div class="dot"></div><span>Stockfish уровня ${level}</span>`;
             }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.innerText = str == null ? '' : String(str);
+            return div.innerHTML;
         }
 
         function formatTimer(totalSeconds, showTenths) {
@@ -4011,6 +4630,7 @@ if (typeof define !== 'undefined')
 
         let lastEndedGameMessage = null;
         let lastEndedGameResultCode = null;
+        let suppressOnlineReport = false; // true, когда результат уже пришёл ОТ соперника — не отправляем его обратно
 
         function endGame(message, resultCode) {
             gameOver = true;
@@ -4025,6 +4645,10 @@ if (typeof define !== 'undefined')
             status.innerHTML = `<span style="color:#e0584b">${message}</span>`;
             saveGameToHistory(message, resultCode);
             showResultAndPostGameButtons(message, resultCode);
+            if (gameMode === 'online' && !suppressOnlineReport) {
+                reportOnlineResultIfNeeded(message, resultCode);
+            }
+            suppressOnlineReport = false;
         }
 
         function scoreLineForResult(resultCode) {
@@ -4045,7 +4669,8 @@ if (typeof define !== 'undefined')
                 const record = {
                     date: new Date().toISOString(),
                     userColor: userCol,
-                    level: level,
+                    level: gameMode === 'online' ? null : level,
+                    opponent: gameMode === 'online' ? (onlineOpponentName || 'Соперник') : null,
                     result: resultCode || 'unknown', // 'win' | 'loss' | 'draw'
                     resultText: message,
                     moves: historySAN.slice(),
@@ -4086,11 +4711,13 @@ if (typeof define !== 'undefined')
             resultText.innerText = message;
             block.appendChild(resultText);
 
-            const rematchBtn = document.createElement('button');
-            rematchBtn.className = 'post-game-btn rematch-btn';
-            rematchBtn.innerText = 'РЕВАНШ';
-            rematchBtn.onclick = playRematch;
-            block.appendChild(rematchBtn);
+            if (gameMode !== 'online') {
+                const rematchBtn = document.createElement('button');
+                rematchBtn.className = 'post-game-btn rematch-btn';
+                rematchBtn.innerText = 'РЕВАНШ';
+                rematchBtn.onclick = playRematch;
+                block.appendChild(rematchBtn);
+            }
 
             const analyzeBtn = document.createElement('button');
             analyzeBtn.className = 'post-game-btn analyze-btn';
@@ -4219,7 +4846,8 @@ if (typeof define !== 'undefined')
                 const meta = document.createElement('div');
                 meta.className = 'history-meta';
                 const colorWord = record.userColor === 'w' ? 'белыми' : 'чёрными';
-                meta.innerText = `${formatHistoryDate(record.date)} · вы играли ${colorWord} · уровень ${record.level}`;
+                const extra = record.opponent ? `против ${record.opponent} (по сети)` : `уровень ${record.level}`;
+                meta.innerText = `${formatHistoryDate(record.date)} · вы играли ${colorWord} · ${extra}`;
                 info.appendChild(meta);
 
                 const movesPreview = document.createElement('div');
@@ -4264,7 +4892,9 @@ if (typeof define !== 'undefined')
             const menuBgEl = document.querySelector('.menu-bg'); if (menuBgEl) menuBgEl.style.display = 'none';
 
             userCol = record.userColor;
-            level = record.level;
+            level = record.level || 3;
+            gameMode = 'bot'; // просмотр истории всегда открывается как локальный анализ, без сетевых действий
+            onlineOpponentName = record.opponent || null;
             gameOver = true; // партия уже завершена, бот не должен ходить и таймер не должен идти
             botThinking = false;
             viewingPastGame = false; // доска интерактивна — можно фантазировать ходами в режиме анализа, как на Lichess
@@ -4318,11 +4948,13 @@ if (typeof define !== 'undefined')
 
         function resignGame() {
             if (gameOver) return;
+            // endGame() сам сообщит результат сопернику через reportOnlineResultIfNeeded —
+            // отдельный вызов sendOnlineResign() здесь был бы дублирующей записью в Firestore.
             endGame('Вы сдались', 'loss');
         }
 
         function takeBackMove() {
-            if (gameOver || botThinking || viewingPastGame) return;
+            if (gameOver || botThinking || viewingPastGame || gameMode === 'online') return;
             if (historySAN.length === 0) return; // нечего отменять
 
             // Отменяем ранее запланированный (но ещё не выполненный) автоматический ход бота —
@@ -4365,7 +4997,12 @@ if (typeof define !== 'undefined')
         let drawOfferPending = false;
 
         function offerDraw() {
-            if (gameOver || drawOfferPending || botThinking) return;
+            if (gameOver) return;
+            if (gameMode === 'online') {
+                sendOnlineDrawOffer();
+                return;
+            }
+            if (drawOfferPending || botThinking) return;
             drawOfferPending = true;
 
             const status = document.querySelector('.status-bar');
