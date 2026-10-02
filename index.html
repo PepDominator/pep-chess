@@ -3604,16 +3604,18 @@ if (typeof define !== 'undefined')
                 document.getElementById('setup-view-waiting').style.display = '';
 
                 pendingOnlineHost = { gameId, hostColor, minutes, inc: incSec, hostName };
-                // Эта подписка ловит момент присоединения соперника. Как только это происходит,
-                // startOnlineMatch() сама корректно её заменит на постоянную (через handleOnlineGameUpdate) —
-                // здесь не нужно отписываться вручную заранее, это только создавало лишнее окно гонки.
-                onlineUnsub = window.OnlineChess.listenGame(gameId, (data) => {
+                // ВАЖНО: это единственная подписка на всю партию у хоста, от комнаты ожидания
+                // и до самого конца игры. Реальный Firestore SDK (в отличие от простой имитации)
+                // может терять события, если отписаться и тут же заново подписаться на тот же
+                // документ — поэтому вместо пересоздания подписки при старте партии мы передаём
+                // эту же самую (уже рабочую) подписку в startOnlineMatch через existingUnsub.
+                onlineUnsub = window.OnlineChess.listenGame(gameId, function onHostSnapshot(data) {
                     if (!data) return;
                     if (gameMode === 'online') { handleOnlineGameUpdate(data); return; }
                     if (data.status === 'active' && pendingOnlineHost) {
                         const guestName = data.guestName;
                         pendingOnlineHost = null;
-                        startOnlineMatch({ gameId, myColor: hostColor, timeControl: { minutes, inc: incSec }, opponentName: guestName, data });
+                        startOnlineMatch({ gameId, myColor: hostColor, timeControl: { minutes, inc: incSec }, opponentName: guestName, data, existingUnsub: onlineUnsub });
                     }
                 });
             } catch (err) {
@@ -3731,7 +3733,10 @@ if (typeof define !== 'undefined')
             });
         }
 
-        function startOnlineMatch({ gameId, myColor, timeControl, opponentName, data }) {
+        function startOnlineMatch({ gameId, myColor, timeControl, opponentName, data, existingUnsub }) {
+            // resetGameState() безусловно отписывает текущий onlineUnsub — а нам для хоста нужно
+            // как раз ЕГО и сохранить (не пересоздавать). Поэтому прячем ссылку на время сброса.
+            onlineUnsub = null;
             resetGameState();
             gameMode = 'online';
             userCol = myColor;
@@ -3776,11 +3781,15 @@ if (typeof define !== 'undefined')
             gameTickInterval = setInterval(tick, 100);
             updateBotStatus();
 
-            // resetGameState() в начале этой функции уже отписал любой предыдущий listener
-            // (в том числе тот, через который мы, возможно, только что сюда попали) — поэтому
-            // здесь подписка создаётся заново безусловно, иначе партия останется без связи.
-            if (onlineUnsub) onlineUnsub();
-            onlineUnsub = window.OnlineChess.listenGame(gameId, handleOnlineGameUpdate);
+            if (existingUnsub) {
+                // Хост: та же самая живая подписка, что ловила присоединение соперника,
+                // продолжает работать и дальше — её колбэк сам переключился на handleOnlineGameUpdate,
+                // как только gameMode стал 'online'. Пересоздавать здесь нечего.
+                onlineUnsub = existingUnsub;
+            } else {
+                // Гость: подписки ещё не было — создаём её один раз, и дальше она живёт всю партию.
+                onlineUnsub = window.OnlineChess.listenGame(gameId, handleOnlineGameUpdate);
+            }
         }
 
         function handleOnlineGameUpdate(data) {
