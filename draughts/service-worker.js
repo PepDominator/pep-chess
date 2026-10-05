@@ -1,13 +1,13 @@
 // Офлайн-кэш: тяжёлые файлы движка (8.5 МБ) берём из кэша сразу, остальное — сеть в приоритете,
 // чтобы обновления index.html подхватывались без ручной очистки кэша.
-const CACHE = 'pep-draughts-v2';
+const CACHE = 'pep-draughts-v3';
 const ASSETS = ['./index.html', './manifest.json', './scan_normal.js', './scan_normal.data',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('pep-draughts-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
