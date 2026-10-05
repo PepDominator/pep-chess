@@ -1,26 +1,30 @@
-# Pep Chess
+# Pep Games
 
 ### Browser chess and draughts
 
-Play chess against Stockfish, challenge other players online, play draughts, analyze chess positions and install the app for offline play.
+Play chess against Stockfish, challenge other players online, play draughts, track your rating, review your games and analyze chess positions directly in the browser.
 
 ![Stockfish](https://img.shields.io/badge/Chess%20Engine-Stockfish%2019-4B7399?style=flat-square)
 ![Chess](https://img.shields.io/badge/Game-Chess-success?style=flat-square)
 ![Draughts](https://img.shields.io/badge/Game-Draughts-success?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-Ready-success?style=flat-square)
 ![Multiplayer](https://img.shields.io/badge/Online%20Multiplayer-Ready-success?style=flat-square)
+![Profiles](https://img.shields.io/badge/User%20Profiles-Ready-success?style=flat-square)
+![Rating](https://img.shields.io/badge/Player%20Rating-Ready-success?style=flat-square)
+![PWA](https://img.shields.io/badge/PWA-Ready-success?style=flat-square)
 
 ---
 
 ## About
 
-**Pep Chess** is a lightweight browser board game application with support for chess and draughts.
+**Pep Games** is a lightweight browser board game application with support for chess and draughts.
 
-Chess can be played against Stockfish or another player online. The app also includes Stockfish analysis, game history, configurable time controls and board tools.
+Chess can be played against Stockfish or another player online. The app also includes Stockfish analysis, configurable time controls, game history and board tools.
 
 Draughts, also known as checkers, has its own game mode and supports online multiplayer.
 
-No account is required for local play.
+Authenticated users also get a player profile with a rating and persistent game history.
+
+Local play does not require an account.
 
 ---
 
@@ -50,7 +54,7 @@ Play chess directly in your browser.
 
 ### Draughts / Checkers
 
-Pep Chess also includes a separate draughts game mode.
+Pep Games also includes a separate draughts game mode.
 
 - Play draughts in the browser
 - Online multiplayer
@@ -82,10 +86,52 @@ Online play supports:
 - Game state synchronization
 - Resignation
 - Game completion
+- Player profiles
+- Rating for authenticated users
+- Saved game history
 
 Online synchronization uses **Firebase Firestore**.
 
 An internet connection is required for multiplayer games.
+
+---
+
+## User Accounts and Rating
+
+Creating an account is optional, but authenticated users get additional features.
+
+### Player Rating
+
+Authenticated players have a rating connected to their profile.
+
+This makes it possible to track online performance over time rather than treating every game as an isolated match.
+
+### Player Profile
+
+The profile keeps your playing history in one place.
+
+Authenticated users can:
+
+- View their current rating
+- See previous games
+- Open games from their history
+- Review completed matches
+- Return to previous chess positions
+- Open chess games for Stockfish analysis
+
+Local games can still be played without signing in.
+
+---
+
+## Game History
+
+Game history is available directly inside Pep Games.
+
+For authenticated users, previous games are also available from the player profile.
+
+You can open a completed game, replay its moves and review the result.
+
+Chess games can be opened directly in Stockfish analysis mode, making it easy to revisit mistakes, explore different moves and check alternative positions.
 
 ---
 
@@ -100,7 +146,7 @@ Stockfish runs directly inside the browser and handles:
 - Chess analysis
 - Principal variations
 
-Pep Chess includes 8 Stockfish difficulty levels.
+Pep Games includes 8 Stockfish difficulty levels.
 
 | Level | Stockfish Skill |
 |:---:|:---:|
@@ -129,18 +175,7 @@ You can:
 - Continue analysis from any position
 - Draw arrows on the board
 - Highlight squares
-
----
-
-## Game History
-
-Completed games are stored locally in your browser.
-
-You can reopen previous games and review what happened.
-
-Chess games can also be opened in Stockfish analysis mode.
-
-No account is required.
+- Open completed games from your profile for analysis
 
 ---
 
@@ -183,7 +218,7 @@ Board annotations can also be used during position analysis.
 
 ## PWA and Offline Play
 
-Pep Chess can be installed as a Progressive Web App.
+Pep Games can be installed as a Progressive Web App.
 
 The application uses a Service Worker to cache files required for local play.
 
@@ -194,19 +229,21 @@ After the required files have been cached, supported local features can work wit
 | Chess against Stockfish | ✅ |
 | Chess clocks | ✅ |
 | Chess analysis | ✅ |
-| Game history | ✅ |
+| Local game history | ✅ |
 | Board annotations | ✅ |
 | PWA | ✅ |
 | Chess multiplayer | ❌ |
 | Draughts multiplayer | ❌ |
+| Online rating | ❌ |
+| Profile synchronization | ❌ |
 
-Online multiplayer requires an internet connection.
+Online features require an internet connection.
 
 ---
 
 ## Online Architecture
 
-Pep Chess uses **Firebase Firestore** for multiplayer synchronization.
+Pep Games uses **Firebase Firestore** for online synchronization.
 
 The online system handles:
 
@@ -216,6 +253,9 @@ The online system handles:
 - Move synchronization
 - Game state
 - Game completion
+- User profiles
+- Player ratings
+- Persistent online game history
 
 Both chess and draughts use the browser application for game logic and Firebase for synchronization between players.
 
@@ -231,6 +271,7 @@ Both chess and draughts use the browser application for game logic and Firebase 
 | Draughts game | JavaScript |
 | Interface | HTML, CSS, JavaScript |
 | Online multiplayer | Firebase Firestore |
+| User profiles and rating | Firebase |
 | Offline support | Service Worker |
 | Installation | PWA |
 
@@ -299,7 +340,7 @@ Contains the draughts game mode and its online multiplayer logic.
 
 ### `manifest.json`
 
-Defines Pep Chess as an installable Progressive Web App.
+Defines Pep Games as an installable Progressive Web App.
 
 ### `service-worker.js`
 
@@ -316,9 +357,12 @@ Caches application files for offline local play.
 | Stockfish gameplay | ✅ Ready |
 | Chess multiplayer | ✅ Ready |
 | Draughts multiplayer | ✅ Ready |
-| Chess clocks | ✅ Ready |
+| User accounts | ✅ Ready |
+| Player profiles | ✅ Ready |
+| Player rating | ✅ Ready |
+| Profile game history | ✅ Ready |
 | Chess analysis | ✅ Ready |
-| Game history | ✅ Ready |
+| Chess clocks | ✅ Ready |
 | Premoves | ✅ Ready |
 | Board annotations | ✅ Ready |
 | PWA | ✅ Ready |
@@ -328,7 +372,7 @@ Caches application files for offline local play.
 
 ## Built With
 
-Pep Chess uses open-source software including:
+Pep Games uses open-source software including:
 
 - [chess.js](https://github.com/jhlywa/chess.js)
 - [Stockfish](https://stockfishchess.org/)
@@ -341,12 +385,12 @@ Third-party components remain subject to their respective licenses.
 
 ## License
 
-Pep Chess does not currently include a separate project license.
+Pep Games does not currently include a separate project license.
 
 Third-party components remain subject to their respective licenses.
 
 ---
 
-# Pep Chess
+# Pep Games
 
-**Chess. Draughts. Play locally or online.**
+**Chess. Draughts. Rating. History. Analysis. Online or offline.**
