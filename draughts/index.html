@@ -207,6 +207,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 <div id="game" class="hidden">
   <div id="board-wrap"><div id="board"></div><div id="pieces"></div></div>
   <div id="side">
+    <div class="player" id="name-top"></div>
     <div class="clock" id="clock-top"><button class="x" id="exit-btn" title="В меню">✕</button><span id="t-top">10:00</span></div>
     <div class="status" id="status"></div>
     <div class="nav">
@@ -765,8 +766,27 @@ function endGame(code, reason) {
       OD().sendResult(online.id, { winner, reason }).catch((e) => onlineError('сообщить результат', e));
     }
     online.suppress = false;
+    applyRating(code);
   }
   saveHistory(text, code);
+}
+
+// Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, сыграно не меньше 3 ходов каждым.
+async function applyRating(code) {
+  try {
+    const u = OD() && OD().currentUser, d = online && online.last;
+    if (!u || !d || !d.hostUid) return;
+    const amHost = u.uid === d.hostUid, oppUid = amHost ? d.guestUid : d.hostUid;
+    const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : online.myRating), oppR = amHost ? d.guestRating : d.hostRating;
+    if (!oppUid || oppUid === u.uid || myR == null || oppR == null || hubMoves.length < 6) return;
+    const score = code === 'win' ? 1 : code === 'draw' ? 0.5 : 0;
+    const res = await OD().applyRated({ user: u, key: 'draughts', gameId: online.id, myRating: myR, oppRating: oppR, score, oppName: online.oppName, oppUid });
+    if (!res) return;
+    const line = document.createElement('div');
+    line.style.cssText = 'text-align:center;font-size:13px;font-weight:700;margin-bottom:10px;color:' + (res.delta >= 0 ? '#3B5D4A' : '#A23B33');
+    line.textContent = 'Рейтинг: ' + res.r + ' (' + (res.delta >= 0 ? '+' : '') + res.delta + ')';
+    $('post').insertBefore(line, $('post').firstChild);
+  } catch (e) { console.error('Рейтинг не обновился:', e); }
 }
 
 /* ================= бот Scan ================= */
@@ -831,7 +851,8 @@ function tick() {
 
 /* ================= панель ================= */
 function setStatus(text, dot) { $('status').innerHTML = `<div class="dot" style="background:${dot || '#3B5D4A'}"></div><span>${text}</span>`; }
-function oppLabel() { return mode === 'online' ? (online && online.oppName) || 'Соперник' : 'Scan'; }
+function oppRating() { const d = online && online.last; if (!d) return null; return online.myColor === d.hostColor ? d.guestRating : d.hostRating; }
+function oppLabel() { if (mode !== 'online') return 'Scan'; const r = oppRating(); return ((online && online.oppName) || 'Соперник') + (r != null ? ' · ' + r : ''); }
 function updateStatus() {
   if (gameOver) return;
   if (replayMode) return setStatus('Просмотр партии');
@@ -887,6 +908,10 @@ function startGame(cfg = { mode: 'bot' }) {
   resetSel(); premove = null; pmSel = null; lastTick = null;
   show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
   $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
+  { const orat = mode === 'online' ? oppRating() : null, mine = mode === 'online' && online ? online.myRating : null;
+    if (mine != null) $('name-bottom').textContent += ' · ' + mine;
+    $('name-top').textContent = mode === 'online' ? ((online && online.oppName) || 'Соперник') + (orat != null ? ' · ' + orat : '') + (userColor === 'w' ? ' · чёрные' : ' · белые')
+      : 'Scan 3.1 · уровень ' + level + (userColor === 'w' ? ' · чёрные' : ' · белые'); }
   ['move', 'capture', 'end'].forEach((k) => { const a = sounds[k]; a.play().then(() => a.pause()).catch(() => {}); }); playSnd('start');
   resize(); buildBoard(); renderPieces(); renderMoves(); updateStatus(); paintMarks(); updateClocks(); updateButtons();
   stopClock(); tickHandle = setInterval(tick, 100);
@@ -1011,9 +1036,10 @@ async function createOnline() {
   const hostColor = settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
   const u = OD().currentUser;
   try {
-    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null });
+    const hostRating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
+    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating });
     leaveOnline();
-    online = { id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc } };
+    online = { myRating: hostRating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc } };
     online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
     $('link-box').value = location.origin + location.pathname + '?game=' + id; showView('wait');
   } catch (e) { console.error(e); menuError('Не удалось создать игру. Попробуйте ещё раз.'); }
@@ -1031,7 +1057,7 @@ async function prepareJoin(id) {
   if (!data) return menuError('Игра с таким кодом не найдена.');
   if (data.status !== 'waiting') return menuError('Эта игра уже началась или завершилась.');
   pendingJoin = id; const tc = data.timeControl || { minutes: 10, inc: 0 };
-  $('inv-text').textContent = `${data.hostName || 'Игрок'} приглашает вас на партию (${tc.minutes ? tc.minutes + '+' + tc.inc : 'без часов'}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+  $('inv-text').textContent = `${data.hostName || 'Игрок'}${data.hostRating != null ? ' (рейтинг ' + data.hostRating + ')' : ''} приглашает вас на партию (${tc.minutes ? tc.minutes + '+' + tc.inc : 'без часов'}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
   $('inv-nick').value = $('nick').value; showView('invite');
 }
 $('join-btn').onclick = () => {
@@ -1044,10 +1070,11 @@ $('inv-ok').onclick = async () => {
   if (!pendingJoin) return;
   const name = $('inv-nick').value.trim() || 'Игрок'; $('nick').value = name; try { localStorage.setItem('draughtsNickname', name); } catch (e) {}
   const u = OD().currentUser; const id = pendingJoin;
-  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null); } catch (e) { console.error(e); return menuError('Не удалось присоединиться.'); }
+  const guestRating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
+  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null, guestRating); } catch (e) { console.error(e); return menuError('Не удалось присоединиться.'); }
   if (!res.ok) { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
   leaveOnline();
-  online = { id, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl };
+  online = { myRating: guestRating, last: null, id, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl };
   online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
   beginMatch(res.data);
 };
@@ -1059,11 +1086,12 @@ async function checkInvite() {
 // Единственная подписка на всю партию: до старта ловит присоединение, потом — игровые события.
 function onSnap(data) {
   if (!online || !data) return;
+  online.last = data;
   if (!online.started) { if (data.status === 'active' && online.host) beginMatch(data); return; }
   handleRemote(data);
 }
 function beginMatch(data) {
-  online.started = true; online.oppName = online.host ? data.guestName : data.hostName;
+  online.last = data; online.started = true; online.oppName = online.host ? data.guestName : data.hostName;
   const tc = data.timeControl || online.tc || { minutes: 10, inc: 0 };
   history.replaceState(null, '', location.pathname);
   startGame({ mode: 'online', color: online.myColor, minutes: tc.minutes, inc: tc.inc, data });
@@ -1094,6 +1122,7 @@ async function syncMoves(data) {
 }
 function handleRemote(data) {
   if (!online || !online.started) return;
+  online.last = data;
   syncMoves(data);
   if (data.status === 'finished' && data.result && !gameOver) {
     const draw = data.result.winner === 'draw', iWon = data.result.winner === userColor;
@@ -1121,7 +1150,7 @@ checkInvite();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp,
-  collection, query, orderBy, limit, getDocs
+  collection, query, orderBy, limit, getDocs, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
@@ -1146,24 +1175,38 @@ function randomId(len = 8) {
 }
 
 let db, auth;
+// Эло для рейтинговых партий. Чистая функция: по текущей статистике, рейтингам на момент старта партии
+// и результату (1 — победа, 0.5 — ничья, 0 — поражение) возвращает новую статистику.
+function eloUpdate(cur, myRating, oppRating, score, oppName, now) {
+  const c = cur || { r: 1200, g: 0, w: 0, d: 0, l: 0, peak: 1200, hist: [] };
+  const K = c.g < 30 ? 32 : 20;                                   // первые 30 партий рейтинг меняется сильнее
+  const E = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400)); // ожидаемый результат
+  let delta = Math.round(K * (score - E));
+  delta = Math.max(-40, Math.min(40, delta));
+  const r = Math.max(100, c.r + delta);
+  const hist = (c.hist || []).concat([{ t: now, r: r, o: oppName || '', s: score }]).slice(-40);
+  return { delta: r - c.r, next: { r: r, g: c.g + 1, w: c.w + (score === 1 ? 1 : 0), d: c.d + (score === 0.5 ? 1 : 0), l: c.l + (score === 0 ? 1 : 0), peak: Math.max(c.peak || r, r), hist: hist } };
+}
+if (typeof module !== 'undefined') module.exports = { eloUpdate };
+
 const OD = {
   ready: false, currentUser: null,
 
-  async createGame({ minutes, inc, hostColor, hostName, hostUid }) {
+  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating }) {
     const id = randomId();
     await setDoc(doc(db, GAMES, id), {
       createdAt: serverTimestamp(), status: 'waiting', hostColor, hostName: hostName || 'Хост', hostUid: hostUid || null,
-      guestName: null, guestUid: null, timeControl: { minutes, inc }, moves: [],
+      hostRating: hostRating != null ? hostRating : null, guestRating: null, guestName: null, guestUid: null, timeControl: { minutes, inc }, moves: [],
       whiteTimeMs: minutes * 60000, blackTimeMs: minutes * 60000, lastMoveAt: null, drawOfferBy: null, result: null
     });
     return id;
   },
   async peekGame(id) { const s = await getDoc(doc(db, GAMES, id)); return s.exists() ? s.data() : null; },
-  async joinGame(id, guestName, guestUid) {
+  async joinGame(id, guestName, guestUid, guestRating) {
     const ref = doc(db, GAMES, id); const s = await getDoc(ref);
     if (!s.exists()) return { ok: false, reason: 'not_found' };
     const data = s.data(); if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-    await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, startedAt: serverTimestamp() });
+    await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, startedAt: serverTimestamp() });
     return { ok: true, data };
   },
   listenGame(id, cb, onErr) {
@@ -1175,6 +1218,38 @@ const OD = {
   async sendDrawOffer(id, by) { await updateDoc(doc(db, GAMES, id), { drawOfferBy: by }); },
   async clearDrawOffer(id) { await updateDoc(doc(db, GAMES, id), { drawOfferBy: null }); },
   async sendResult(id, result) { await updateDoc(doc(db, GAMES, id), { status: 'finished', result, drawOfferBy: null }); },
+
+  // ---- Профиль и рейтинг (публичная карточка игрока: profiles/{uid}) ----
+  async ensureProfile(user) {
+    const ref = doc(db, 'profiles', user.uid);
+    const snap = await getDoc(ref);
+    const base = { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null };
+    if (!snap.exists()) { await setDoc(ref, { ...base, updatedAt: serverTimestamp() }); return base; }
+    const d = snap.data();
+    if (d.displayName !== base.displayName || (d.photoURL || null) !== base.photoURL) await updateDoc(ref, { ...base, updatedAt: serverTimestamp() });
+    return d;
+  },
+  async getRating(uid, key) {
+    const s = await getDoc(doc(db, 'profiles', uid));
+    const p = s.exists() ? s.data()[key] : null;
+    return p && typeof p.r === 'number' ? p.r : 1200;
+  },
+  // Применяет результат рейтинговой партии к ПРОФИЛЮ ТЕКУЩЕГО игрока. Партия засчитывается один раз:
+  // маркер profiles/{uid}/rated/{gameId} создаётся в той же транзакции.
+  async applyRated({ user, key, gameId, myRating, oppRating, score, oppName, oppUid }) {
+    const pref = doc(db, 'profiles', user.uid), mref = doc(db, 'profiles', user.uid, 'rated', gameId);
+    return await runTransaction(db, async (tx) => {
+      const m = await tx.get(mref); if (m.exists()) return null;
+      const p = await tx.get(pref);
+      const data = p.exists() ? p.data() : {};
+      const { delta, next } = eloUpdate(data[key], myRating, oppRating, score, oppName, Date.now());
+      const upd = { [key]: next, [key === 'chess' ? 'rChess' : 'rDraughts']: next.r, updatedAt: serverTimestamp() };
+      if (p.exists()) tx.update(pref, upd);
+      else tx.set(pref, { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null, ...upd });
+      tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score });
+      return { r: next.r, delta, g: next.g };
+    });
+  },
 
   async signIn() { return (await signInWithPopup(auth, new GoogleAuthProvider())).user; },
   async signOutUser() { await fbSignOut(auth); },
@@ -1195,6 +1270,7 @@ try {
   db = getFirestore(app); auth = getAuth(app);
   onAuthStateChanged(auth, (u) => {
     OD.currentUser = u ? { uid: u.uid, displayName: u.displayName, photoURL: u.photoURL } : null;
+    if (u) OD.ensureProfile(u).catch((e) => console.warn('Профиль:', e));
     window.dispatchEvent(new Event('od-auth'));
   });
   OD.ready = true;

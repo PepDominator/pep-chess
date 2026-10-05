@@ -2555,7 +2555,7 @@ if (typeof define !== 'undefined')
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
             getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, deleteField,
-            collection, query, orderBy, limit, getDocs
+            collection, query, orderBy, limit, getDocs, runTransaction
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import {
             getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
@@ -2579,11 +2579,25 @@ if (typeof define !== 'undefined')
             return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
         }
 
+// Эло для рейтинговых партий. Чистая функция: по текущей статистике, рейтингам на момент старта партии
+// и результату (1 — победа, 0.5 — ничья, 0 — поражение) возвращает новую статистику.
+function eloUpdate(cur, myRating, oppRating, score, oppName, now) {
+  const c = cur || { r: 1200, g: 0, w: 0, d: 0, l: 0, peak: 1200, hist: [] };
+  const K = c.g < 30 ? 32 : 20;                                   // первые 30 партий рейтинг меняется сильнее
+  const E = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400)); // ожидаемый результат
+  let delta = Math.round(K * (score - E));
+  delta = Math.max(-40, Math.min(40, delta));
+  const r = Math.max(100, c.r + delta);
+  const hist = (c.hist || []).concat([{ t: now, r: r, o: oppName || '', s: score }]).slice(-40);
+  return { delta: r - c.r, next: { r: r, g: c.g + 1, w: c.w + (score === 1 ? 1 : 0), d: c.d + (score === 0.5 ? 1 : 0), l: c.l + (score === 0 ? 1 : 0), peak: Math.max(c.peak || r, r), hist: hist } };
+}
+if (typeof module !== 'undefined') module.exports = { eloUpdate };
+
         const OnlineChess = {
             ready: false,
             initError: null,
 
-            async createGame({ minutes, inc, hostColor, hostName, hostUid }) {
+            async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating }) {
                 const gameId = randomGameId();
                 await setDoc(doc(db, 'games', gameId), {
                     createdAt: serverTimestamp(),
@@ -2591,6 +2605,8 @@ if (typeof define !== 'undefined')
                     hostColor,
                     hostName: hostName || 'Хост',
                     hostUid: hostUid || null,
+                    hostRating: hostRating != null ? hostRating : null,
+                    guestRating: null,
                     guestName: null,
                     guestUid: null,
                     timeControl: { minutes, inc },
@@ -2613,13 +2629,13 @@ if (typeof define !== 'undefined')
                 return snap.exists() ? snap.data() : null;
             },
 
-            async joinGame(gameId, guestName, guestUid) {
+            async joinGame(gameId, guestName, guestUid, guestRating) {
                 const ref = doc(db, 'games', gameId);
                 const snap = await getDoc(ref);
                 if (!snap.exists()) return { ok: false, reason: 'not_found' };
                 const data = snap.data();
                 if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, startedAt: serverTimestamp() });
+                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, startedAt: serverTimestamp() });
                 return { ok: true, data };
             },
 
@@ -2659,6 +2675,38 @@ if (typeof define !== 'undefined')
             // ---- Аккаунт (вход через Google) ----
             currentUser: null,
 
+            // ---- Профиль и рейтинг (публичная карточка игрока: profiles/{uid}) ----
+            async ensureProfile(user) {
+              const ref = doc(db, 'profiles', user.uid);
+              const snap = await getDoc(ref);
+              const base = { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null };
+              if (!snap.exists()) { await setDoc(ref, { ...base, updatedAt: serverTimestamp() }); return base; }
+              const d = snap.data();
+              if (d.displayName !== base.displayName || (d.photoURL || null) !== base.photoURL) await updateDoc(ref, { ...base, updatedAt: serverTimestamp() });
+              return d;
+            },
+            async getRating(uid, key) {
+              const s = await getDoc(doc(db, 'profiles', uid));
+              const p = s.exists() ? s.data()[key] : null;
+              return p && typeof p.r === 'number' ? p.r : 1200;
+            },
+            // Применяет результат рейтинговой партии к ПРОФИЛЮ ТЕКУЩЕГО игрока. Партия засчитывается один раз:
+            // маркер profiles/{uid}/rated/{gameId} создаётся в той же транзакции.
+            async applyRated({ user, key, gameId, myRating, oppRating, score, oppName, oppUid }) {
+              const pref = doc(db, 'profiles', user.uid), mref = doc(db, 'profiles', user.uid, 'rated', gameId);
+              return await runTransaction(db, async (tx) => {
+                const m = await tx.get(mref); if (m.exists()) return null;
+                const p = await tx.get(pref);
+                const data = p.exists() ? p.data() : {};
+                const { delta, next } = eloUpdate(data[key], myRating, oppRating, score, oppName, Date.now());
+                const upd = { [key]: next, [key === 'chess' ? 'rChess' : 'rDraughts']: next.r, updatedAt: serverTimestamp() };
+                if (p.exists()) tx.update(pref, upd);
+                else tx.set(pref, { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null, ...upd });
+                tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score });
+                return { r: next.r, delta, g: next.g };
+              });
+            },
+
             async signIn() {
                 const result = await signInWithPopup(auth, new GoogleAuthProvider());
                 return result.user;
@@ -2694,6 +2742,7 @@ if (typeof define !== 'undefined')
             auth = getAuth(app);
             onAuthStateChanged(auth, (user) => {
                 OnlineChess.currentUser = user ? { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL } : null;
+                if (user) OnlineChess.ensureProfile(user).catch((e) => console.warn('Профиль:', e));
                 window.dispatchEvent(new Event('onlinechess-auth-changed'));
             });
             OnlineChess.ready = true;
@@ -2781,6 +2830,8 @@ if (typeof define !== 'undefined')
         let onlineMoveNumber = 0;       // номер последнего хода в партии, известный ЭТОМУ клиенту —
                                          // обновляется и когда мы сами ходим, и когда применяем ход соперника
         let onlineOpponentName = null;
+        let onlineLastData = null;   // последнее известное состояние партии из Firestore (для рейтинга)
+        let myRatingSnap = null;     // мой рейтинг на момент старта партии
         let onlineUnsub = null;
         let onlinePollInterval = null;
         let botMoveTimer = null; // id таймера, запланированного вызова botMove(), чтобы можно было отменить
@@ -3683,7 +3734,9 @@ if (typeof define !== 'undefined')
             startBtn.disabled = true;
             try {
                 const hostUid = (window.OnlineChess.currentUser && window.OnlineChess.currentUser.uid) || null;
-                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid });
+                const hostRating = hostUid ? await window.OnlineChess.getRating(hostUid, 'chess').catch(() => null) : null;
+                myRatingSnap = hostRating;
+                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid, hostRating });
                 const link = location.origin + location.pathname + '?game=' + gameId;
                 document.getElementById('online-link-box').value = link;
                 document.getElementById('setup-view-config').style.display = 'none';
@@ -3749,7 +3802,7 @@ if (typeof define !== 'undefined')
                 pendingJoinGameId = gameId;
                 const tc = data.timeControl || { minutes: 10, inc: 0 };
                 document.getElementById('join-prompt-details').innerText =
-                    `${data.hostName || 'Игрок'} приглашает вас на партию (${tc.minutes}+${tc.inc}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+                    `${data.hostName || 'Игрок'}${data.hostRating != null ? ' (рейтинг ' + data.hostRating + ')' : ''} приглашает вас на партию (${tc.minutes}+${tc.inc}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
                 document.getElementById('join-nickname-input').value = loadNickname();
                 document.getElementById('setup-view-config').style.display = 'none';
                 document.getElementById('setup-view-join-prompt').style.display = '';
@@ -3792,7 +3845,7 @@ if (typeof define !== 'undefined')
             pendingJoinGameId = gameId;
             const tc = data.timeControl || { minutes: 10, inc: 0 };
             document.getElementById('join-prompt-details').innerText =
-                `${data.hostName || 'Игрок'} приглашает вас на партию (${tc.minutes}+${tc.inc}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+                `${data.hostName || 'Игрок'}${data.hostRating != null ? ' (рейтинг ' + data.hostRating + ')' : ''} приглашает вас на партию (${tc.minutes}+${tc.inc}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
             document.getElementById('join-nickname-input').value = loadNickname();
             document.getElementById('setup-view-config').style.display = 'none';
             document.getElementById('setup-view-join-prompt').style.display = '';
@@ -3804,7 +3857,9 @@ if (typeof define !== 'undefined')
             try { localStorage.setItem('chessNickname', nickname); } catch (e) { /* localStorage недоступен — не критично */ }
             const gameId = pendingJoinGameId;
             const guestUid = (window.OnlineChess.currentUser && window.OnlineChess.currentUser.uid) || null;
-            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid);
+            const guestRating = guestUid ? await window.OnlineChess.getRating(guestUid, 'chess').catch(() => null) : null;
+            myRatingSnap = guestRating;
+            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid, guestRating);
             if (!result.ok) {
                 document.getElementById('setup-view-join-prompt').style.display = 'none';
                 document.getElementById('setup-view-config').style.display = '';
@@ -3826,6 +3881,7 @@ if (typeof define !== 'undefined')
             onlineUnsub = null;
             resetGameState();
             gameMode = 'online';
+            onlineLastData = data;
             userCol = myColor;
             onlineGameId = gameId;
             onlineMyColor = myColor;
@@ -3889,6 +3945,7 @@ if (typeof define !== 'undefined')
 
         function handleOnlineGameUpdate(data) {
             if (!data || gameMode !== 'online') return;
+            onlineLastData = data;
 
             // Входящий ход соперника — применяем локально, если ещё не применяли
             if (data.moveNumber > onlineMoveNumber && data.lastMove) {
@@ -4741,9 +4798,9 @@ if (typeof define !== 'undefined')
             if (gameMode === 'online') {
                 const name = onlineOpponentName || 'Соперник';
                 if (botThinking) {
-                    statusBar.innerHTML = `<div class="dot" style="background:#e0a800"></div><span>Ход соперника (${escapeHtml(name)})…</span>`;
+                    statusBar.innerHTML = `<div class="dot" style="background:#e0a800"></div><span>Ход соперника (${escapeHtml(name)}${oppRatingLabel()})…</span>`;
                 } else {
-                    statusBar.innerHTML = `<div class="dot"></div><span>Игра по сети с ${escapeHtml(name)}</span>`;
+                    statusBar.innerHTML = `<div class="dot"></div><span>Игра по сети с ${escapeHtml(name)}${oppRatingLabel()}</span>`;
                 }
                 return;
             }
@@ -4850,12 +4907,40 @@ if (typeof define !== 'undefined')
             }
             if (gameMode === 'online') {
                 saveOnlineGameToMyHistory(message, resultCode);
+                applyOnlineRating(resultCode);
             }
             suppressOnlineReport = false;
         }
 
         // Сохраняет завершённую сетевую партию в облачную историю ТЕКУЩЕГО игрока — доступно
         // только вошедшим через Google (у каждого игрока своя приватная история, см. правила Firestore).
+        function oppRatingLabel() {
+            const d = onlineLastData; if (!d) return '';
+            const r = onlineMyColor === d.hostColor ? d.guestRating : d.hostRating;
+            return r != null ? ' · ' + r : '';
+        }
+
+        // Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, сыграно не меньше 3 ходов каждым.
+        async function applyOnlineRating(resultCode) {
+            try {
+                const OC = window.OnlineChess, u = OC && OC.currentUser, d = onlineLastData;
+                if (!u || !d || !onlineGameId || !d.hostUid) return;
+                const amHost = u.uid === d.hostUid;
+                const oppUid = amHost ? d.guestUid : d.hostUid;
+                const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : myRatingSnap);
+                const oppR = amHost ? d.guestRating : d.hostRating;
+                if (!oppUid || oppUid === u.uid || myR == null || oppR == null || historySAN.length < 6) return;
+                const score = resultCode === 'win' ? 1 : resultCode === 'draw' ? 0.5 : 0;
+                const res = await OC.applyRated({ user: u, key: 'chess', gameId: onlineGameId, myRating: myR, oppRating: oppR, score, oppName: onlineOpponentName, oppUid });
+                if (!res) return;
+                const box = document.getElementById('post-game-buttons');
+                const line = document.createElement('div');
+                line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;font-weight:700;color:' + (res.delta >= 0 ? '#3B5D4A' : '#A23B33');
+                line.textContent = 'Рейтинг: ' + res.r + ' (' + (res.delta >= 0 ? '+' : '') + res.delta + ')';
+                if (box) box.insertBefore(line, box.firstChild);
+            } catch (e) { console.error('Рейтинг не обновился:', e); }
+        }
+
         function saveOnlineGameToMyHistory(message, resultCode) {
             const user = window.OnlineChess && window.OnlineChess.currentUser;
             if (!user || !onlineGameId) return;

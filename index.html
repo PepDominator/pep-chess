@@ -84,10 +84,52 @@ footer { text-align:center; color:var(--muted); font-size:12.5px; line-height:1.
 footer b { color:var(--text); font-weight:600; }
 @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
 
+
+/* ---------- рейтинг ---------- */
+.rank { margin-top:clamp(30px, 6vh, 56px); background:var(--panel); border:1px solid var(--border); box-shadow:0 14px 40px rgba(42,46,36,.07); animation:rise .7s .2s var(--ease) both; }
+.rank-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:22px clamp(18px,3vw,30px) 14px; }
+.rank-head h2 { font-weight:400; font-size:clamp(22px,3vw,28px); margin:0; }
+.seg { display:flex; border:1px solid var(--border); background:#F3F2EA; }
+.seg button { border:none; background:none; padding:8px 18px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; font-family:inherit; }
+.seg button.on { background:var(--green); color:#fff; } .seg button:hover:not(.on) { background:#EAEADF; }
+.lb { border-top:1px solid var(--border); }
+.lb-row { display:grid; grid-template-columns:34px 38px 1fr auto; align-items:center; gap:12px; width:100%; padding:11px clamp(18px,3vw,30px); border:none; border-bottom:1px solid var(--border); background:none; text-align:left; cursor:pointer; font-family:inherit; color:inherit; transition:background .15s; }
+.lb-row:last-child { border-bottom:none; } .lb-row:hover { background:#F6F5EE; }
+.lb-row.me { box-shadow:inset 3px 0 0 var(--green); background:#F6F8F2; }
+.lb-pos { font-family:Georgia,serif; font-style:italic; font-size:18px; color:var(--muted); text-align:center; }
+.lb-row:nth-child(1) .lb-pos { color:#B08A2E; } .lb-row:nth-child(2) .lb-pos { color:#8A9099; } .lb-row:nth-child(3) .lb-pos { color:#A0714A; }
+.av { width:34px; height:34px; border-radius:50%; background:#DDE0CE; color:var(--green); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; overflow:hidden; flex-shrink:0; }
+.av img { width:100%; height:100%; object-fit:cover; }
+.lb-name { font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lb-sub { font-size:12px; color:var(--muted); font-weight:400; margin-top:1px; }
+.lb-r { font-family:'Roboto Mono',ui-monospace,monospace; font-size:20px; font-weight:700; }
+.lb-empty { padding:34px 20px; text-align:center; color:var(--muted); font-size:14px; line-height:1.6; }
+.rank-note { margin:0; padding:12px clamp(18px,3vw,30px) 16px; font-size:12px; color:var(--muted); line-height:1.6; border-top:1px solid var(--border); }
+.ov { position:fixed; inset:0; z-index:50; background:rgba(42,46,36,.38); display:flex; align-items:center; justify-content:center; padding:16px; animation:fade .2s both; }
+.prof { background:var(--panel); border:1px solid var(--border); width:100%; max-width:520px; max-height:calc(100dvh - 32px); overflow-y:auto; position:relative; box-shadow:0 30px 80px rgba(42,46,36,.3); animation:rise .3s var(--ease) both; }
+.prof .x { position:absolute; top:10px; right:12px; border:none; background:none; font-size:18px; color:var(--muted); cursor:pointer; width:32px; height:32px; }
+.prof .x:hover { color:var(--text); background:#EAEADF; }
+.ph { display:flex; align-items:center; gap:16px; padding:26px 28px 18px; }
+.ph .av { width:60px; height:60px; font-size:24px; } .ph h3 { margin:0; font-weight:400; font-size:26px; }
+.pg { padding:16px 28px 20px; border-top:1px solid var(--border); }
+.pg-top { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.pg-title { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--green); font-weight:700; }
+.pg-r { font-family:'Roboto Mono',monospace; font-size:34px; font-weight:700; line-height:1.1; margin:6px 0 2px; }
+.pg-meta { font-size:12.5px; color:var(--muted); }
+.wdl { display:flex; height:8px; margin:14px 0 6px; background:#E6E8DA; overflow:hidden; } .wdl i { display:block; height:100%; }
+.wdl .w { background:#3B5D4A; } .wdl .d { background:#B7BAA5; } .wdl .l { background:#A2473B; }
+.wdl-t { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
+.spark { margin-top:12px; width:100%; height:70px; display:block; }
+.pg-none { color:var(--muted); font-size:13.5px; padding:6px 0; }
+.acc-rate { font-family:'Roboto Mono',monospace; font-size:12px; color:var(--muted); font-weight:400; }
+@keyframes fade { from { opacity:0; } to { opacity:1; } }
+
 @media (max-width:720px) {
   .cards { grid-template-columns:1fr; }
   .mini { width:min(52%, 210px); }
   .art { padding-top:22px; }
+  .lb-row { grid-template-columns:26px 34px 1fr auto; gap:10px; }
+  .ph, .pg { padding-left:20px; padding-right:20px; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 </style>
@@ -104,7 +146,7 @@ footer b { color:var(--text); font-weight:600; }
 <div class="wrap">
   <div class="top">
     <button class="acc-in hidden" id="acc-in"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>Войти через Google</button>
-    <div class="acc-user hidden" id="acc-user"><img id="acc-img" alt=""><span id="acc-name"></span><button class="acc-out" id="acc-out">Выйти</button></div>
+    <div class="acc-user hidden" id="acc-user"><img id="acc-img" alt=""><span id="acc-name"></span><span class="acc-rate" id="acc-rate"></span><button class="acc-out" id="acc-out">Выйти</button></div>
   </div>
 
   <header>
@@ -135,11 +177,22 @@ footer b { color:var(--text); font-weight:600; }
     </a>
   </main>
 
+  <section class="rank" id="rank">
+    <div class="rank-head">
+      <h2 class="serif">Рейтинг игроков</h2>
+      <div class="seg" id="seg"><button class="on" data-g="chess">Шахматы</button><button data-g="draughts">Шашки</button></div>
+    </div>
+    <div class="lb" id="lb"><div class="lb-empty">Загрузка…</div></div>
+    <p class="rank-note">В таблице — игроки с хотя бы одной рейтинговой партией. Рейтинговая партия: онлайн, оба игрока вошли через Google, сыграно не меньше 3 ходов каждым. Рейтинг считается по системе Эло, у каждой игры свой. Нажмите на игрока, чтобы открыть профиль.</p>
+  </section>
+
   <footer>
     <div><b>Один аккаунт на обе игры.</b> Войдите через Google — и онлайн-партии сохранятся в вашей истории.</div>
     <div>Совет: установите страницу как приложение — тогда обе игры доступны с экрана телефона.</div>
   </footer>
 </div>
+
+<div class="ov hidden" id="ov"><div class="prof" role="dialog" aria-modal="true"><button class="x" id="ov-x" aria-label="Закрыть">✕</button><div id="prof-body"></div></div></div>
 
 <script>
 // старые ссылки-приглашения в шахматы вели на корень сайта — перенаправляем в шахматы
@@ -174,6 +227,70 @@ function count(key) { try { const n = JSON.parse(localStorage.getItem(key) || '[
 document.getElementById('cnt-chess').textContent = count('chessGameHistory');
 document.getElementById('cnt-draughts').textContent = count('draughtsHistory');
 
+
+// ---------- таблица лидеров и профили (данные приходят из модуля ниже через window.PGData) ----------
+const GAME_NAME = { chess: 'Шахматы', draughts: 'Шашки' };
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const initial = (n) => esc((n || '?').trim().charAt(0).toUpperCase() || '?');
+const avatar = (p) => `<span class="av">${p.photoURL ? `<img src="${esc(p.photoURL)}" alt="" referrerpolicy="no-referrer">` : initial(p.displayName)}</span>`;
+let curGame = 'chess', lbToken = 0;
+
+async function renderLeaders() {
+  const box = document.getElementById('lb'), token = ++lbToken;
+  box.innerHTML = '<div class="lb-empty">Загрузка…</div>';
+  const D = window.PGData;
+  if (!D) { box.innerHTML = '<div class="lb-empty">Таблица рейтинга недоступна без интернета.</div>'; return; }
+  let list;
+  try { list = await D.leaders(curGame); } catch (e) { console.error(e); if (token === lbToken) box.innerHTML = '<div class="lb-empty">Не удалось загрузить рейтинг. Проверьте интернет.</div>'; return; }
+  if (token !== lbToken) return;
+  if (!list.length) { box.innerHTML = '<div class="lb-empty">Пока никто не сыграл рейтинговую партию.<br>Войдите через Google и станьте первым!</div>'; return; }
+  box.innerHTML = '';
+  list.forEach((p, i) => {
+    const s = p[curGame] || {}, row = document.createElement('button');
+    row.className = 'lb-row' + (D.me && D.me === p.uid ? ' me' : '');
+    row.innerHTML = `<span class="lb-pos">${i + 1}</span>${avatar(p)}<span><div class="lb-name">${esc(p.displayName || 'Игрок')}</div><div class="lb-sub">${s.g || 0} ${plural(s.g || 0)} · ${s.w || 0} / ${s.d || 0} / ${s.l || 0}</div></span><span class="lb-r">${s.r != null ? s.r : '—'}</span>`;
+    row.onclick = () => openProfile(p.uid, p);
+    box.appendChild(row);
+  });
+}
+const plural = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'партия' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'партии' : 'партий'));
+
+function spark(hist) {
+  const pts = [1200].concat((hist || []).map((h) => h.r)); if (pts.length < 2) return '';
+  const W = 300, H = 70, P = 8; let lo = Math.min(...pts), hi = Math.max(...pts); if (hi - lo < 40) { const m = (hi + lo) / 2; lo = m - 20; hi = m + 20; }
+  const xy = pts.map((r, i) => [P + (W - 2 * P) * i / (pts.length - 1), H - P - (H - 2 * P) * (r - lo) / (hi - lo)]);
+  const last = xy[xy.length - 1], base = H - P - (H - 2 * P) * (1200 - lo) / (hi - lo);
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="График рейтинга">
+    <line x1="${P}" x2="${W - P}" y1="${base}" y2="${base}" stroke="#B7BAA5" stroke-dasharray="3 4" stroke-width="1"/>
+    <polyline points="${xy.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#3B5D4A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="4" fill="#3B5D4A"/></svg>`;
+}
+function gameBlock(key, s) {
+  if (!s || !s.g) return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span></div><div class="pg-none">Рейтинговых партий ещё нет</div></div>`;
+  const total = s.g || 1, pct = (n) => Math.round((n || 0) * 100 / total);
+  return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span><span class="pg-meta">лучший: ${s.peak}</span></div>
+    <div class="pg-r">${s.r}</div><div class="pg-meta">${s.g} ${plural(s.g)} · побед ${pct(s.w)}%</div>
+    <div class="wdl"><i class="w" style="width:${pct(s.w)}%"></i><i class="d" style="width:${pct(s.d)}%"></i><i class="l" style="width:${100 - pct(s.w) - pct(s.d)}%"></i></div>
+    <div class="wdl-t"><span>Побед: ${s.w || 0}</span><span>Ничьих: ${s.d || 0}</span><span>Поражений: ${s.l || 0}</span></div>${spark(s.hist)}</div>`;
+}
+async function openProfile(uid, pre) {
+  const ov = document.getElementById('ov'), body = document.getElementById('prof-body');
+  ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
+  let p = pre; try { p = (await window.PGData.profile(uid)) || pre; } catch (e) { console.error(e); }
+  if (!p) { body.innerHTML = '<div class="lb-empty">Профиль не найден.</div>'; return; }
+  body.innerHTML = `<div class="ph">${avatar(p)}<h3 class="serif">${esc(p.displayName || 'Игрок')}</h3></div>` + gameBlock(curGame, p[curGame]) + gameBlock(curGame === 'chess' ? 'draughts' : 'chess', p[curGame === 'chess' ? 'draughts' : 'chess']);
+}
+const closeProfile = () => document.getElementById('ov').classList.add('hidden');
+document.getElementById('ov-x').onclick = closeProfile;
+document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeProfile(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfile(); });
+document.querySelectorAll('#seg button').forEach((b) => { b.onclick = () => { curGame = b.dataset.g; document.querySelectorAll('#seg button').forEach((x) => x.classList.toggle('on', x === b)); renderLeaders(); }; });
+(function initRank() {
+  if (window.PGData) return renderLeaders();
+  window.addEventListener('pg-ready', renderLeaders, { once: true });
+  setTimeout(() => { if (!window.PGData) renderLeaders(); }, 7000);
+})();
+
 // PWA
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
@@ -181,19 +298,43 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 </script>
 
 <script type="module">
-// Лёгкий вход через Google (общий для обеих игр: один origin и один проект Firebase — сессия общая).
+// Вход через Google + публичные профили/рейтинг (общие для обеих игр: один origin и один проект Firebase).
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 const app = initializeApp({
   apiKey: "AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY", authDomain: "pep-chess-2026.firebaseapp.com", projectId: "pep-chess-2026",
   storageBucket: "pep-chess-2026.firebasestorage.app", messagingSenderId: "170856560854", appId: "1:170856560854:web:d9b6b766cbd56780ecf177"
 });
-const auth = getAuth(app); const $ = (id) => document.getElementById(id);
+const auth = getAuth(app), db = getFirestore(app); const $ = (id) => document.getElementById(id);
+
+window.PGData = {
+  async leaders(key) {
+    const field = key === 'chess' ? 'rChess' : 'rDraughts';
+    const s = await getDocs(query(collection(db, 'profiles'), orderBy(field, 'desc'), limit(50)));
+    return s.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  },
+  async profile(uid) { const s = await getDoc(doc(db, 'profiles', uid)); return s.exists() ? { uid, ...s.data() } : null; },
+  get me() { return auth.currentUser ? auth.currentUser.uid : null; }
+};
+window.dispatchEvent(new Event('pg-ready'));
+
 $('acc-in').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { if (e.code !== 'auth/popup-closed-by-user') alert('Не удалось войти через Google. Попробуйте ещё раз.'); } };
 $('acc-out').onclick = () => signOut(auth);
-onAuthStateChanged(auth, (u) => {
-  $('acc-in').classList.toggle('hidden', !!u); $('acc-user').classList.toggle('hidden', !u);
-  if (u) { $('acc-name').textContent = u.displayName || 'Игрок'; $('acc-img').src = u.photoURL || ''; $('acc-img').style.display = u.photoURL ? '' : 'none'; }
+onAuthStateChanged(auth, async (u) => {
+  $('acc-in').classList.toggle('hidden', !!u); $('acc-user').classList.toggle('hidden', !u); $('acc-rate').textContent = '';
+  if (!u) return;
+  $('acc-name').textContent = u.displayName || 'Игрок'; $('acc-img').src = u.photoURL || ''; $('acc-img').style.display = u.photoURL ? '' : 'none';
+  try {
+    const ref = doc(db, 'profiles', u.uid), snap = await getDoc(ref);
+    const base = { displayName: u.displayName || 'Игрок', photoURL: u.photoURL || null };
+    let d = snap.exists() ? snap.data() : null;
+    if (!d) await setDoc(ref, { ...base, updatedAt: serverTimestamp() });
+    else if (d.displayName !== base.displayName || (d.photoURL || null) !== base.photoURL) await updateDoc(ref, { ...base, updatedAt: serverTimestamp() });
+    const parts = []; if (d && d.chess) parts.push('♞ ' + d.chess.r); if (d && d.draughts) parts.push('⛀ ' + d.draughts.r);
+    $('acc-rate').textContent = parts.length ? ' · ' + parts.join('  ') : '';
+  } catch (e) { console.warn('Профиль:', e); }
+  document.querySelectorAll('.lb-row').forEach((r) => r.classList.remove('me'));
 });
 </script>
 </body>
