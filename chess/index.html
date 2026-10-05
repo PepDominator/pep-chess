@@ -8,7 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pep Chess">
-    <script>if (/[?&]replay=/.test(location.search)) document.documentElement.classList.add('boot-replay');</script>
+    <script>
+    // Заставка вместо меню, пока открывается партия по ссылке или идёт возврат в незавершённую партию — чтобы меню не мелькало.
+    (function () { var d = document.documentElement, q = location.search;
+      if (/[?&](replay|view)=/.test(q)) return d.classList.add('boot-replay');
+      try { var a = JSON.parse(localStorage.getItem('pgActive') || 'null'); if (a && a.game === 'chess' && Date.now() - a.t < 43200000 && !/[?&]game=/.test(q)) d.classList.add('boot-replay'); } catch (e) {} })();
+    </script>
     <style>
 #boot-loader { display:none; }
 .boot-replay #setup, .boot-replay .menu-bg { display:none !important; }
@@ -1869,6 +1874,11 @@ if (typeof define !== 'undefined')
         }
         .account-signout-btn:hover { color: var(--text); }
 
+        .analysis-share { display:none; align-items:center; flex-wrap:wrap; gap:8px; padding:7px 16px; background:#F8F7F1; border-bottom:1px solid var(--border); }
+        #game-ui.analysis-mode .analysis-share { display:flex; }
+        .analysis-share button { background:#F3F2EA; border:1px solid var(--border); color:var(--text); padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .analysis-share button:hover { background:#EAEADF; }
+        #share-msg { font-size:12px; color:var(--ink-muted); }
         .back-hub { position:absolute; top:14px; left:16px; font-size:12px; color:var(--ink-muted,#6E7568); text-decoration:none; z-index:3; }
         .back-hub:hover { color:var(--text,#2A2E24); }
         .brand-title {
@@ -2506,6 +2516,11 @@ if (typeof define !== 'undefined')
                 <button class="analysis-back-btn" onclick="exitAnalysisMode()">← Назад</button>
                 <div id="analysis-result-line" class="analysis-result-line"></div>
             </div>
+            <div id="analysis-share" class="analysis-share">
+                <button onclick="copyChessPgn()">Скопировать PGN</button>
+                <button onclick="shareChessLink()">Ссылка на партию</button>
+                <span id="share-msg"></span>
+            </div>
 
             <div class="status-bar">
                 <div class="dot"></div>
@@ -2568,7 +2583,7 @@ if (typeof define !== 'undefined')
             collection, query, orderBy, limit, getDocs, runTransaction
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import {
-            getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
+            getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, signInAnonymously
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -2607,7 +2622,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             ready: false,
             initError: null,
 
-            async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating }) {
+            async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid }) {
                 const gameId = randomGameId();
                 await setDoc(doc(db, 'games', gameId), {
                     createdAt: serverTimestamp(),
@@ -2617,6 +2632,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                     hostUid: hostUid || null,
                     hostRating: hostRating != null ? hostRating : null,
                     guestRating: null,
+                    hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null,
                     guestName: null,
                     guestUid: null,
                     timeControl: { minutes, inc },
@@ -2639,13 +2655,13 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                 return snap.exists() ? snap.data() : null;
             },
 
-            async joinGame(gameId, guestName, guestUid, guestRating) {
+            async joinGame(gameId, guestName, guestUid, guestRating, guestAuthUid) {
                 const ref = doc(db, 'games', gameId);
                 const snap = await getDoc(ref);
                 if (!snap.exists()) return { ok: false, reason: 'not_found' };
                 const data = snap.data();
                 if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, startedAt: serverTimestamp() });
+                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, guestAuthUid: guestAuthUid || null, guestSeen: serverTimestamp(), startedAt: serverTimestamp() });
                 return { ok: true, data };
             },
 
@@ -2717,6 +2733,23 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
               });
             },
 
+            // ---- анонимный вход: чтобы правила базы отличали игроков партии (Google-аккаунт для игры по-прежнему не нужен) ----
+            async ensureAuth() {
+                if (auth.currentUser) return auth.currentUser.uid;
+                try { return (await signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Анонимный вход недоступен:', e.code); return null; }
+            },
+            // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
+            async touch(gameId, role) { await updateDoc(doc(db, 'games', gameId), { [role === 'host' ? 'hostSeen' : 'guestSeen']: serverTimestamp() }); },
+            async offerRematch(oldId, newId, byColor) { await updateDoc(doc(db, 'games', oldId), { rematch: { id: newId, by: byColor } }); },
+            async shareGame(rec) {
+                const id = randomGameId(10);
+                await setDoc(doc(db, 'sharedGames', id), { game: 'chess', date: rec.date || null, userColor: rec.userColor, result: rec.result || 'draw', resultText: rec.resultText || '',
+                    opponent: rec.opponent || null, level: rec.level || null, moves: rec.moves || [], finalFen: rec.finalFen || null, sharedAt: serverTimestamp() });
+                return id;
+            },
+            async getShared(id) { const s = await getDoc(doc(db, 'sharedGames', id)); return s.exists() ? s.data() : null; },
+            async logError(o) { await setDoc(doc(db, 'clientErrors', randomGameId(12)), { ...o, at: serverTimestamp() }); },
+
             async signIn() {
                 const result = await signInWithPopup(auth, new GoogleAuthProvider());
                 return result.user;
@@ -2751,8 +2784,9 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             db = getFirestore(app);
             auth = getAuth(app);
             onAuthStateChanged(auth, (user) => {
-                OnlineChess.currentUser = user ? { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL } : null;
-                if (user) OnlineChess.ensureProfile(user).catch((e) => console.warn('Профиль:', e));
+                OnlineChess.authUid = user ? user.uid : null;
+                OnlineChess.currentUser = user && !user.isAnonymous ? { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL } : null;   // анонимный игрок — не «вошедший»
+                if (user && !user.isAnonymous) OnlineChess.ensureProfile(user).catch((e) => console.warn('Профиль:', e));
                 window.dispatchEvent(new Event('onlinechess-auth-changed'));
             });
             OnlineChess.ready = true;
@@ -2840,6 +2874,16 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
         let onlineMoveNumber = 0;       // номер последнего хода в партии, известный ЭТОМУ клиенту —
                                          // обновляется и когда мы сами ходим, и когда применяем ход соперника
         let onlineOpponentName = null;
+        // ---------- журнал ошибок клиентов ----------
+        let clientErrCount = 0;
+        function logClientError(kind, msg) {
+            if (++clientErrCount > 5) return;
+            try { const o = window.OnlineChess; if (o && o.ready && o.logError) o.logError({ app: 'chess', kind, msg: String(msg).slice(0, 300), page: location.pathname, ua: navigator.userAgent.slice(0, 120) }).catch(() => {}); } catch (e) {}
+        }
+        window.addEventListener('error', (e) => logClientError('error', `${e.message} @${String(e.filename || '').split('/').pop()}:${e.lineno}`));
+        window.addEventListener('unhandledrejection', (e) => logClientError('promise', (e.reason && (e.reason.message || e.reason)) || 'rejection'));
+        const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__chessCfg || {});   // пороги присутствия (в тестах уменьшаются)
+        let onlineRole = null, onlineAuthUid = null, onlineBeat = null, onlineResumeFix = false, onlineRematchSeen = null, onlineTc = null, onlineGap = 0;
         let returnToProfile = false; // партию открыли из личного профиля — выход ведёт обратно в профиль
         let onlineLastData = null;   // последнее известное состояние партии из Firestore (для рейтинга)
         let myRatingSnap = null;     // мой рейтинг на момент старта партии
@@ -3571,6 +3615,8 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             // (ассистент движка, взятие хода назад — нечестно/невозможно в игре с человеком).
             if (onlineUnsub) { onlineUnsub(); onlineUnsub = null; }
             if (onlinePollInterval) { clearInterval(onlinePollInterval); onlinePollInterval = null; }
+            if (onlineBeat) { clearInterval(onlineBeat); onlineBeat = null; }
+            onlineGap = 0; onlineRematchSeen = null;
             onlineGameId = null;
             onlineMyColor = null;
             onlineMoveNumber = 0;
@@ -3745,9 +3791,10 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             startBtn.disabled = true;
             try {
                 const hostUid = (window.OnlineChess.currentUser && window.OnlineChess.currentUser.uid) || null;
+                onlineAuthUid = await window.OnlineChess.ensureAuth(); onlineRole = 'host'; onlineTc = { minutes, inc: incSec };
                 const hostRating = hostUid ? await window.OnlineChess.getRating(hostUid, 'chess').catch(() => null) : null;
                 myRatingSnap = hostRating;
-                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid, hostRating });
+                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid, hostRating, hostAuthUid: onlineAuthUid });
                 const link = location.origin + location.pathname + '?game=' + gameId;
                 document.getElementById('online-link-box').value = link;
                 document.getElementById('setup-view-config').style.display = 'none';
@@ -3870,7 +3917,8 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             const guestUid = (window.OnlineChess.currentUser && window.OnlineChess.currentUser.uid) || null;
             const guestRating = guestUid ? await window.OnlineChess.getRating(guestUid, 'chess').catch(() => null) : null;
             myRatingSnap = guestRating;
-            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid, guestRating);
+            onlineAuthUid = await window.OnlineChess.ensureAuth(); onlineRole = 'guest';
+            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid, guestRating, onlineAuthUid);
             if (!result.ok) {
                 document.getElementById('setup-view-join-prompt').style.display = 'none';
                 document.getElementById('setup-view-config').style.display = '';
@@ -3944,6 +3992,8 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                 onlineUnsub = window.OnlineChess.listenGame(gameId, handleOnlineGameUpdate);
             }
 
+            onlineTc = timeControl; startOnlinePresence(); saveActiveGame();
+
             // Подстраховка: раз в 3 секунды дополнительно напрямую запрашиваем состояние партии.
             // Если по какой-то причине живая подписка выше молча перестанет доставлять события —
             // игра всё равно продолжит синхронизироваться, просто чуть менее мгновенно.
@@ -4005,16 +4055,129 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                 }
             }
 
+            checkOnlinePresence(data);
             updateOnlineBanner(data);
             updateBotStatus();
 
             if (data.status === 'finished' && data.result && !gameOver) {
                 const iWon = data.result.winner === onlineMyColor;
                 const isDraw = data.result.winner === 'draw';
-                const msg = isDraw ? (data.result.reason || 'Ничья') : (iWon ? 'Вы выиграли' : 'Вы проиграли') + (data.result.reason ? ' — ' + data.result.reason : '');
                 suppressOnlineReport = true;
-                endGame(msg, isDraw ? 'draw' : (iWon ? 'win' : 'loss'));
+                endGame(onlineResultText(data.result.reason, isDraw ? 'draw' : (iWon ? 'win' : 'loss')), isDraw ? 'draw' : (iWon ? 'win' : 'loss'));
             }
+            if (data.rematch && data.rematch.id && data.rematch.by !== onlineMyColor && gameOver && onlineRematchSeen !== data.rematch.id) { onlineRematchSeen = data.rematch.id; showOnlineRematchInvite(data.rematch.id); }
+        }
+
+        // Причину окончания партии храним кодом (а не текстом с точки зрения одного из игроков) — каждый видит формулировку со своей стороны.
+        function onlineReasonCode(message) {
+            const m = String(message || '').toLowerCase();
+            if (m.includes('сдал')) return 'resign';
+            if (m.includes('времени')) return 'timeout';
+            if (m.includes('мат')) return 'checkmate';
+            if (m.includes('соглашению')) return 'draw-agree';
+            if (m.includes('прерван')) return 'abandon';
+            if (m.includes('ничья')) return 'draw';
+            return 'other';
+        }
+        function onlineResultText(reason, code) {
+            const win = code === 'win';
+            switch (reason) {
+                case 'resign': return win ? 'Соперник сдался — вы выиграли' : 'Вы сдались';
+                case 'timeout': return win ? 'Победа по времени' : 'Поражение по времени';
+                case 'checkmate': return win ? 'Мат — вы выиграли' : 'Мат — вы проиграли';
+                case 'abandon': return win ? 'Соперник вышел из партии — вы выиграли' : 'Партия прервана';
+                case 'draw-agree': return 'Ничья по соглашению';
+                case 'draw': return 'Ничья';
+                default: return win ? 'Вы выиграли' : code === 'draw' ? 'Ничья' : 'Вы проиграли';
+            }
+        }
+
+        // ---------- присутствие, возврат в партию, реванш ----------
+        const tms = (t) => (t == null ? null : (typeof t.toMillis === 'function' ? t.toMillis() : Number(t)));
+        function saveActiveGame() { try { localStorage.setItem('pgActive', JSON.stringify({ game: 'chess', id: onlineGameId, role: onlineRole, t: Date.now() })); } catch (e) {} }
+        function clearActiveGame() { try { const a = JSON.parse(localStorage.getItem('pgActive') || 'null'); if (a && a.game === 'chess') localStorage.removeItem('pgActive'); } catch (e) {} }
+        function startOnlinePresence() {
+            if (onlineBeat) clearInterval(onlineBeat);
+            const beat = () => { if (gameMode === 'online' && onlineGameId && !gameOver) window.OnlineChess.touch(onlineGameId, onlineRole).catch(() => {}); };
+            beat(); onlineBeat = setInterval(beat, CFG.beat);
+        }
+        // Разницу отметок присутствия считаем по серверным часам обоих игроков, поэтому разница часов на устройствах не мешает.
+        function checkOnlinePresence(data) {
+            const mine = tms(onlineRole === 'host' ? data.hostSeen : data.guestSeen), opp = tms(onlineRole === 'host' ? data.guestSeen : data.hostSeen);
+            onlineGap = mine != null && opp != null ? mine - opp : 0;
+            if (onlineResumeFix && mine != null && data.lastMoveAt && historySAN.length > 0) {
+                const el = mine - tms(data.lastMoveAt);   // сколько ходящий простоял, пока нас не было в партии
+                if (el > 0 && (timers.w + timers.b) < 1e8) { const side = game.turn(); timers[side] = Math.max(0, timers[side] - el / 1000); lastTickAt = null; updateTimerDisplay(); }
+                onlineResumeFix = false;
+            }
+        }
+        async function requestOnlineRematch() {
+            const OC = window.OnlineChess, u = OC.currentUser, d = onlineLastData; if (!d) return;
+            try {
+                const authUid = await OC.ensureAuth(), tc = d.timeControl || onlineTc || { minutes: 10, inc: 0 }, hostColor = onlineMyColor === 'w' ? 'b' : 'w';
+                const rating = u ? await OC.getRating(u.uid, 'chess').catch(() => null) : null;
+                const gameId = await OC.createGame({ minutes: tc.minutes, inc: tc.inc, hostColor, hostName: (document.getElementById('nickname-input').value || '').trim() || 'Игрок', hostUid: u ? u.uid : null, hostRating: rating, hostAuthUid: authUid });
+                await OC.offerRematch(onlineGameId, gameId, onlineMyColor);
+                if (onlineUnsub) { onlineUnsub(); onlineUnsub = null; }
+                if (onlinePollInterval) { clearInterval(onlinePollInterval); onlinePollInterval = null; }
+                if (onlineBeat) { clearInterval(onlineBeat); onlineBeat = null; }
+                clearActiveGame(); onlineAuthUid = authUid; onlineRole = 'host'; myRatingSnap = rating;
+                pendingOnlineHost = { gameId, hostColor };
+                onlineUnsub = OC.listenGame(gameId, function onRematchSnapshot(data) {
+                    if (!data || !pendingOnlineHost) return;
+                    if (data.status === 'active') { pendingOnlineHost = null; startOnlineMatch({ gameId, myColor: hostColor, timeControl: tc, opponentName: data.guestName, data, existingUnsub: onlineUnsub }); }
+                });
+                const btn = document.getElementById('rematch-online-btn'); if (btn) { btn.disabled = true; btn.innerText = 'Ждём ответа соперника…'; }
+            } catch (e) { showOnlineSyncError('предложить реванш', e); }
+        }
+        function showOnlineRematchInvite(newId) {
+            const block = document.getElementById('post-game-buttons'); if (!block) return;
+            const box = document.createElement('div'); box.style.cssText = 'margin-bottom:10px;text-align:center;';
+            box.innerHTML = '<div style="font-size:13px;margin-bottom:8px;color:var(--text)">Соперник предлагает реванш</div>';
+            const btn = document.createElement('button'); btn.className = 'post-game-btn rematch-btn'; btn.innerText = 'ПРИНЯТЬ РЕВАНШ';
+            btn.onclick = async () => {
+                btn.disabled = true;
+                try {
+                    const OC = window.OnlineChess, u = OC.currentUser, authUid = await OC.ensureAuth();
+                    const data = await OC.peekGame(newId); if (!data || data.status !== 'waiting') { btn.innerText = 'Реванш уже недоступен'; return; }
+                    const rating = u ? await OC.getRating(u.uid, 'chess').catch(() => null) : null; myRatingSnap = rating;
+                    onlineAuthUid = authUid; onlineRole = 'guest';
+                    const res = await OC.joinGame(newId, (document.getElementById('nickname-input').value || '').trim() || 'Игрок', u ? u.uid : null, rating, authUid);
+                    if (!res.ok) { btn.innerText = 'Реванш уже недоступен'; return; }
+                    startOnlineMatch({ gameId: newId, myColor: res.data.hostColor === 'w' ? 'b' : 'w', timeControl: res.data.timeControl, opponentName: res.data.hostName, data: res.data });
+                } catch (e) { showOnlineSyncError('принять реванш', e); }
+            };
+            box.appendChild(btn); block.insertBefore(box, block.firstChild);
+            const own = document.getElementById('rematch-online-btn'); if (own) own.remove();
+        }
+        // Возврат в незавершённую онлайн-партию после перезагрузки страницы.
+        async function checkResumeOnline() {
+            const q = new URLSearchParams(location.search); if (q.get('game') || q.get('replay') || q.get('view')) return;
+            let a = null; try { a = JSON.parse(localStorage.getItem('pgActive') || 'null'); } catch (e) {}
+            if (!a || a.game !== 'chess' || Date.now() - a.t > 12 * 3600 * 1000) return;
+            try {
+                if (!(await waitForOnlineChess())) return;
+                const OC = window.OnlineChess, authUid = await OC.ensureAuth(), data = await OC.peekGame(a.id);
+                if (!data || data.status !== 'active') { clearActiveGame(); return; }
+                const mineUid = a.role === 'host' ? data.hostAuthUid : data.guestAuthUid;
+                if (mineUid && authUid && mineUid !== authUid) { clearActiveGame(); return; }     // партия была под другим аккаунтом
+                const myColor = a.role === 'host' ? data.hostColor : (data.hostColor === 'w' ? 'b' : 'w');
+                onlineAuthUid = authUid; onlineRole = a.role;
+                myRatingSnap = a.role === 'host' ? data.hostRating : data.guestRating;
+                startOnlineMatch({ gameId: a.id, myColor, timeControl: data.timeControl, opponentName: a.role === 'host' ? data.guestName : data.hostName, data });
+                // восстанавливаем ходы из базы
+                for (const san of (data.moves || [])) {
+                    const mv = game.move(san); if (!mv) break;
+                    historyFens.push(game.fen()); historySAN.push(mv.san); lastMoveSquares = { from: mv.from, to: mv.to };
+                }
+                onlineMoveNumber = Math.max(data.moveNumber || 0, historySAN.length);
+                botThinking = game.turn() !== userCol;
+                if (typeof data.whiteTimeMs === 'number') timers.w = data.whiteTimeMs / 1000;
+                if (typeof data.blackTimeMs === 'number') timers.b = data.blackTimeMs / 1000;
+                onlineResumeFix = true; lastTickAt = null;
+                updateHistory(); render(); updateBotStatus(); updateTimerDisplay(); checkGameOver();
+            } catch (e) { console.warn('Не удалось вернуться в партию:', e); }
+            finally { document.documentElement.classList.remove('boot-replay'); }
         }
 
         function updateOnlineBanner(data) {
@@ -4030,6 +4193,11 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             } else if (data.drawOfferBy === onlineMyColor && !gameOver) {
                 banner.style.display = 'flex';
                 banner.innerHTML = `<span>Предложение ничьи отправлено…</span>`;
+            } else if (onlineGap > CFG.warn && !gameOver) {
+                banner.style.display = 'flex';
+                if (onlineGap > CFG.claim) {
+                    banner.innerHTML = `<span>Соперник не в сети больше полутора минут</span><span><button class="online-banner-btn online-banner-accept" onclick="claimOnlineWin()">Засчитать победу</button></span>`;
+                } else banner.innerHTML = `<span>Соперник не в сети… ждём</span>`;
             } else {
                 banner.style.display = 'none';
                 banner.innerHTML = '';
@@ -4049,6 +4217,11 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             const detail = (err && (err.code || err.message)) ? String(err.code || err.message) : 'неизвестная ошибка';
             banner.style.display = 'flex';
             banner.innerHTML = `<span style="color:#A23B33">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}</span>`;
+        }
+
+        function claimOnlineWin() {
+            if (!onlineGameId || gameOver) return;
+            window.OnlineChess.sendResult(onlineGameId, { winner: onlineMyColor, reason: 'abandon' }).catch((e) => showOnlineSyncError('засчитать победу', e));
         }
 
         function sendOnlineMove(move) {
@@ -4091,7 +4264,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             if (resultCode === 'draw') winner = 'draw';
             else if (resultCode === 'win') winner = onlineMyColor;
             else winner = onlineMyColor === 'w' ? 'b' : 'w';
-            window.OnlineChess.sendResult(onlineGameId, { winner, reason: message }).catch((err) => showOnlineSyncError('сообщить результат партии', err));
+            window.OnlineChess.sendResult(onlineGameId, { winner, reason: onlineReasonCode(message) }).catch((err) => showOnlineSyncError('сообщить результат партии', err));
         }
 
         // ==================== АККАУНТ (вход через Google) ====================
@@ -4149,9 +4322,47 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 
         checkUrlForOnlineInvite();
 
+        // ---------- экспорт партии и ссылка «посмотреть без входа» ----------
+        function currentRecordForShare() {
+            if (analysisCameFromHistory && currentViewRecord) return currentViewRecord;
+            const sans = (savedRealGameSnapshot ? savedRealGameSnapshot.historySAN : historySAN).slice();
+            return { date: new Date().toISOString(), userColor: userCol, opponent: gameMode === 'online' ? onlineOpponentName : null, level: gameMode === 'online' ? null : level,
+                result: lastEndedGameResultCode || 'draw', resultText: lastEndedGameMessage || '', moves: sans, finalFen: game.fen() };
+        }
+        function chessPgn(rec) {
+            const d = rec.date ? new Date(rec.date) : new Date(), pad = (n) => String(n).padStart(2, '0');
+            let me = 'Игрок'; try { me = localStorage.getItem('chessNickname') || me; } catch (e) {}
+            const opp = rec.opponent || (rec.level ? 'Stockfish (уровень ' + rec.level + ')' : 'Соперник');
+            const white = rec.userColor === 'w' ? me : opp, black = rec.userColor === 'w' ? opp : me;
+            let res = '*'; if (rec.result === 'draw') res = '1/2-1/2'; else if (rec.result === 'win') res = rec.userColor === 'w' ? '1-0' : '0-1'; else if (rec.result === 'loss') res = rec.userColor === 'w' ? '0-1' : '1-0';
+            const mv = []; (rec.moves || []).forEach((san, i) => { mv.push(i % 2 === 0 ? `${i / 2 + 1}. ${san}` : san); });
+            return `[Event "Pep Chess"]\n[Site "pepdominator.github.io/pep-chess"]\n[Date "${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${res}"]\n\n${mv.join(' ')} ${res}\n`;
+        }
+        async function copyTextShare(s) { try { await navigator.clipboard.writeText(s); return true; } catch (e) { const ta = document.createElement('textarea'); ta.value = s; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (x) {} ta.remove(); return ok; } }
+        async function copyChessPgn() { document.getElementById('share-msg').innerText = (await copyTextShare(chessPgn(currentRecordForShare()))) ? 'PGN скопирован' : 'Не удалось скопировать'; }
+        async function shareChessLink() {
+            const msg = document.getElementById('share-msg'); msg.innerText = 'Создаю ссылку…';
+            try {
+                if (!(await waitForOnlineChess())) throw new Error('нет связи с сервером');
+                await window.OnlineChess.ensureAuth(); const id = await window.OnlineChess.shareGame(currentRecordForShare());
+                const link = location.origin + location.pathname.replace(/[^/]*$/, '') + '?view=' + id;
+                msg.innerText = (await copyTextShare(link)) ? 'Ссылка скопирована: любой сможет открыть партию' : link;
+            } catch (e) { console.error(e); msg.innerText = 'Не удалось создать ссылку: ' + ((e && (e.code || e.message)) || 'ошибка'); }
+        }
+
         // Ссылка из личного профиля в общем меню: ?replay=local:N (локальная история) или ?replay=cloud:ID (облачная).
         async function checkReplayParam() {
             const params = new URLSearchParams(location.search), param = params.get('replay');
+            if (params.get('view')) {                                  // публичная ссылка на партию: вход не нужен
+                const id = params.get('view'); history.replaceState(null, '', location.pathname);
+                try {
+                    if (!(await waitForOnlineChess())) { alert('Не удалось загрузить партию: нет связи с сервером.'); return; }
+                    await window.OnlineChess.ensureAuth(); const rec = await window.OnlineChess.getShared(id);
+                    if (rec) viewGameRecord(rec); else alert('Партия не найдена — возможно, ссылка неверна.');
+                } catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+                finally { document.documentElement.classList.remove('boot-replay'); }
+                return;
+            }
             if (!param) return;
             returnToProfile = params.get('from') === 'profile';
             history.replaceState(null, '', location.pathname); // чтобы выход в меню (перезагрузка) не открывал партию снова
@@ -4170,7 +4381,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             finally { document.documentElement.classList.remove('boot-replay'); } // показываем меню только если партию открыть не удалось
         }
         // откладываем запуск: константы истории объявлены ниже по скрипту и до его конца ещё недоступны
-        setTimeout(() => checkReplayParam(), 0);
+        setTimeout(() => { checkReplayParam(); checkResumeOnline(); }, 0);
 
         // ==================== /СЕТЕВАЯ ИГРА ====================
 
@@ -4942,6 +5153,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             if (gameMode === 'online') {
                 saveOnlineGameToMyHistory(message, resultCode);
                 applyOnlineRating(resultCode);
+                clearActiveGame(); if (onlineBeat) { clearInterval(onlineBeat); onlineBeat = null; }
             }
             suppressOnlineReport = false;
         }
@@ -5052,11 +5264,11 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             resultText.innerText = message;
             block.appendChild(resultText);
 
-            if (gameMode !== 'online') {
+            {
                 const rematchBtn = document.createElement('button');
                 rematchBtn.className = 'post-game-btn rematch-btn';
                 rematchBtn.innerText = 'РЕВАНШ';
-                rematchBtn.onclick = playRematch;
+                if (gameMode === 'online') { rematchBtn.id = 'rematch-online-btn'; rematchBtn.onclick = requestOnlineRematch; } else rematchBtn.onclick = playRematch;
                 block.appendChild(rematchBtn);
             }
 
@@ -5294,7 +5506,9 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 
         // То же самое, но принимает запись партии напрямую — используется и локальной историей,
         // и облачной историей сетевых партий (см. "Мои онлайн-партии").
+        let currentViewRecord = null;
         function viewGameRecord(record) {
+            currentViewRecord = record;
             document.getElementById('setup').style.display = 'none';
             document.getElementById('history-screen').style.display = 'none';
             document.getElementById('my-games-screen').style.display = 'none';

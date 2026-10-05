@@ -7,7 +7,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Pep Draughts</title>
-<script>if (/[?&]replay=/.test(location.search)) document.documentElement.classList.add('boot-replay');</script>
+<script>
+// Заставка вместо меню, пока открывается партия по ссылке или идёт возврат в незавершённую партию — чтобы меню не мелькало.
+(function () { var d = document.documentElement, q = location.search;
+  if (/[?&](replay|view)=/.test(q)) return d.classList.add('boot-replay');
+  try { var a = JSON.parse(localStorage.getItem('pgActive') || 'null'); if (a && a.game === 'draughts' && Date.now() - a.t < 43200000 && !/[?&]game=/.test(q)) d.classList.add('boot-replay'); } catch (e) {} })();
+</script>
 <style>
 #boot-loader { display:none; }
 .boot-replay #setup, .boot-replay .menu-bg { display:none !important; }
@@ -171,6 +176,10 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 .sq.bestto { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.28), inset 0 0 0 3px rgba(47,58,86,.85); }
 #moves { min-height:90px; }
 .ana-title { white-space:nowrap; letter-spacing:1.5px; } .ana-head button { white-space:nowrap; }
+.share { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:7px 16px; background:#F8F7F1; border-bottom:1px solid var(--border); }
+.share button { background:#F3F2EA; border:1px solid var(--border); color:var(--text); padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; } .share button:hover { background:#EAEADF; }
+#sh-msg { font-size:12px; color:var(--muted); }
+#post button:disabled { opacity:.6; cursor:default; }
 </style>
 </head>
 <body>
@@ -250,6 +259,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
         <div class="ana-sum" id="ana-sum"></div>
       </div>
     </div>
+    <div class="share hidden" id="share"><button id="sh-copy">Скопировать ходы</button><button id="sh-link">Ссылка на партию</button><span id="sh-msg"></span></div>
     <div class="nav">
       <button id="n-first">⏮</button><button id="n-prev">◀</button><button id="n-next">▶</button><button id="n-last">⏭</button>
     </div>
@@ -584,11 +594,21 @@ let turn = 'w', viewIndex = -1, gameOver = false, busy = false, replayMode = fal
 let timers = { w: 600, b: 600 }, incSec = 0, timed = true, lastTick = null, tickHandle = null;
 let sel = null, candidates = [], stepIdx = 1, chosen = [];
 let premove = null, pmSel = null, quietPlies = 0, suppressClick = false;
+let posCounts = {}, egKind = null, egPlies = 0;   // повторения позиции и счётчик правил 16/5 ходов
 let replayFrom = null;  // откуда открыт просмотр: 'profile' (из общего меню), 'history' (из списка партий) или null
 let histKind = 'local'; // какой список партий открыт: 'local' или 'cloud'
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
+const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
+// Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
+let errCount = 0;
+function logClientError(kind, msg) {
+  if (++errCount > 5) return;
+  try { const o = OD(); if (o && o.ready && o.logError) o.logError({ app: 'draughts', kind, msg: String(msg).slice(0, 300), page: location.pathname, ua: navigator.userAgent.slice(0, 120) }).catch(() => {}); } catch (e) {}
+}
+window.addEventListener('error', (e) => logClientError('error', `${e.message} @${String(e.filename || '').split('/').pop()}:${e.lineno}`));
+window.addEventListener('unhandledrejection', (e) => logClientError('promise', (e.reason && (e.reason.message || e.reason)) || 'rejection'));
 
 const sqNum = (r, c) => rowColToSquare(r, c);
 const flipped = () => userColor === 'b';
@@ -762,13 +782,14 @@ async function playMove(move, byUser, opts = {}) {
   quietPlies = (move.captures.length || !before[move.fromRow][move.fromCol].king) ? 0 : quietPlies + 1;
   if (opts.remoteTimes) { timers.w = opts.remoteTimes.w; timers.b = opts.remoteTimes.b; } else if (timed) timers[mover] += incSec;
   lastTick = null; turn = other(turn); viewIndex = -1;
+  { const k = posKey(after, turn); posCounts[k] = (posCounts[k] || 0) + 1; const kind = endgameKind(after); egPlies = kind && kind === egKind ? egPlies + 1 : (kind ? 1 : 0); egKind = kind; }
   renderPieces(); renderMoves(); playSnd(move.captures.length ? 'capture' : 'move');
   busy = false;
   if (mode === 'online' && byUser) sendOnlineMove();
   if (checkEnd()) return;
   paintMarks(); updateStatus(); updateClocks(); updateButtons();
   if (tryPremove()) return;
-  if (mode === 'bot' && turn !== userColor) botMove();
+  if (mode === 'bot' && turn !== userColor && !opts.nobot) botMove();
 }
 
 /* ================= конец партии ================= */
@@ -781,16 +802,32 @@ function resultText(code, reason) {
     case 'abandon': return win ? 'Победа — соперник вышел из партии' : 'Партия прервана';
     case 'draw-agree': return 'Ничья по соглашению';
     case 'draw-rule': return 'Ничья (25 ходов только дамками)';
+    case 'draw-rep': return 'Ничья (троекратное повторение позиции)';
+    case 'draw-16': return 'Ничья (правило 16 ходов)';
+    case 'draw-5': return 'Ничья (правило 5 ходов)';
     default: return win ? 'Победа' : code === 'draw' ? 'Ничья' : 'Поражение';
   }
 }
 function checkEnd() {
   const board = lastBoard();
   if (getLegalMoves(board, turn).length === 0) { endGame(turn !== userColor ? 'win' : 'loss', 'nomoves'); return true; }
+  if ((posCounts[posKey(board, turn)] || 0) >= 3) { endGame('draw', 'draw-rep'); return true; }
+  if (egKind === '16' && egPlies >= 32) { endGame('draw', 'draw-16'); return true; }
+  if (egKind === '5' && egPlies >= 10) { endGame('draw', 'draw-5'); return true; }
   let onlyKings = true;
   for (const row of board) for (const p of row) if (p && !p.king) onlyKings = false;
   if (onlyKings && quietPlies >= 50) { endGame('draw', 'draw-rule'); return true; }
   return false;
+}
+const posKey = (board, t) => t + board.map((r) => r.map((p) => (p ? (p.color === 'w' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b')) : '.')).join('')).join('/');
+// Упрощённые правила FMJD: 3 фигуры (хотя бы одна дамка) против одной дамки — 16 ходов (32 полухода); 1–2 фигуры против одной дамки — 5 ходов (10 полуходов).
+function endgameKind(board) {
+  const s = { w: { m: 0, k: 0 }, b: { m: 0, k: 0 } };
+  for (const row of board) for (const p of row) if (p) s[p.color][p.king ? 'k' : 'm']++;
+  const lone = (x) => x.m === 0 && x.k === 1, tot = (x) => x.m + x.k;
+  if ((lone(s.w) && tot(s.b) === 3 && s.b.k >= 1) || (lone(s.b) && tot(s.w) === 3 && s.w.k >= 1)) return '16';
+  if ((lone(s.w) && tot(s.b) >= 1 && tot(s.b) <= 2) || (lone(s.b) && tot(s.w) >= 1 && tot(s.w) <= 2)) return '5';
+  return null;
 }
 function endGame(code, reason) {
   if (gameOver) return;
@@ -800,12 +837,13 @@ function endGame(code, reason) {
   const score = code === 'win' ? (userColor === 'w' ? '1–0' : '0–1') : code === 'loss' ? (userColor === 'w' ? '0–1' : '1–0') : '½–½';
   const post = $('post'); show('post', true);
   post.innerHTML = `<div class="res">${score}</div><div class="rt">${text}</div>` +
-    (mode === 'bot' ? '<button class="p" id="p-rematch">РЕВАНШ</button>' : '') + '<button class="s" id="p-ana">РАЗОБРАТЬ ПАРТИЮ</button><button class="s" id="p-menu">В МЕНЮ</button>';
-  if ($('p-rematch')) $('p-rematch').onclick = () => startGame({ mode: 'bot' });
+    '<button class="p" id="p-rematch">РЕВАНШ</button>' + '<button class="s" id="p-ana">РАЗОБРАТЬ ПАРТИЮ</button><button class="s" id="p-menu">В МЕНЮ</button>';
+  if ($('p-rematch')) $('p-rematch').onclick = () => (mode === 'bot' ? startGame({ mode: 'bot' }) : requestRematch());
   $('p-menu').onclick = toMenu;
   $('p-ana').onclick = () => { if (lastRec) viewRecord(lastRec, { analyze: true }); };
   paintMarks();
   if (mode === 'online' && online) {
+    clearActive(); if (online.beat) { clearInterval(online.beat); online.beat = null; }
     if (!online.suppress) {
       const winner = code === 'draw' ? 'draw' : (code === 'win' ? userColor : other(userColor));
       OD().sendResult(online.id, { winner, reason }).catch((e) => onlineError('сообщить результат', e));
@@ -897,7 +935,7 @@ const colorAt = (i) => (i % 2 === 0 ? 'w' : 'b');
 const curIdx = () => (viewIndex < 0 ? positions.length - 1 : viewIndex);
 const anaKey = (rec) => `draughtsAna1:${rec.date}:${rec.hub.length}`;
 function newAna(rec) { return { rec, on: false, token: (ana ? ana.token : 0) + 1, liveTok: 0, w: [], best: [], pv: [], dep: [], full: false, running: false, cancel: false, marks: [], loss: [] }; }
-function dropAna() { if (ana) ana.token++; ana = null; stopSearch(); show('ana', false); }
+function dropAna() { if (ana) ana.token++; ana = null; stopSearch(); show('ana', false); show('share', false); }
 
 // Оценка позиции i (в «шашках», с точки зрения БЕЛЫХ) + лучший ход и вариант. Scan отдаёт оценку с точки зрения ходящего.
 async function analyzePos(i, depth, onInfo) {
@@ -1119,6 +1157,7 @@ function startGame(cfg = { mode: 'bot' }) {
   }
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
   turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
+  posCounts = {}; posCounts[posKey(positions[0], 'w')] = 1; egKind = null; egPlies = 0;
   resetSel(); premove = null; pmSel = null; lastTick = null; dropAna();
   show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
   $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
@@ -1200,7 +1239,7 @@ async function openMyGames() {
   catch (e) { console.error(e); $('hist-list').innerHTML = '<div class="h-empty">Не удалось загрузить историю. Проверьте интернет.</div>'; }
 }
 function viewRecord(rec, opts = {}) {
-  dropAna(); replayFrom = opts.from || null; show('setup', false);
+  dropAna(); replayFrom = opts.from || null; show('setup', false); show('share', true); $('sh-msg').textContent = '';
   userColor = rec.userColor; mode = 'bot'; replayMode = true; gameOver = true; stopClock(); timed = false;
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = []; let t = 'w';
   for (const h of rec.hub) {
@@ -1250,12 +1289,16 @@ function onlineError(action, err) {
   console.error(action, err);
   showBanner(`<span style="color:#A23B33">Не удалось ${action}: ${(err && (err.code || err.message)) || 'ошибка сети'}</span>`);
 }
-function leaveOnline() {
-  if (!online) return;
-  if (online.unsub) { try { online.unsub(); } catch (e) {} }
-  if (online.poll) clearInterval(online.poll);
-  online = null;
+function leaveOnline(o = online) {
+  if (!o) return;
+  if (o.unsub) { try { o.unsub(); } catch (e) {} }
+  if (o.poll) clearInterval(o.poll);
+  if (o.beat) clearInterval(o.beat);
+  if (o === online) online = null;
 }
+const saveActive = () => { try { localStorage.setItem('pgActive', JSON.stringify({ game: 'draughts', id: online.id, role: online.role, t: Date.now() })); } catch (e) {} };
+const clearActive = () => { try { const a = JSON.parse(localStorage.getItem('pgActive') || 'null'); if (a && a.game === 'draughts') localStorage.removeItem('pgActive'); } catch (e) {} };
+const tms = (t) => (t == null ? null : (typeof t.toMillis === 'function' ? t.toMillis() : Number(t)));
 async function createOnline() {
   show('err', false);
   if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу сетевой игры. Проверьте интернет.');
@@ -1263,10 +1306,11 @@ async function createOnline() {
   const hostColor = settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
   const u = OD().currentUser;
   try {
+    const authUid = await OD().ensureAuth();
     const hostRating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
-    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating });
+    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating, hostAuthUid: authUid });
     leaveOnline();
-    online = { myRating: hostRating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc } };
+    online = { role: 'host', authUid, myRating: hostRating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc } };
     online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
     $('link-box').value = location.origin + location.pathname + '?game=' + id; showView('wait');
   } catch (e) { console.error(e); menuError('Не удалось создать игру. Попробуйте ещё раз.'); }
@@ -1298,10 +1342,11 @@ $('inv-ok').onclick = async () => {
   const name = $('inv-nick').value.trim() || 'Игрок'; $('nick').value = name; try { localStorage.setItem('draughtsNickname', name); } catch (e) {}
   const u = OD().currentUser; const id = pendingJoin;
   const guestRating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
-  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null, guestRating); } catch (e) { console.error(e); return menuError('Не удалось присоединиться.'); }
+  const authUid = await OD().ensureAuth();
+  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null, guestRating, authUid); } catch (e) { console.error(e); return menuError('Не удалось присоединиться.'); }
   if (!res.ok) { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
   leaveOnline();
-  online = { myRating: guestRating, last: null, id, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl };
+  online = { role: 'guest', authUid, myRating: guestRating, last: null, id, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl };
   online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
   beginMatch(res.data);
 };
@@ -1318,6 +1363,7 @@ function onSnap(data) {
   handleRemote(data);
 }
 function beginMatch(data) {
+  if (online.prev) { leaveOnline(online.prev); online.prev = null; }
   online.last = data; online.started = true; online.oppName = online.host ? data.guestName : data.hostName;
   const tc = data.timeControl || online.tc || { minutes: 10, inc: 0 };
   history.replaceState(null, '', location.pathname);
@@ -1325,6 +1371,9 @@ function beginMatch(data) {
   if (online.poll) clearInterval(online.poll);
   // страховка: раз в 3 секунды сверяем состояние (повторные данные безопасны — применяются только недостающие ходы)
   online.poll = setInterval(() => { if (online && online.started) OD().peekGame(online.id).then((d) => d && handleRemote(d)).catch(() => {}); }, 3000);
+  // присутствие: раз в 15 секунд отмечаемся на сервере — по этим отметкам видно, что соперник отключился
+  const beat = () => { if (online && online.started && !gameOver) OD().touch(online.id, online.role).catch(() => {}); };
+  beat(); online.beat = setInterval(beat, CFG.beat); saveActive();
   handleRemote(data);
 }
 function sendOnlineMove() {
@@ -1350,30 +1399,127 @@ async function syncMoves(data) {
 function handleRemote(data) {
   if (!online || !online.started) return;
   online.last = data;
-  syncMoves(data);
+  syncMoves(data); checkPresence(data);
   if (data.status === 'finished' && data.result && !gameOver) {
     const draw = data.result.winner === 'draw', iWon = data.result.winner === userColor;
     online.suppress = true; endGame(draw ? 'draw' : (iWon ? 'win' : 'loss'), data.result.reason || 'resign');
   }
+  if (data.rematch && data.rematch.id && data.rematch.by !== userColor && gameOver && online.rematchSeen !== data.rematch.id) { online.rematchSeen = data.rematch.id; showRematchInvite(data.rematch.id); }
   if (gameOver) return;
   if (data.drawOfferBy && data.drawOfferBy !== userColor) {
     showBanner('<span>Соперник предлагает ничью</span><span><button class="ok" id="b-ok">Принять</button> <button class="no" id="b-no">Отклонить</button></span>',
       () => OD().sendResult(online.id, { winner: 'draw', reason: 'draw-agree' }).catch((e) => onlineError('принять ничью', e)),
       () => { OD().clearDrawOffer(online.id).catch(() => {}); show('banner', false); });
   } else if (data.drawOfferBy === userColor) showBanner('Предложение ничьи отправлено…');
+  else if (online.gap > CFG.warn) showOfflineBanner(online.gap);
   else if (!($('banner').textContent || '').startsWith('Не удалось')) show('banner', false);
+}
+// Расхождение отметок присутствия считаем по серверным часам обоих игроков, поэтому разница часов на устройствах не мешает.
+function checkPresence(data) {
+  if (!online) return;
+  const mine = tms(online.role === 'host' ? data.hostSeen : data.guestSeen), opp = tms(online.role === 'host' ? data.guestSeen : data.hostSeen);
+  online.gap = mine != null && opp != null ? mine - opp : 0;
+  if (online.resumeFix && mine != null && data.lastMoveAt && shownMoves.length === (data.moves || []).length && shownMoves.length > 0) {
+    const el = mine - tms(data.lastMoveAt);    // сколько ходящий простоял, пока нас не было в партии
+    if (timed && el > 0) { timers[turn] = Math.max(0, timers[turn] - el / 1000); lastTick = null; updateClocks(); }
+    online.resumeFix = false;
+  }
+}
+function showOfflineBanner(gap) {
+  if (gap > CFG.claim) showBanner('<span>Соперник не в сети больше полутора минут</span><span><button class="ok" id="b-ok">Засчитать победу</button></span>',
+    () => OD().sendResult(online.id, { winner: userColor, reason: 'abandon' }).catch((e) => onlineError('засчитать победу', e)));
+  else showBanner('<span>Соперник не в сети… ждём</span>');
+}
+// ----- реванш -----
+async function requestRematch() {
+  if (!online) return;
+  const prev = online, authUid = await OD().ensureAuth(), u = OD().currentUser, tc = prev.tc || { minutes: 10, inc: 0 };
+  try {
+    const rating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null, hostColor = other(prev.myColor);
+    const id = await OD().createGame({ minutes: tc.minutes, inc: tc.inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating: rating, hostAuthUid: authUid });
+    await OD().offerRematch(prev.id, id, prev.myColor);
+    leaveOnline(prev); clearActive();
+    online = { role: 'host', authUid, myRating: rating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc };
+    online.unsub = OD().listenGame(id, onSnap, () => {});
+    $('post').querySelectorAll('button').forEach((b) => { if (b.id === 'p-rematch') { b.disabled = true; b.textContent = 'Ждём ответа соперника…'; } });
+  } catch (e) { onlineError('предложить реванш', e); }
+}
+function showRematchInvite(newId) {
+  const box = document.createElement('div'); box.id = 'rematch-invite';
+  box.innerHTML = '<div class="rt" style="margin:0 0 8px">Соперник предлагает реванш</div><button class="p" id="p-accept">ПРИНЯТЬ РЕВАНШ</button>';
+  $('post').insertBefore(box, $('post').firstChild); const old = $('p-rematch'); if (old) old.remove();
+  $('p-accept').onclick = async () => {
+    $('p-accept').disabled = true;
+    try {
+      const authUid = await OD().ensureAuth(), u = OD().currentUser, prev = online;
+      const data = await OD().peekGame(newId); if (!data || data.status !== 'waiting') { $('p-accept').textContent = 'Реванш уже недоступен'; return; }
+      const rating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
+      const res = await OD().joinGame(newId, myNick(), u ? u.uid : null, rating, authUid);
+      if (!res.ok) { $('p-accept').textContent = 'Реванш уже недоступен'; return; }
+      online = { role: 'guest', authUid, myRating: rating, last: null, id: newId, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl, prev };
+      online.unsub = OD().listenGame(newId, onSnap, () => {}); beginMatch(res.data);
+    } catch (e) { onlineError('принять реванш', e); }
+  };
+}
+// ----- возврат в партию после перезагрузки страницы -----
+async function checkResume() {
+  const q = new URLSearchParams(location.search); if (q.get('game') || q.get('replay') || q.get('view')) return;
+  let a = null; try { a = JSON.parse(localStorage.getItem('pgActive') || 'null'); } catch (e) {}
+  if (!a || a.game !== 'draughts' || Date.now() - a.t > 12 * 3600 * 1000) return;
+  document.documentElement.classList.add('boot-replay');
+  try {
+    if (!(await waitOnline())) return;
+    const authUid = await OD().ensureAuth(), data = await OD().peekGame(a.id);
+    if (!data || data.status !== 'active') { clearActive(); return; }
+    const mineUid = a.role === 'host' ? data.hostAuthUid : data.guestAuthUid;
+    if (mineUid && authUid && mineUid !== authUid) { clearActive(); return; }       // партия была под другим аккаунтом
+    const myColor = a.role === 'host' ? data.hostColor : (data.hostColor === 'w' ? 'b' : 'w');
+    online = { role: a.role, authUid, myRating: a.role === 'host' ? data.hostRating : data.guestRating, last: data, id: a.id, myColor, host: a.role === 'host', started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: data.timeControl, resumeFix: true };
+    online.unsub = OD().listenGame(a.id, onSnap, () => {}); beginMatch(data);
+  } catch (e) { console.warn('Не удалось вернуться в партию:', e); }
+  finally { document.documentElement.classList.remove('boot-replay'); }
 }
 
 /* ================= PWA / старт ================= */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
 }
-window.__draughts = { get ana() { return ana; }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+window.__draughts = { get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
 checkInvite();
+
+// ----- экспорт партии и ссылка «посмотреть без входа» -----
+function recordText(rec) {
+  const dt = rec.date ? new Date(rec.date).toLocaleDateString('ru-RU') : '';
+  const me = rec.userColor === 'w' ? 'белые' : 'чёрные', opp = rec.opponent ? `${rec.opponent} (по сети)` : 'Scan 3.1' + (rec.level ? `, уровень ${rec.level}` : '');
+  const lines = []; for (let i = 0; i < rec.shown.length; i += 2) lines.push(`${i / 2 + 1}. ${rec.shown[i]}${rec.shown[i + 1] ? ' ' + rec.shown[i + 1] : ''}`);
+  return `Pep Draughts · международные шашки · ${dt}\nЯ — ${me}, соперник — ${opp}\n${rec.resultText}\n\n${lines.join(' ')}`;
+}
+async function copyText(s) { try { await navigator.clipboard.writeText(s); return true; } catch (e) { const ta = document.createElement('textarea'); ta.value = s; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (x) {} ta.remove(); return ok; } }
+$('sh-copy').onclick = async () => { const rec = ana && ana.rec; if (!rec) return; $('sh-msg').textContent = (await copyText(recordText(rec))) ? 'Ходы скопированы' : 'Не удалось скопировать'; };
+$('sh-link').onclick = async () => {
+  const rec = ana && ana.rec; if (!rec) return; $('sh-msg').textContent = 'Создаю ссылку…';
+  try {
+    if (!(await waitOnline())) throw new Error('нет связи с сервером');
+    await OD().ensureAuth(); const id = await OD().shareGame(rec);
+    const link = location.origin + location.pathname.replace(/[^/]*$/, '') + '?view=' + id;
+    $('sh-msg').textContent = (await copyText(link)) ? 'Ссылка скопирована: любой сможет открыть партию' : link;
+  } catch (e) { console.error(e); $('sh-msg').textContent = 'Не удалось создать ссылку: ' + ((e && (e.code || e.message)) || 'ошибка'); }
+};
 
 // Ссылка из личного профиля в общем меню: ?replay=local:N или ?replay=cloud:ID
 async function checkReplay() {
-  const params = new URLSearchParams(location.search), param = params.get('replay'); if (!param) return;
+  const params = new URLSearchParams(location.search);
+  if (params.get('view')) {                                   // публичная ссылка на партию: вход не нужен
+    const id = params.get('view'); history.replaceState(null, '', location.pathname);
+    try {
+      if (!(await waitOnline())) return alert('Не удалось загрузить партию: нет связи с сервером.');
+      await OD().ensureAuth(); const rec = await OD().getShared(id);
+      if (rec) viewRecord(rec); else alert('Партия не найдена — возможно, ссылка неверна.');
+    } catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+    finally { document.documentElement.classList.remove('boot-replay'); }
+    return;
+  }
+  const param = params.get('replay'); if (!param) return;
   const fromProfile = params.get('from') === 'profile';
   history.replaceState(null, '', location.pathname);
   try {
@@ -1389,6 +1535,7 @@ async function checkReplay() {
   finally { document.documentElement.classList.remove('boot-replay'); }   // меню покажется только если партию открыть не удалось
 }
 checkReplay();
+checkResume();
 })();
 
 </script>
@@ -1399,7 +1546,7 @@ import {
   collection, query, orderBy, limit, getDocs, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, signInAnonymously
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1411,6 +1558,7 @@ const firebaseConfig = {
   appId: "1:170856560854:web:d9b6b766cbd56780ecf177"
 };
 
+const SHARED = 'sharedGames', ERRORS = 'clientErrors';
 const GAMES = 'draughtsGames';          // живые партии
 const PLAYER = 'playerDraughts';        // личная история: playerDraughts/{uid}/games/{gameId}
 
@@ -1438,21 +1586,22 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 const OD = {
   ready: false, currentUser: null,
 
-  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating }) {
+  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid }) {
     const id = randomId();
     await setDoc(doc(db, GAMES, id), {
       createdAt: serverTimestamp(), status: 'waiting', hostColor, hostName: hostName || 'Хост', hostUid: hostUid || null,
-      hostRating: hostRating != null ? hostRating : null, guestRating: null, guestName: null, guestUid: null, timeControl: { minutes, inc }, moves: [],
+      hostRating: hostRating != null ? hostRating : null, guestRating: null, guestName: null, guestUid: null,
+      hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, timeControl: { minutes, inc }, moves: [],
       whiteTimeMs: minutes * 60000, blackTimeMs: minutes * 60000, lastMoveAt: null, drawOfferBy: null, result: null
     });
     return id;
   },
   async peekGame(id) { const s = await getDoc(doc(db, GAMES, id)); return s.exists() ? s.data() : null; },
-  async joinGame(id, guestName, guestUid, guestRating) {
+  async joinGame(id, guestName, guestUid, guestRating, guestAuthUid) {
     const ref = doc(db, GAMES, id); const s = await getDoc(ref);
     if (!s.exists()) return { ok: false, reason: 'not_found' };
     const data = s.data(); if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-    await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, startedAt: serverTimestamp() });
+    await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, guestAuthUid: guestAuthUid || null, guestSeen: serverTimestamp(), startedAt: serverTimestamp() });
     return { ok: true, data };
   },
   listenGame(id, cb, onErr) {
@@ -1497,6 +1646,23 @@ const OD = {
     });
   },
 
+  // ---- анонимный вход: нужен, чтобы правила базы отличали игроков партии друг от друга (Google-аккаунт для игры не требуется) ----
+  async ensureAuth() {
+    if (auth.currentUser) return auth.currentUser.uid;
+    try { return (await signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Анонимный вход недоступен:', e.code); return null; }
+  },
+  // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
+  async touch(id, role) { await updateDoc(doc(db, GAMES, id), { [role === 'host' ? 'hostSeen' : 'guestSeen']: serverTimestamp() }); },
+  async offerRematch(oldId, newId, byColor) { await updateDoc(doc(db, GAMES, oldId), { rematch: { id: newId, by: byColor } }); },
+  async shareGame(rec) {
+    const id = randomId(10);
+    await setDoc(doc(db, SHARED, id), { game: 'draughts', date: rec.date || null, userColor: rec.userColor, result: rec.result, resultText: rec.resultText || '',
+      opponent: rec.opponent || null, level: rec.level || null, hub: rec.hub || [], shown: rec.shown || [], sharedAt: serverTimestamp() });
+    return id;
+  },
+  async getShared(id) { const s = await getDoc(doc(db, SHARED, id)); return s.exists() ? s.data() : null; },
+  async logError(o) { await setDoc(doc(db, ERRORS, randomId(12)), { ...o, at: serverTimestamp() }); },
+
   async signIn() { return (await signInWithPopup(auth, new GoogleAuthProvider())).user; },
   async signOutUser() { await fbSignOut(auth); },
 
@@ -1515,8 +1681,9 @@ try {
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app); auth = getAuth(app);
   onAuthStateChanged(auth, (u) => {
-    OD.currentUser = u ? { uid: u.uid, displayName: u.displayName, photoURL: u.photoURL } : null;
-    if (u) OD.ensureProfile(u).catch((e) => console.warn('Профиль:', e));
+    OD.authUid = u ? u.uid : null;
+    OD.currentUser = u && !u.isAnonymous ? { uid: u.uid, displayName: u.displayName, photoURL: u.photoURL } : null;   // анонимный игрок — не «вошедший»: рейтинга и профиля у него нет
+    if (u && !u.isAnonymous) OD.ensureProfile(u).catch((e) => console.warn('Профиль:', e));
     window.dispatchEvent(new Event('od-auth'));
   });
   OD.ready = true;
