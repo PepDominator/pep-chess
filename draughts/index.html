@@ -978,6 +978,7 @@ async function openMyGames() {
   catch (e) { console.error(e); $('hist-list').innerHTML = '<div class="h-empty">Не удалось загрузить историю. Проверьте интернет.</div>'; }
 }
 function viewRecord(rec) {
+  show('setup', false);
   userColor = rec.userColor; mode = 'bot'; replayMode = true; gameOver = true; stopClock(); timed = false;
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = []; let t = 'w';
   for (const h of rec.hub) {
@@ -1143,6 +1144,21 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 window.__draughts = { get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
 checkInvite();
+
+// Ссылка из личного профиля в общем меню: ?replay=local:N или ?replay=cloud:ID
+async function checkReplay() {
+  const param = new URLSearchParams(location.search).get('replay'); if (!param) return;
+  history.replaceState(null, '', location.pathname);
+  const [kind, ref] = param.split(':');
+  if (kind === 'local') { const rec = loadHistory()[parseInt(ref, 10)]; if (rec) viewRecord(rec); return; }
+  if (kind !== 'cloud') return;
+  if (!(await waitOnline())) return alert('Не удалось загрузить партию: нет связи с сервером.');
+  for (let i = 0; i < 50 && !(OD() && OD().currentUser); i++) await sleep(100);
+  const u = OD().currentUser; if (!u) return alert('Чтобы открыть облачную партию, войдите через Google.');
+  try { const rec = (await OD().listMyGames(u.uid, 100)).find((g) => g.id === ref); if (rec) viewRecord(rec); else alert('Партия не найдена в вашей истории.'); }
+  catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+}
+checkReplay();
 })();
 
 </script>

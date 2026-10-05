@@ -122,6 +122,28 @@ footer b { color:var(--text); font-weight:600; }
 .spark { margin-top:12px; width:100%; height:70px; display:block; }
 .pg-none { color:var(--muted); font-size:13.5px; padding:6px 0; }
 .acc-rate { font-family:'Roboto Mono',monospace; font-size:12px; color:var(--muted); font-weight:400; }
+
+.acc-btn { display:flex; align-items:center; gap:8px; background:none; border:1px solid transparent; padding:4px 10px 4px 5px; cursor:pointer; font:inherit; font-size:13px; font-weight:600; color:var(--text); transition:background .15s, border-color .15s; }
+.acc-btn:hover, .acc-btn:focus-visible { background:var(--panel); border-color:var(--border); outline:none; }
+.acc-btn .chev { color:var(--muted); font-size:18px; line-height:1; transition:transform .2s var(--ease); } .acc-btn:hover .chev { transform:translateX(3px); }
+.prof.wide { max-width:660px; }
+.ph .who { min-width:0; } .ph .sub { font-size:12.5px; color:var(--muted); margin-top:3px; }
+.ptabs { display:flex; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:#F3F2EA; }
+.ptabs button { flex:1; border:none; background:none; padding:11px 0; font:inherit; font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; }
+.ptabs button.on { background:var(--panel); color:var(--green); box-shadow:inset 0 -2px 0 var(--green); } .ptabs button:hover:not(.on) { background:#EAEADF; }
+.chips2 { display:flex; flex-wrap:wrap; gap:8px; padding:16px 28px 4px; }
+.chips2 span { background:#F3F2EA; border:1px solid var(--border); padding:6px 12px; font-size:12.5px; color:var(--muted); } .chips2 b { color:var(--text); font-weight:700; }
+.pg-bot { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); font-size:12.5px; color:var(--muted); }
+.filters { display:flex; flex-wrap:wrap; gap:10px; padding:14px 28px 8px; } .filters .seg button { padding:6px 14px; font-size:12.5px; }
+.glist { padding:4px 0 6px; }
+.gi { display:grid; grid-template-columns:12px 22px 1fr auto; align-items:center; gap:10px; padding:11px 28px; border-bottom:1px solid var(--border); color:inherit; text-decoration:none; transition:background .15s; }
+.gi:hover { background:#F6F5EE; } .gi:last-child { border-bottom:none; }
+.gi-dot { width:10px; height:10px; border-radius:50%; background:#9A9D8E; } .gi-dot.win { background:#3B5D4A; } .gi-dot.loss { background:#A23B33; }
+.gi-g { font-size:17px; text-align:center; color:var(--muted); }
+.gi-t { font-size:14px; font-weight:600; } .gi-m { font-size:12px; color:var(--muted); margin-top:2px; }
+.gi-open { font-size:12px; color:var(--green); font-weight:700; opacity:0; transition:opacity .15s; } .gi:hover .gi-open, .gi:focus-visible .gi-open { opacity:1; }
+.more { display:block; margin:10px auto 14px; padding:9px 22px; background:#F3F2EA; border:1px solid var(--border); font:inherit; font-size:13px; font-weight:700; color:var(--text); cursor:pointer; } .more:hover { background:#EAEADF; }
+.note { margin:6px 28px 14px; font-size:12px; color:#A2473B; }
 @keyframes fade { from { opacity:0; } to { opacity:1; } }
 
 @media (max-width:720px) {
@@ -129,7 +151,9 @@ footer b { color:var(--text); font-weight:600; }
   .mini { width:min(52%, 210px); }
   .art { padding-top:22px; }
   .lb-row { grid-template-columns:26px 34px 1fr auto; gap:10px; }
-  .ph, .pg { padding-left:20px; padding-right:20px; }
+  .ph, .pg, .chips2, .filters { padding-left:20px; padding-right:20px; }
+  .gi { padding-left:20px; padding-right:20px; grid-template-columns:12px 20px 1fr; } .gi-open { display:none; }
+  .note { margin-left:20px; margin-right:20px; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 </style>
@@ -146,7 +170,7 @@ footer b { color:var(--text); font-weight:600; }
 <div class="wrap">
   <div class="top">
     <button class="acc-in hidden" id="acc-in"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>Войти через Google</button>
-    <div class="acc-user hidden" id="acc-user"><img id="acc-img" alt=""><span id="acc-name"></span><span class="acc-rate" id="acc-rate"></span><button class="acc-out" id="acc-out">Выйти</button></div>
+    <div class="acc-user hidden" id="acc-user"><button class="acc-btn" id="acc-btn" title="Мой профиль: статистика, рейтинг, партии"><img id="acc-img" alt=""><span id="acc-name"></span><span class="acc-rate" id="acc-rate"></span><span class="chev" aria-hidden="true">›</span></button><button class="acc-out" id="acc-out">Выйти</button></div>
   </div>
 
   <header>
@@ -265,15 +289,17 @@ function spark(hist) {
     <polyline points="${xy.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#3B5D4A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
     <circle cx="${last[0]}" cy="${last[1]}" r="4" fill="#3B5D4A"/></svg>`;
 }
-function gameBlock(key, s) {
-  if (!s || !s.g) return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span></div><div class="pg-none">Рейтинговых партий ещё нет</div></div>`;
+function gameBlock(key, s, extra = '') {
+  if (!s || !s.g) return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span></div><div class="pg-none">Рейтинговых партий ещё нет</div>${extra}</div>`;
   const total = s.g || 1, pct = (n) => Math.round((n || 0) * 100 / total);
   return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span><span class="pg-meta">лучший: ${s.peak}</span></div>
     <div class="pg-r">${s.r}</div><div class="pg-meta">${s.g} ${plural(s.g)} · побед ${pct(s.w)}%</div>
     <div class="wdl"><i class="w" style="width:${pct(s.w)}%"></i><i class="d" style="width:${pct(s.d)}%"></i><i class="l" style="width:${100 - pct(s.w) - pct(s.d)}%"></i></div>
-    <div class="wdl-t"><span>Побед: ${s.w || 0}</span><span>Ничьих: ${s.d || 0}</span><span>Поражений: ${s.l || 0}</span></div>${spark(s.hist)}</div>`;
+    <div class="wdl-t"><span>Побед: ${s.w || 0}</span><span>Ничьих: ${s.d || 0}</span><span>Поражений: ${s.l || 0}</span></div>${spark(s.hist)}${extra}</div>`;
 }
 async function openProfile(uid, pre) {
+  if (window.PGData && window.PGData.me && uid === window.PGData.me) return openMyProfile();
+  document.querySelector('.prof').classList.remove('wide');
   const ov = document.getElementById('ov'), body = document.getElementById('prof-body');
   ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
   let p = pre; try { p = (await window.PGData.profile(uid)) || pre; } catch (e) { console.error(e); }
@@ -281,6 +307,74 @@ async function openProfile(uid, pre) {
   body.innerHTML = `<div class="ph">${avatar(p)}<h3 class="serif">${esc(p.displayName || 'Игрок')}</h3></div>` + gameBlock(curGame, p[curGame]) + gameBlock(curGame === 'chess' ? 'draughts' : 'chess', p[curGame === 'chess' ? 'draughts' : 'chess']);
 }
 const closeProfile = () => document.getElementById('ov').classList.add('hidden');
+
+// ---------- личный профиль: статистика, рейтинг, партии ----------
+const LOCAL_KEY = { chess: 'chessGameHistory', draughts: 'draughtsHistory' };
+const GAME_ICON = { chess: '♞', draughts: '⛀' };
+function loadLocal(game) {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY[game]) || '[]').map((r, i) => ({ ...r, game, idx: i })); } catch (e) { return []; }
+}
+function normalize(r, link, online) {
+  return { game: r.game, date: r.date, userColor: r.userColor, opponent: r.opponent || null, level: r.level, result: r.result, resultText: r.resultText || '',
+    moves: (r.moves ? r.moves.length : (r.shown ? r.shown.length : 0)), link, online };
+}
+function botStats(game, local) {
+  const b = local.filter((r) => !r.opponent), c = { w: 0, d: 0, l: 0 };
+  b.forEach((r) => { if (r.result === 'win') c.w++; else if (r.result === 'draw') c.d++; else c.l++; });
+  return b.length ? `<div class="pg-bot">Против бота: ${b.length} ${plural(b.length)} · ${c.w} / ${c.d} / ${c.l}</div>` : `<div class="pg-bot">Против бота партий пока нет</div>`;
+}
+const pluralMoves = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'ход' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'хода' : 'ходов'));
+let mp = null;
+async function openMyProfile() {
+  const D = window.PGData; if (!D || !D.me) return;
+  const ov = document.getElementById('ov'), body = document.getElementById('prof-body'), box = document.querySelector('.prof');
+  box.classList.add('wide'); ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
+  const [prof, cc, cd] = await Promise.allSettled([D.profile(D.me), D.myGames('chess'), D.myGames('draughts')]);
+  const p = (prof.status === 'fulfilled' && prof.value) || { displayName: D.user && D.user.displayName, photoURL: D.user && D.user.photoURL };
+  const localC = loadLocal('chess'), localD = loadLocal('draughts');
+  const cloudFail = cc.status === 'rejected' || cd.status === 'rejected';
+  const cloud = [].concat(cc.status === 'fulfilled' ? cc.value.map((r) => ({ ...r, game: 'chess' })) : [], cd.status === 'fulfilled' ? cd.value.map((r) => ({ ...r, game: 'draughts' })) : []);
+  const items = cloud.map((r) => normalize(r, `${r.game}/?replay=cloud:${encodeURIComponent(r.id)}`, true));
+  // локальные копии онлайн-партий, которые уже есть в облаке, не дублируем
+  [].concat(localC, localD).forEach((r) => {
+    if (r.opponent && cloud.some((c) => c.game === r.game && Math.abs(new Date(c.date) - new Date(r.date)) < 10000)) return;
+    items.push(normalize(r, `${r.game}/?replay=local:${r.idx}`, !!r.opponent));
+  });
+  items.sort((a, b) => new Date(b.date) - new Date(a.date));
+  mp = { p, items, local: { chess: localC, draughts: localD }, cloudFail, tab: 'ov', fg: 'all', fs: 'all', shown: 25 };
+  renderMy();
+}
+function renderMy() {
+  const { p, items, local, cloudFail } = mp, body = document.getElementById('prof-body');
+  const since = (window.PGData.user && window.PGData.user.since) ? `В Pep Games с ${new Date(window.PGData.user.since).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Мой профиль';
+  const rated = ((p.chess && p.chess.g) || 0) + ((p.draughts && p.draughts.g) || 0);
+  let html = `<div class="ph">${avatar(p)}<div class="who"><h3 class="serif">${esc(p.displayName || 'Игрок')}</h3><div class="sub">${esc(since)}</div></div></div>
+    <div class="ptabs"><button data-t="ov" class="${mp.tab === 'ov' ? 'on' : ''}">Обзор</button><button data-t="gm" class="${mp.tab === 'gm' ? 'on' : ''}">Партии (${items.length})</button></div>`;
+  if (mp.tab === 'ov') {
+    const bots = local.chess.concat(local.draughts).filter((r) => !r.opponent).length;
+    html += `<div class="chips2"><span>Рейтинговых партий: <b>${rated}</b></span><span>Против бота: <b>${bots}</b></span><span>Всего в истории: <b>${items.length}</b></span></div>`;
+    html += gameBlock('chess', p.chess, botStats('chess', local.chess)) + gameBlock('draughts', p.draughts, botStats('draughts', local.draughts));
+  } else {
+    const list = items.filter((r) => (mp.fg === 'all' || r.game === mp.fg) && (mp.fs === 'all' || (mp.fs === 'online') === r.online));
+    const seg = (name, opts) => `<div class="seg" data-f="${name}">${opts.map(([v, l]) => `<button data-v="${v}" class="${mp[name] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    html += `<div class="filters">${seg('fg', [['all', 'Все игры'], ['chess', 'Шахматы'], ['draughts', 'Шашки']])}${seg('fs', [['all', 'Любые'], ['online', 'По сети'], ['bot', 'С ботом']])}</div>`;
+    if (cloudFail) html += `<div class="note">Не удалось загрузить онлайн-партии из облака — показаны только сохранённые на этом устройстве.</div>`;
+    if (!list.length) html += `<div class="lb-empty">Партий по этим условиям пока нет.</div>`;
+    else {
+      html += '<div class="glist">' + list.slice(0, mp.shown).map((r) => {
+        const dt = new Date(r.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const who = r.opponent ? `против ${esc(r.opponent)} (по сети)` : `против бота${r.level ? ', уровень ' + esc(r.level) : ''}`;
+        return `<a class="gi" href="${r.link}"><span class="gi-dot ${esc(r.result)}"></span><span class="gi-g">${GAME_ICON[r.game]}</span><span><div class="gi-t">${esc(r.resultText)}</div><div class="gi-m">${dt} · ${r.userColor === 'w' ? 'белыми' : 'чёрными'} · ${who} · ${r.moves} ${pluralMoves(r.moves)}</div></span><span class="gi-open">Разобрать →</span></a>`;
+      }).join('') + '</div>';
+      if (list.length > mp.shown) html += `<button class="more" id="more">Показать ещё (${list.length - mp.shown})</button>`;
+    }
+  }
+  body.innerHTML = html;
+  body.querySelectorAll('.ptabs button').forEach((b) => { b.onclick = () => { mp.tab = b.dataset.t; renderMy(); }; });
+  body.querySelectorAll('.filters .seg').forEach((s) => s.querySelectorAll('button').forEach((b) => { b.onclick = () => { mp[s.dataset.f] = b.dataset.v; mp.shown = 25; renderMy(); }; }));
+  const more = document.getElementById('more'); if (more) more.onclick = () => { mp.shown += 25; renderMy(); };
+}
+document.getElementById('acc-btn').addEventListener('click', openMyProfile);
 document.getElementById('ov-x').onclick = closeProfile;
 document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeProfile(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfile(); });
@@ -315,7 +409,14 @@ window.PGData = {
     return s.docs.map((d) => ({ uid: d.id, ...d.data() }));
   },
   async profile(uid) { const s = await getDoc(doc(db, 'profiles', uid)); return s.exists() ? { uid, ...s.data() } : null; },
-  get me() { return auth.currentUser ? auth.currentUser.uid : null; }
+  get me() { return auth.currentUser ? auth.currentUser.uid : null; },
+  get user() { const u = auth.currentUser; return u ? { uid: u.uid, displayName: u.displayName, photoURL: u.photoURL, since: u.metadata && u.metadata.creationTime } : null; },
+  async myGames(key) {
+    const u = auth.currentUser; if (!u) return [];
+    const col = key === 'chess' ? 'playerGames' : 'playerDraughts';
+    const s = await getDocs(query(collection(db, col, u.uid, 'games'), orderBy('finishedAt', 'desc'), limit(100)));
+    return s.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
 };
 window.dispatchEvent(new Event('pg-ready'));
 

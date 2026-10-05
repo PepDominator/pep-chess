@@ -4138,6 +4138,27 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 
         checkUrlForOnlineInvite();
 
+        // Ссылка из личного профиля в общем меню: ?replay=local:N (локальная история) или ?replay=cloud:ID (облачная).
+        async function checkReplayParam() {
+            const param = new URLSearchParams(location.search).get('replay');
+            if (!param) return;
+            history.replaceState(null, '', location.pathname); // чтобы выход в меню (перезагрузка) не открывал партию снова
+            const [kind, ref] = param.split(':');
+            if (kind === 'local') { viewHistoryGame(parseInt(ref, 10)); return; }
+            if (kind !== 'cloud') return;
+            const available = await waitForOnlineChess();
+            if (!available) { alert('Не удалось загрузить партию: нет связи с сервером.'); return; }
+            for (let i = 0; i < 50 && !window.OnlineChess.currentUser; i++) await new Promise((r) => setTimeout(r, 100));
+            const u = window.OnlineChess.currentUser;
+            if (!u) { alert('Чтобы открыть облачную партию, войдите через Google.'); return; }
+            try {
+                const rec = (await window.OnlineChess.listMyGames(u.uid, 100)).find((g) => g.id === ref);
+                if (rec) viewGameRecord(rec); else alert('Партия не найдена в вашей истории.');
+            } catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+        }
+        // откладываем запуск: константы истории объявлены ниже по скрипту и до его конца ещё недоступны
+        setTimeout(() => checkReplayParam().catch((e) => { console.error(e); alert('Не удалось открыть партию.'); }), 0);
+
         // ==================== /СЕТЕВАЯ ИГРА ====================
 
         function updateWelcomeInfo() {
@@ -5260,6 +5281,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
         // То же самое, но принимает запись партии напрямую — используется и локальной историей,
         // и облачной историей сетевых партий (см. "Мои онлайн-партии").
         function viewGameRecord(record) {
+            document.getElementById('setup').style.display = 'none';
             document.getElementById('history-screen').style.display = 'none';
             document.getElementById('my-games-screen').style.display = 'none';
             document.getElementById('game-ui').style.display = 'flex';
