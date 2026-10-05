@@ -91,7 +91,9 @@ footer b { color:var(--text); font-weight:600; }
 .rank-head h2 { font-weight:400; font-size:clamp(22px,3vw,28px); margin:0; }
 .seg { display:flex; border:1px solid var(--border); background:#F3F2EA; }
 .seg button { border:none; background:none; padding:8px 18px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; font-family:inherit; }
-.seg button.on { background:var(--green); color:#fff; } .seg button:hover:not(.on) { background:#EAEADF; }
+.seg button.on { background:var(--green); color:#fff; }
+.seg-wrap { display:flex; flex-wrap:wrap; gap:8px; } #seg-cat button { padding:8px 12px; }
+.pg-sub { font-size:12px; color:var(--muted); letter-spacing:0; text-transform:none; font-weight:600; margin-left:6px; } .seg button:hover:not(.on) { background:#EAEADF; }
 .lb { border-top:1px solid var(--border); }
 .lb-row { display:grid; grid-template-columns:34px 38px 1fr auto; align-items:center; gap:12px; width:100%; padding:11px clamp(18px,3vw,30px); border:none; border-bottom:1px solid var(--border); background:none; text-align:left; cursor:pointer; font-family:inherit; color:inherit; transition:background .15s; }
 .lb-row:last-child { border-bottom:none; } .lb-row:hover { background:#F6F5EE; }
@@ -204,10 +206,10 @@ footer b { color:var(--text); font-weight:600; }
   <section class="rank" id="rank">
     <div class="rank-head">
       <h2 class="serif">Рейтинг игроков</h2>
-      <div class="seg" id="seg"><button class="on" data-g="chess">Шахматы</button><button data-g="draughts">Шашки</button></div>
+      <div class="seg-wrap"><div class="seg" id="seg"><button class="on" data-g="chess">Шахматы</button><button data-g="draughts">Шашки</button></div><div class="seg" id="seg-cat"><button data-c="bullet">Пуля</button><button class="on" data-c="blitz">Блиц</button><button data-c="rapid">Рапид</button><button data-c="classical">Классика</button></div></div>
     </div>
     <div class="lb" id="lb"><div class="lb-empty">Загрузка…</div></div>
-    <p class="rank-note">В таблице — игроки с хотя бы одной рейтинговой партией. Рейтинговая партия: онлайн, оба игрока вошли через Google, сыграно не меньше 3 ходов каждым. Рейтинг считается по системе Эло, у каждой игры свой. Нажмите на игрока, чтобы открыть профиль.</p>
+    <p class="rank-note">В таблице — игроки с хотя бы одной рейтинговой партией. Рейтинговая партия: онлайн, оба игрока вошли через Google, сыграно не меньше 3 ходов каждым. Рейтинг считается по системе Эло отдельно для каждой игры и категории времени: пуля (до 3 минут), блиц (до 8), рапид (до 25), классика (дольше). Категория определяется по формуле «минуты × 60 + добавление × 40 секунд». Нажмите на игрока, чтобы открыть профиль.</p>
   </section>
 
   <footer>
@@ -254,6 +256,15 @@ document.getElementById('cnt-draughts').textContent = count('draughtsHistory');
 
 // ---------- таблица лидеров и профили (данные приходят из модуля ниже через window.PGData) ----------
 const GAME_NAME = { chess: 'Шахматы', draughts: 'Шашки' };
+const CATS = ['bullet', 'blitz', 'rapid', 'classical'], CAT_NAME = { bullet: 'Пуля', blitz: 'Блиц', rapid: 'Рапид', classical: 'Классика' };
+let curCat = 'blitz';
+// у профиля может быть несколько рейтингов одной игры (по категориям времени) и «прежний» общий — собираем их списком
+function ratingBlocks(p, game) {
+  const out = [];
+  CATS.forEach((c) => { const s = p[game + '_' + c]; if (s && s.g) out.push({ key: game + '_' + c, game, label: `${GAME_NAME[game]}<span class="pg-sub">${CAT_NAME[c]}</span>`, s }); });
+  if (p[game] && p[game].g) out.push({ key: game, game, label: `${GAME_NAME[game]}<span class="pg-sub">прежний общий рейтинг</span>`, s: p[game] });
+  return out;
+}
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const initial = (n) => esc((n || '?').trim().charAt(0).toUpperCase() || '?');
 const avatar = (p) => `<span class="av">${p.photoURL ? `<img src="${esc(p.photoURL)}" alt="" referrerpolicy="no-referrer">` : initial(p.displayName)}</span>`;
@@ -265,12 +276,12 @@ async function renderLeaders() {
   const D = window.PGData;
   if (!D) { box.innerHTML = '<div class="lb-empty">Таблица рейтинга недоступна без интернета.</div>'; return; }
   let list;
-  try { list = await D.leaders(curGame); } catch (e) { console.error(e); if (token === lbToken) box.innerHTML = '<div class="lb-empty">Не удалось загрузить рейтинг. Проверьте интернет.</div>'; return; }
+  try { list = await D.leaders(curGame + '_' + curCat); } catch (e) { console.error(e); if (token === lbToken) box.innerHTML = '<div class="lb-empty">Не удалось загрузить рейтинг. Проверьте интернет.</div>'; return; }
   if (token !== lbToken) return;
   if (!list.length) { box.innerHTML = '<div class="lb-empty">Пока никто не сыграл рейтинговую партию.<br>Войдите через Google и станьте первым!</div>'; return; }
   box.innerHTML = '';
   list.forEach((p, i) => {
-    const s = p[curGame] || {}, row = document.createElement('button');
+    const s = p[curGame + '_' + curCat] || {}, row = document.createElement('button');
     row.className = 'lb-row' + (D.me && D.me === p.uid ? ' me' : '');
     row.innerHTML = `<span class="lb-pos">${i + 1}</span>${avatar(p)}<span><div class="lb-name">${esc(p.displayName || 'Игрок')}</div><div class="lb-sub">${s.g || 0} ${plural(s.g || 0)} · ${s.w || 0} / ${s.d || 0} / ${s.l || 0}</div></span><span class="lb-r">${s.r != null ? s.r : '—'}</span>`;
     row.onclick = () => openProfile(p.uid, p);
@@ -289,13 +300,23 @@ function spark(hist) {
     <polyline points="${xy.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#3B5D4A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
     <circle cx="${last[0]}" cy="${last[1]}" r="4" fill="#3B5D4A"/></svg>`;
 }
-function gameBlock(key, s, extra = '') {
-  if (!s || !s.g) return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span></div><div class="pg-none">Рейтинговых партий ещё нет</div>${extra}</div>`;
+function gameBlock(label, s, extra = '') {
+  if (!s || !s.g) return `<div class="pg"><div class="pg-top"><span class="pg-title">${label}</span></div><div class="pg-none">Рейтинговых партий ещё нет</div>${extra}</div>`;
   const total = s.g || 1, pct = (n) => Math.round((n || 0) * 100 / total);
-  return `<div class="pg"><div class="pg-top"><span class="pg-title">${GAME_NAME[key]}</span><span class="pg-meta">лучший: ${s.peak}</span></div>
+  return `<div class="pg"><div class="pg-top"><span class="pg-title">${label}</span><span class="pg-meta">лучший: ${s.peak}</span></div>
     <div class="pg-r">${s.r}</div><div class="pg-meta">${s.g} ${plural(s.g)} · побед ${pct(s.w)}%</div>
     <div class="wdl"><i class="w" style="width:${pct(s.w)}%"></i><i class="d" style="width:${pct(s.d)}%"></i><i class="l" style="width:${100 - pct(s.w) - pct(s.d)}%"></i></div>
     <div class="wdl-t"><span>Побед: ${s.w || 0}</span><span>Ничьих: ${s.d || 0}</span><span>Поражений: ${s.l || 0}</span></div>${spark(s.hist)}${extra}</div>`;
+}
+// Блоки рейтинга профиля: сначала выбранная игра, затем вторая; у каждой — все категории, где есть партии.
+function profileBlocks(p, extraFor) {
+  const order = [curGame, curGame === 'chess' ? 'draughts' : 'chess']; let html = '';
+  order.forEach((game) => {
+    const blocks = ratingBlocks(p, game), extra = typeof extraFor === 'function' ? extraFor(game) : '';
+    if (!blocks.length) html += gameBlock(GAME_NAME[game], null, extra);
+    else blocks.forEach((b, i) => { html += gameBlock(b.label, b.s, i === blocks.length - 1 ? extra : ''); });
+  });
+  return html;
 }
 async function openProfile(uid, pre) {
   if (window.PGData && window.PGData.me && uid === window.PGData.me) return openMyProfile();
@@ -304,7 +325,7 @@ async function openProfile(uid, pre) {
   ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
   let p = pre; try { p = (await window.PGData.profile(uid)) || pre; } catch (e) { console.error(e); }
   if (!p) { body.innerHTML = '<div class="lb-empty">Профиль не найден.</div>'; return; }
-  body.innerHTML = `<div class="ph">${avatar(p)}<h3 class="serif">${esc(p.displayName || 'Игрок')}</h3></div>` + gameBlock(curGame, p[curGame]) + gameBlock(curGame === 'chess' ? 'draughts' : 'chess', p[curGame === 'chess' ? 'draughts' : 'chess']);
+  body.innerHTML = `<div class="ph">${avatar(p)}<h3 class="serif">${esc(p.displayName || 'Игрок')}</h3></div>` + profileBlocks(p, null);
 }
 const closeProfile = () => document.getElementById('ov').classList.add('hidden');
 
@@ -353,13 +374,13 @@ async function openMyProfile(restore) {
 function renderMy() {
   const { p, items, local, cloudFail } = mp, body = document.getElementById('prof-body');
   const since = (window.PGData.user && window.PGData.user.since) ? `В Pep Games с ${new Date(window.PGData.user.since).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Мой профиль';
-  const rated = ((p.chess && p.chess.g) || 0) + ((p.draughts && p.draughts.g) || 0);
+  const rated = ['chess', 'draughts'].reduce((n, g) => n + ratingBlocks(p, g).reduce((m, b) => m + b.s.g, 0), 0);
   let html = `<div class="ph">${avatar(p)}<div class="who"><h3 class="serif">${esc(p.displayName || 'Игрок')}</h3><div class="sub">${esc(since)}</div></div></div>
     <div class="ptabs"><button data-t="ov" class="${mp.tab === 'ov' ? 'on' : ''}">Обзор</button><button data-t="gm" class="${mp.tab === 'gm' ? 'on' : ''}">Партии (${items.length})</button></div>`;
   if (mp.tab === 'ov') {
     const bots = local.chess.concat(local.draughts).filter((r) => !r.opponent).length;
     html += `<div class="chips2"><span>Рейтинговых партий: <b>${rated}</b></span><span>Против бота: <b>${bots}</b></span><span>Всего в истории: <b>${items.length}</b></span></div>`;
-    html += gameBlock('chess', p.chess, botStats('chess', local.chess)) + gameBlock('draughts', p.draughts, botStats('draughts', local.draughts));
+    html += profileBlocks(p, (game) => botStats(game, local[game]));
   } else {
     const list = items.filter((r) => (mp.fg === 'all' || r.game === mp.fg) && (mp.fs === 'all' || (mp.fs === 'online') === r.online));
     const seg = (name, opts) => `<div class="seg" data-f="${name}">${opts.map(([v, l]) => `<button data-v="${v}" class="${mp[name] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -398,6 +419,7 @@ document.getElementById('ov-x').onclick = closeProfile;
 document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeProfile(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfile(); });
 document.querySelectorAll('#seg button').forEach((b) => { b.onclick = () => { curGame = b.dataset.g; document.querySelectorAll('#seg button').forEach((x) => x.classList.toggle('on', x === b)); renderLeaders(); }; });
+document.querySelectorAll('#seg-cat button').forEach((b) => { b.onclick = () => { curCat = b.dataset.c; document.querySelectorAll('#seg-cat button').forEach((x) => x.classList.toggle('on', x === b)); renderLeaders(); }; });
 (function initRank() {
   if (window.PGData) return renderLeaders();
   window.addEventListener('pg-ready', renderLeaders, { once: true });
@@ -452,7 +474,8 @@ onAuthStateChanged(auth, async (u) => {
     let d = snap.exists() ? snap.data() : null;
     if (!d) await setDoc(ref, { ...base, updatedAt: serverTimestamp() });
     else if (d.displayName !== base.displayName || (d.photoURL || null) !== base.photoURL) await updateDoc(ref, { ...base, updatedAt: serverTimestamp() });
-    const parts = []; if (d && d.chess) parts.push('♞ ' + d.chess.r); if (d && d.draughts) parts.push('⛀ ' + d.draughts.r);
+    const parts = [], best = (g) => { let b = null; ['bullet', 'blitz', 'rapid', 'classical'].forEach((c) => { const s = d && d[g + '_' + c]; if (s && s.g && (!b || s.g > b.g)) b = { g: s.g, r: s.r }; }); if (!b && d && d[g] && d[g].g) b = { g: d[g].g, r: d[g].r }; return b; };
+    const bc = best('chess'), bd = best('draughts'); if (bc) parts.push('♞ ' + bc.r); if (bd) parts.push('⛀ ' + bd.r);
     $('acc-rate').textContent = parts.length ? ' · ' + parts.join('  ') : '';
   } catch (e) { console.warn('Профиль:', e); }
   document.querySelectorAll('.lb-row').forEach((r) => r.classList.remove('me'));

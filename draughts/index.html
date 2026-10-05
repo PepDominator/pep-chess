@@ -180,6 +180,12 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 .share button { background:#F3F2EA; border:1px solid var(--border); color:var(--text); padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; } .share button:hover { background:#EAEADF; }
 #sh-msg { font-size:12px; color:var(--muted); }
 #post button:disabled { opacity:.6; cursor:default; }
+.hint { font-size:12.5px; color:var(--muted); text-align:center; margin-top:16px; }
+.start.alt { background:#2F3A56; box-shadow:0 6px 16px rgba(47,58,86,.22); margin-top:10px; }
+.lobby-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--border); background:#F8F7F1; margin-bottom:6px; }
+.lobby-t { font-weight:700; font-size:14px; } .lobby-m { font-size:12px; color:var(--muted); margin-top:2px; }
+.lobby-row button { background:var(--green); color:#fff; border:none; padding:8px 18px; font-weight:700; cursor:pointer; font-family:inherit; } .lobby-row button:hover { filter:brightness(1.1); }
+.lobby-empty { font-size:13px; color:var(--muted); text-align:center; padding:10px 6px 4px; line-height:1.5; }
 </style>
 </head>
 <body>
@@ -207,7 +213,10 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
         <div class="side active" data-side="r"><i class="r"></i>Случайный цвет</div>
         <div class="side" data-side="w"><i class="w"></i>Белые</div>
       </div>
+      <div class="hint hidden" id="cat-hint"></div>
       <button class="start" id="start-btn">Сыграть с компьютером</button>
+      <button class="start alt hidden" id="quick-btn">Найти соперника</button>
+      <div id="lobby" class="hidden"><div class="or"><span>открытые игры</span></div><div id="lobby-list"></div></div>
       <div id="join-row" class="hidden">
         <div class="or"><span>или</span></div>
         <label class="lbl" for="join-code">Код игры от друга</label>
@@ -219,8 +228,8 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
     </div>
 
     <div id="v-wait" class="hidden center">
-      <div class="big-icon">⛀</div><div class="wt serif">Ждём соперника…</div>
-      <div class="ws">Отправьте эту ссылку другу — партия начнётся, как только он её откроет</div>
+      <div class="big-icon">⛀</div><div class="wt serif" id="wait-title">Ждём соперника…</div>
+      <div class="ws" id="wait-sub">Отправьте эту ссылку другу — партия начнётся, как только он её откроет</div>
       <div class="join-f"><input type="text" id="link-box" readonly><button id="copy-btn">Копировать</button></div>
       <button class="link" id="wait-cancel">Отменить</button>
     </div>
@@ -552,6 +561,11 @@ const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
+// ---------- категории рейтинга по контролю времени (формула как на lichess: минуты*60 + 40*добавление) ----------
+const CAT_NAME = { bullet: 'Пуля', blitz: 'Блиц', rapid: 'Рапид', classical: 'Классика' };
+function timeCategory(minutes, inc) { if (!minutes) return null; const t = minutes * 60 + 40 * (inc || 0); return t < 180 ? 'bullet' : t < 480 ? 'blitz' : t < 1500 ? 'rapid' : 'classical'; }
+function ratingKeyFor(game, minutes, inc) { const c = timeCategory(minutes, inc); return c ? game + '_' + c : null; }
+
 /* ================= настройки меню ================= */
 const PRESETS = [[1,0],[3,2],[5,0],[5,3],[10,0],[10,5],[15,10],[30,0],[30,20],[60,0],[0,0]];
 const LEVEL_DEPTH = [1, 2, 3, 5, 7, 9, 12, 16];
@@ -577,6 +591,9 @@ function paintMenu() {
   show('level-box', uiMode === 'bot'); show('join-row', uiMode === 'online');
   $('side-title').textContent = uiMode === 'online' ? 'Ваш цвет' : 'Сторона';
   $('start-btn').textContent = uiMode === 'online' ? 'Создать игру по ссылке' : 'Сыграть с компьютером';
+  show('quick-btn', uiMode === 'online'); show('lobby', uiMode === 'online'); show('cat-hint', uiMode === 'online');
+  { const [m, i] = PRESETS[settings.preset], c = timeCategory(m, i); $('cat-hint').textContent = c ? 'Рейтинговая категория: ' + CAT_NAME[c] : 'Без часов — партия нерейтинговая'; }
+  if (window.__lobby) { if (uiMode === 'online') window.__lobby.start(); else window.__lobby.stop(); }
   show('err', false);
 }
 $('tab-bot').onclick = () => { uiMode = 'bot'; paintMenu(); };
@@ -602,6 +619,45 @@ let online = null; // { id, myColor, host, started, unsub, poll, syncing, pendin
 const OD = () => window.OnlineDraughts;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
+// ---------- лобби: список открытых игр, ожидающих соперника ----------
+function createLobby(cfg) {
+  let unsub = null, items = [], skew = 0, tickT = null, skewDone = false;
+  const tms = (t) => (t == null ? null : (typeof t.toMillis === 'function' ? t.toMillis() : Number(t)));
+  const STALE = (window.__lobbyCfg && window.__lobbyCfg.stale) || 75000;
+  // Игра считается живой, если хозяин недавно отмечался на сервере (с поправкой на разницу часов устройства и сервера).
+  const fresh = (g) => { const now = Date.now() + skew, seen = tms(g.hostSeen), made = tms(g.createdAt); if (seen != null && now - seen > STALE) return false; if (made != null && now - made > 30 * 60000) return false; return true; };
+  const rows = () => { const me = cfg.myAuth();
+    return items.filter((g) => g.status === 'waiting' && g.open && g.timeControl && fresh(g) && !(me && g.hostAuthUid === me))
+      .sort((a, b) => (tms(a.createdAt) || 0) - (tms(b.createdAt) || 0) || (a.id < b.id ? -1 : 1)); };
+  function render() {
+    const box = cfg.listEl; if (!box) return; const list = rows(); box.innerHTML = '';
+    if (!list.length) { const e = document.createElement('div'); e.className = 'lobby-empty'; e.textContent = 'Открытых игр пока нет. Нажмите «Найти соперника» — ваша игра появится в этом списке у других игроков.'; box.appendChild(e); return; }
+    list.forEach((g) => {
+      const row = document.createElement('div'); row.className = 'lobby-row'; const info = document.createElement('div');
+      const t = document.createElement('div'); t.className = 'lobby-t'; t.textContent = (g.hostName || 'Игрок') + (g.hostRating != null ? ' · ' + g.hostRating : '');
+      const m = document.createElement('div'); m.className = 'lobby-m'; const cn = cfg.catName(g.timeControl);
+      m.textContent = `${g.timeControl.minutes}+${g.timeControl.inc}${cn ? ' · ' + cn : ''} · ${g.hostColor === 'w' ? 'играет белыми' : 'играет чёрными'}`;
+      info.appendChild(t); info.appendChild(m);
+      const b = document.createElement('button'); b.textContent = 'Играть'; b.onclick = () => cfg.onPick(g.id, g); row.appendChild(info); row.appendChild(b); box.appendChild(row);
+    });
+  }
+  async function start() {
+    if (unsub) return; const OD = cfg.OD(); if (!OD || !OD.ready || !OD.watchOpenGames) return;
+    unsub = OD.watchOpenGames((list) => { items = list; render(); if (cfg.onChange) cfg.onChange(); });
+    tickT = setInterval(render, 8000); render();
+    if (!skewDone) { skewDone = true; try { await OD.ensureAuth(); skew = (await OD.serverSkew()) || 0; render(); } catch (e) {} }
+  }
+  function stop() { if (unsub) { unsub(); unsub = null; } if (tickT) { clearInterval(tickT); tickT = null; } }
+  // Ищем подходящую открытую игру с тем же контролем времени. beforeId — брать только игры «старше» нашей (чтобы две одновременные
+  // заявки не разошлись: младшая всегда присоединяется к старшей).
+  function findMatch(tc, beforeId) {
+    let c = rows().filter((g) => g.timeControl.minutes === tc.minutes && g.timeControl.inc === tc.inc);
+    if (beforeId) c = c.filter((g) => g.id < beforeId);
+    return c[0] || null;
+  }
+  return { start, stop, findMatch, rows, render };
+}
+
 let errCount = 0;
 function logClientError(kind, msg) {
   if (++errCount > 5) return;
@@ -609,6 +665,9 @@ function logClientError(kind, msg) {
 }
 window.addEventListener('error', (e) => logClientError('error', `${e.message} @${String(e.filename || '').split('/').pop()}:${e.lineno}`));
 window.addEventListener('unhandledrejection', (e) => logClientError('promise', (e.reason && (e.reason.message || e.reason)) || 'rejection'));
+const lobby = createLobby({ OD: () => OD(), listEl: $('lobby-list'), myAuth: () => (OD() && OD().authUid) || null,
+  catName: (tc) => { const c = timeCategory(tc.minutes, tc.inc); return c ? CAT_NAME[c] : ''; }, onPick: (id) => joinOpen(id), onChange: () => quickCheck() });
+window.__lobby = lobby;
 
 const sqNum = (r, c) => rowColToSquare(r, c);
 const flipped = () => userColor === 'b';
@@ -863,11 +922,13 @@ async function applyRating(code) {
     const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : online.myRating), oppR = amHost ? d.guestRating : d.hostRating;
     if (!oppUid || oppUid === u.uid || myR == null || oppR == null || hubMoves.length < 6) return;
     const score = code === 'win' ? 1 : code === 'draw' ? 0.5 : 0;
-    const res = await OD().applyRated({ user: u, key: 'draughts', gameId: online.id, myRating: myR, oppRating: oppR, score, oppName: online.oppName, oppUid });
+    const tcx = online.tc || d.timeControl || {}, rkey = ratingKeyFor('draughts', tcx.minutes, tcx.inc);
+    if (!rkey) return;                                        // партия без часов — нерейтинговая
+    const res = await OD().applyRated({ user: u, key: rkey, gameId: online.id, myRating: myR, oppRating: oppR, score, oppName: online.oppName, oppUid });
     if (!res) return;
     const line = document.createElement('div');
     line.style.cssText = 'text-align:center;font-size:13px;font-weight:700;margin-bottom:10px;color:' + (res.delta >= 0 ? '#3B5D4A' : '#A23B33');
-    line.textContent = 'Рейтинг: ' + res.r + ' (' + (res.delta >= 0 ? '+' : '') + res.delta + ')';
+    line.textContent = 'Рейтинг (' + CAT_NAME[rkey.split('_')[1]] + '): ' + res.r + ' (' + (res.delta >= 0 ? '+' : '') + res.delta + ')';
     $('post').insertBefore(line, $('post').firstChild);
   } catch (e) { console.error('Рейтинг не обновился:', e); }
 }
@@ -1158,7 +1219,7 @@ function startGame(cfg = { mode: 'bot' }) {
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
   turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
   posCounts = {}; posCounts[posKey(positions[0], 'w')] = 1; egKind = null; egPlies = 0;
-  resetSel(); premove = null; pmSel = null; lastTick = null; dropAna();
+  resetSel(); premove = null; pmSel = null; lastTick = null; dropAna(); if (window.__lobby) window.__lobby.stop();
   show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
   $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
   { const orat = mode === 'online' ? oppRating() : null, mine = mode === 'online' && online ? online.myRating : null;
@@ -1272,7 +1333,7 @@ $('acc-in').onclick = async () => {
   try { await OD().signIn(); } catch (e) { if (!e || e.code !== 'auth/popup-closed-by-user') { console.error(e); alert('Не удалось войти через Google. Попробуйте ещё раз.'); } }
 };
 $('acc-out').onclick = async () => { try { await OD().signOutUser(); } catch (e) { console.error(e); } };
-window.addEventListener('od-auth', paintAccount); window.addEventListener('od-ready', paintAccount);
+window.addEventListener('od-auth', paintAccount); window.addEventListener('od-ready', () => { paintAccount(); paintMenu(); });
 
 /* ================= сетевая игра ================= */
 function waitOnline() {
@@ -1294,32 +1355,39 @@ function leaveOnline(o = online) {
   if (o.unsub) { try { o.unsub(); } catch (e) {} }
   if (o.poll) clearInterval(o.poll);
   if (o.beat) clearInterval(o.beat);
+  if (o.waitBeat) clearInterval(o.waitBeat);
   if (o === online) online = null;
 }
 const saveActive = () => { try { localStorage.setItem('pgActive', JSON.stringify({ game: 'draughts', id: online.id, role: online.role, t: Date.now() })); } catch (e) {} };
 const clearActive = () => { try { const a = JSON.parse(localStorage.getItem('pgActive') || 'null'); if (a && a.game === 'draughts') localStorage.removeItem('pgActive'); } catch (e) {} };
 const tms = (t) => (t == null ? null : (typeof t.toMillis === 'function' ? t.toMillis() : Number(t)));
-async function createOnline() {
+async function createOnline(open = false) {
   show('err', false);
   if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу сетевой игры. Проверьте интернет.');
   const [minutes, inc] = PRESETS[settings.preset];
-  const hostColor = settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
-  const u = OD().currentUser;
+  const hostColor = open || settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
+  const u = OD().currentUser, key = ratingKeyFor('draughts', minutes, inc);
   try {
     const authUid = await OD().ensureAuth();
-    const hostRating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
-    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating, hostAuthUid: authUid });
+    const hostRating = u && key ? await OD().getRating(u.uid, key).catch(() => null) : null;
+    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating, hostAuthUid: authUid, open });
     leaveOnline();
-    online = { role: 'host', authUid, myRating: hostRating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc } };
+    online = { role: 'host', authUid, myRating: hostRating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc }, quick: open };
     online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
-    $('link-box').value = location.origin + location.pathname + '?game=' + id; showView('wait');
+    // пока ждём соперника, отмечаемся на сервере — по этой отметке игра видна в списке открытых игр
+    const wb = () => { if (online && !online.started && online.id === id) OD().touch(id, 'host').catch(() => {}); };
+    online.waitBeat = setInterval(wb, CFG.beat);
+    $('link-box').value = location.origin + location.pathname + '?game=' + id;
+    $('wait-title').textContent = open ? 'Ищем соперника…' : 'Ждём соперника…';
+    $('wait-sub').textContent = open ? 'Ваша игра видна в списке открытых игр. Как только кто-то её выберет, партия начнётся. Можно также отправить ссылку другу.' : 'Отправьте эту ссылку другу — партия начнётся, как только он её откроет';
+    showView('wait');
   } catch (e) { console.error(e); menuError('Не удалось создать игру. Попробуйте ещё раз.'); }
 }
 $('copy-btn').onclick = () => {
   const box = $('link-box'); box.select();
   (navigator.clipboard ? navigator.clipboard.writeText(box.value) : Promise.reject()).then(() => { $('copy-btn').textContent = 'Скопировано!'; setTimeout(() => { $('copy-btn').textContent = 'Копировать'; }, 1500); }).catch(() => { try { document.execCommand('copy'); } catch (e) {} });
 };
-$('wait-cancel').onclick = () => { leaveOnline(); showView('config'); };
+$('wait-cancel').onclick = () => { if (online && !online.started) OD().cancelGame(online.id).catch(() => {}); leaveOnline(); showView('config'); };
 
 let pendingJoin = null;
 async function prepareJoin(id) {
@@ -1337,19 +1405,42 @@ $('join-btn').onclick = () => {
   prepareJoin(id);
 };
 $('inv-no').onclick = () => { pendingJoin = null; showView('config'); history.replaceState(null, '', location.pathname); };
-$('inv-ok').onclick = async () => {
-  if (!pendingJoin) return;
-  const name = $('inv-nick').value.trim() || 'Игрок'; $('nick').value = name; try { localStorage.setItem('draughtsNickname', name); } catch (e) {}
-  const u = OD().currentUser; const id = pendingJoin;
-  const guestRating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
-  const authUid = await OD().ensureAuth();
-  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null, guestRating, authUid); } catch (e) { console.error(e); return menuError('Не удалось присоединиться.'); }
+async function joinGameNow(id, name) {
+  const u = OD().currentUser, authUid = await OD().ensureAuth();
+  const pre = await OD().peekGame(id);
+  if (!pre || pre.status !== 'waiting') { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
+  const key = pre.timeControl ? ratingKeyFor('draughts', pre.timeControl.minutes, pre.timeControl.inc) : null;
+  const guestRating = u && key ? await OD().getRating(u.uid, key).catch(() => null) : null;
+  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null, guestRating, authUid); } catch (e) { console.error(e); showView('config'); return menuError('Не удалось присоединиться — возможно, игру уже заняли.'); }
   if (!res.ok) { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
   leaveOnline();
   online = { role: 'guest', authUid, myRating: guestRating, last: null, id, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl };
   online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
   beginMatch(res.data);
+}
+$('inv-ok').onclick = async () => {
+  if (!pendingJoin) return;
+  const name = $('inv-nick').value.trim() || 'Игрок'; $('nick').value = name; try { localStorage.setItem('draughtsNickname', name); } catch (e) {}
+  await joinGameNow(pendingJoin, name);
 };
+// ----- лобби и быстрый подбор -----
+function joinOpen(id) { return joinGameNow(id, myNick()); }
+$('quick-btn').onclick = async () => {
+  show('err', false); const [minutes, inc] = PRESETS[settings.preset];
+  if (!minutes) return menuError('Для поиска соперника выберите партию с часами.');
+  if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу сетевой игры.');
+  const m = lobby.findMatch({ minutes, inc });
+  if (m) return joinOpen(m.id);
+  await createOnline(true);
+};
+// Пока наша открытая игра ждёт, смотрим список: если появилась более «старая» заявка с тем же временем — присоединяемся к ней, а свою снимаем.
+let quickBusy = false;
+async function quickCheck() {
+  if (quickBusy || !online || online.started || !online.quick || !online.host) return;
+  const better = lobby.findMatch(online.tc, online.id); if (!better) return;
+  quickBusy = true;
+  try { const mine = online; await OD().cancelGame(mine.id).catch(() => {}); leaveOnline(mine); await joinOpen(better.id); } finally { quickBusy = false; }
+}
 async function checkInvite() {
   const id = new URLSearchParams(location.search).get('game'); if (!id) return;
   uiMode = 'online'; paintMenu(); await prepareJoin(id);
@@ -1364,6 +1455,7 @@ function onSnap(data) {
 }
 function beginMatch(data) {
   if (online.prev) { leaveOnline(online.prev); online.prev = null; }
+  if (online.waitBeat) { clearInterval(online.waitBeat); online.waitBeat = null; }
   online.last = data; online.started = true; online.oppName = online.host ? data.guestName : data.hostName;
   const tc = data.timeControl || online.tc || { minutes: 10, inc: 0 };
   history.replaceState(null, '', location.pathname);
@@ -1435,7 +1527,7 @@ async function requestRematch() {
   if (!online) return;
   const prev = online, authUid = await OD().ensureAuth(), u = OD().currentUser, tc = prev.tc || { minutes: 10, inc: 0 };
   try {
-    const rating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null, hostColor = other(prev.myColor);
+    const rk = ratingKeyFor('draughts', tc.minutes, tc.inc), rating = u && rk ? await OD().getRating(u.uid, rk).catch(() => null) : null, hostColor = other(prev.myColor);
     const id = await OD().createGame({ minutes: tc.minutes, inc: tc.inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating: rating, hostAuthUid: authUid });
     await OD().offerRematch(prev.id, id, prev.myColor);
     leaveOnline(prev); clearActive();
@@ -1453,7 +1545,7 @@ function showRematchInvite(newId) {
     try {
       const authUid = await OD().ensureAuth(), u = OD().currentUser, prev = online;
       const data = await OD().peekGame(newId); if (!data || data.status !== 'waiting') { $('p-accept').textContent = 'Реванш уже недоступен'; return; }
-      const rating = u ? await OD().getRating(u.uid, 'draughts').catch(() => null) : null;
+      const rk = data.timeControl ? ratingKeyFor('draughts', data.timeControl.minutes, data.timeControl.inc) : null, rating = u && rk ? await OD().getRating(u.uid, rk).catch(() => null) : null;
       const res = await OD().joinGame(newId, myNick(), u ? u.uid : null, rating, authUid);
       if (!res.ok) { $('p-accept').textContent = 'Реванш уже недоступен'; return; }
       online = { role: 'guest', authUid, myRating: rating, last: null, id: newId, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl, prev };
@@ -1543,7 +1635,7 @@ checkResume();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp,
-  collection, query, orderBy, limit, getDocs, runTransaction
+  collection, query, orderBy, limit, getDocs, runTransaction, where
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, signInAnonymously
@@ -1586,12 +1678,12 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 const OD = {
   ready: false, currentUser: null,
 
-  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid }) {
+  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid, open }) {
     const id = randomId();
     await setDoc(doc(db, GAMES, id), {
       createdAt: serverTimestamp(), status: 'waiting', hostColor, hostName: hostName || 'Хост', hostUid: hostUid || null,
       hostRating: hostRating != null ? hostRating : null, guestRating: null, guestName: null, guestUid: null,
-      hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, timeControl: { minutes, inc }, moves: [],
+      hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, open: !!open, timeControl: { minutes, inc }, moves: [],
       whiteTimeMs: minutes * 60000, blackTimeMs: minutes * 60000, lastMoveAt: null, drawOfferBy: null, result: null
     });
     return id;
@@ -1638,7 +1730,7 @@ const OD = {
       const p = await tx.get(pref);
       const data = p.exists() ? p.data() : {};
       const { delta, next } = eloUpdate(data[key], myRating, oppRating, score, oppName, Date.now());
-      const upd = { [key]: next, [key === 'chess' ? 'rChess' : 'rDraughts']: next.r, updatedAt: serverTimestamp() };
+      const upd = { [key]: next, [key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key]: next.r, updatedAt: serverTimestamp() };
       if (p.exists()) tx.update(pref, upd);
       else tx.set(pref, { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null, ...upd });
       tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score });
@@ -1652,6 +1744,18 @@ const OD = {
     try { return (await signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Анонимный вход недоступен:', e.code); return null; }
   },
   // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
+  // ---- лобби: открытые игры, ожидающие соперника ----
+  watchOpenGames(cb) {
+    const q = query(collection(db, GAMES), where('status', '==', 'waiting'), where('open', '==', true), limit(30));
+    return onSnapshot(q, (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => console.warn('Лобби:', e));
+  },
+  async cancelGame(id) { await updateDoc(doc(db, GAMES, id), { status: 'cancelled' }); },
+  // Разница между часами сервера и этого устройства (мс): нужна, чтобы правильно отличать «свежие» игры от брошенных.
+  async serverSkew() {
+    const uid = auth.currentUser && auth.currentUser.uid; if (!uid) return 0;
+    const ref = doc(db, 'presence', uid), t0 = Date.now(); await setDoc(ref, { t: serverTimestamp() });
+    const s = await getDoc(ref), t1 = Date.now(); return s.data().t.toMillis() - (t0 + t1) / 2;
+  },
   async touch(id, role) { await updateDoc(doc(db, GAMES, id), { [role === 'host' ? 'hostSeen' : 'guestSeen']: serverTimestamp() }); },
   async offerRematch(oldId, newId, byColor) { await updateDoc(doc(db, GAMES, oldId), { rematch: { id: newId, by: byColor } }); },
   async shareGame(rec) {
