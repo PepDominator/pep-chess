@@ -7,6 +7,15 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Pep Draughts</title>
+<script>if (/[?&]replay=/.test(location.search)) document.documentElement.classList.add('boot-replay');</script>
+<style>
+#boot-loader { display:none; }
+.boot-replay #setup, .boot-replay .menu-bg { display:none !important; }
+.boot-replay #boot-loader { display:flex; position:fixed; inset:0; z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:14px;
+  color:#6E7568; font:14px 'Noto Sans',system-ui,sans-serif; background:#EEF0E7; }
+.boot-replay #boot-loader::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid #D9DBCC; border-top-color:#3B5D4A; animation:bootspin .8s linear infinite; }
+@keyframes bootspin { to { transform:rotate(360deg); } }
+</style>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -142,10 +151,30 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 .modal { position:relative; }
 .back-hub { position:absolute; top:14px; left:16px; font-size:12px; color:var(--muted); text-decoration:none; z-index:3; }
 .back-hub:hover { color:var(--text); }
+
+.ana { background:#F8F7F1; border-bottom:1px solid var(--border); }
+.ana-head { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; }
+.ana-title { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--green); font-weight:700; }
+.ana-head button, .ana-row button { background:var(--green); color:#fff; border:none; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.ana-head button:hover, .ana-row button:hover { filter:brightness(1.12); }
+.ana-body { padding:0 16px 10px; }
+.evbar { position:relative; height:22px; background:#2A2E24; border:1px solid var(--border); overflow:hidden; }
+.evw { position:absolute; left:0; top:0; bottom:0; width:50%; background:#FBFAF4; transition:width .35s cubic-bezier(.35,.5,.35,1); }
+.evl { position:absolute; right:6px; top:50%; transform:translateY(-50%); font-family:'Roboto Mono',monospace; font-size:12px; font-weight:700; color:#fff; mix-blend-mode:difference; }
+.ana-best { font-size:13px; margin-top:8px; line-height:1.5; } .ana-best .dim { color:var(--muted); font-size:12px; }
+.ana-pv { font-family:'Roboto Mono',monospace; font-size:11.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agraph { width:100%; height:64px; display:block; margin-top:8px; cursor:pointer; background:#FDFDFA; border:1px solid var(--border); }
+.ana-row { display:flex; align-items:center; gap:10px; margin-top:8px; } #ana-prog { font-size:12px; color:var(--muted); }
+.ana-sum { font-size:12px; color:var(--muted); line-height:1.6; margin-top:6px; } .ana-sum b { color:var(--text); }
+.mk { font-size:11px; font-weight:800; margin-left:5px; } .mk.q1 { color:#C9A227; } .mk.q2 { color:#D9822B; } .mk.q3 { color:#C0392B; }
+.sq.best { box-shadow:inset 0 0 0 3px rgba(47,58,86,.85); }
+.sq.bestto { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.28), inset 0 0 0 3px rgba(47,58,86,.85); }
+#moves { min-height:90px; }
+.ana-title { white-space:nowrap; letter-spacing:1.5px; } .ana-head button { white-space:nowrap; }
 </style>
 </head>
 <body>
-
+<div id="boot-loader">Загрузка партии…</div>
 <div id="setup" class="modal">
   <a class="back-hub" href="../">← Все игры</a>
   <div class="acc-bar">
@@ -210,6 +239,17 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
     <div class="player" id="name-top"></div>
     <div class="clock" id="clock-top"><button class="x" id="exit-btn" title="В меню">✕</button><span id="t-top">10:00</span></div>
     <div class="status" id="status"></div>
+    <div class="ana hidden" id="ana">
+      <div class="ana-head"><span class="ana-title">Разбор движком</span><button id="ana-toggle">Включить</button></div>
+      <div class="ana-body hidden" id="ana-body">
+        <div class="evbar"><div class="evw" id="ev-w"></div><span class="evl" id="ev-l">0.00</span></div>
+        <div class="ana-best" id="ana-best"></div>
+        <div class="ana-pv" id="ana-pv"></div>
+        <div id="ana-graph"></div>
+        <div class="ana-row"><button id="ana-all">Разобрать всю партию</button><span id="ana-prog"></span></div>
+        <div class="ana-sum" id="ana-sum"></div>
+      </div>
+    </div>
     <div class="nav">
       <button id="n-first">⏮</button><button id="n-prev">◀</button><button id="n-next">▶</button><button id="n-last">⏭</button>
     </div>
@@ -544,6 +584,9 @@ let turn = 'w', viewIndex = -1, gameOver = false, busy = false, replayMode = fal
 let timers = { w: 600, b: 600 }, incSec = 0, timed = true, lastTick = null, tickHandle = null;
 let sel = null, candidates = [], stepIdx = 1, chosen = [];
 let premove = null, pmSel = null, quietPlies = 0, suppressClick = false;
+let replayFrom = null;  // откуда открыт просмотр: 'profile' (из общего меню), 'history' (из списка партий) или null
+let histKind = 'local'; // какой список партий открыт: 'local' или 'cloud'
+let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
 
@@ -587,9 +630,10 @@ function renderPieces() {
 }
 const pieceElAt = (r, c) => $('pieces').querySelector(`.piece[data-r="${r}"][data-c="${c}"]`);
 function paintMarks() {
-  document.querySelectorAll('#board .sq').forEach((s) => s.classList.remove('sel', 'target', 'cap', 'path', 'last', 'movable', 'pre'));
+  document.querySelectorAll('#board .sq').forEach((s) => s.classList.remove('sel', 'target', 'cap', 'path', 'last', 'movable', 'pre', 'best', 'bestto'));
   const live = viewIndex < 0, idx = live ? positions.length - 1 : viewIndex;
   if (idx > 0 && lastMoveSq[idx - 1]) lastMoveSq[idx - 1].forEach(([r, c]) => sqEl(r, c).classList.add('last'));
+  if (replayMode) markBest(idx);
   if (!live || gameOver || replayMode) return;
   if (turn !== userColor) {
     if (pmSel) sqEl(pmSel[0], pmSel[1]).classList.add('pre');
@@ -756,9 +800,10 @@ function endGame(code, reason) {
   const score = code === 'win' ? (userColor === 'w' ? '1–0' : '0–1') : code === 'loss' ? (userColor === 'w' ? '0–1' : '1–0') : '½–½';
   const post = $('post'); show('post', true);
   post.innerHTML = `<div class="res">${score}</div><div class="rt">${text}</div>` +
-    (mode === 'bot' ? '<button class="p" id="p-rematch">РЕВАНШ</button>' : '') + '<button class="s" id="p-menu">В МЕНЮ</button>';
+    (mode === 'bot' ? '<button class="p" id="p-rematch">РЕВАНШ</button>' : '') + '<button class="s" id="p-ana">РАЗОБРАТЬ ПАРТИЮ</button><button class="s" id="p-menu">В МЕНЮ</button>';
   if ($('p-rematch')) $('p-rematch').onclick = () => startGame({ mode: 'bot' });
   $('p-menu').onclick = toMenu;
+  $('p-ana').onclick = () => { if (lastRec) viewRecord(lastRec, { analyze: true }); };
   paintMarks();
   if (mode === 'online' && online) {
     if (!online.suppress) {
@@ -789,8 +834,15 @@ async function applyRating(code) {
   } catch (e) { console.error('Рейтинг не обновился:', e); }
 }
 
-/* ================= бот Scan ================= */
-let worker = null, workerReady = null, pendingResolve = null;
+/* ================= движок Scan: общий слой для бота и разбора ================= */
+let worker = null, workerReady = null, curSearch = null, searchQueue = Promise.resolve();
+function parseInfo(msg) {
+  const o = {}; let m;
+  if ((m = msg.match(/\bscore=(-?[\d.]+)/))) o.score = parseFloat(m[1]);
+  if ((m = msg.match(/\bdepth=(\d+)/))) o.depth = parseInt(m[1], 10);
+  if ((m = msg.match(/\bpv=(?:"([^"]*)"|(\S+))/))) o.pv = (m[1] || m[2]).split(/\s+/).filter(Boolean);
+  return o;
+}
 function ensureWorker() {
   if (workerReady) return workerReady;
   workerReady = new Promise((resolve, reject) => {
@@ -800,20 +852,27 @@ function ensureWorker() {
       const msg = String(e.data);
       if (msg.includes('wait')) { worker.postMessage('set-param name=variant value=normal'); worker.postMessage('init'); }
       else if (msg.includes('ready') && !inited) { inited = true; resolve(); }
-      else if (msg.startsWith('done') && pendingResolve) { const m = msg.match(/move=(\S+)/); const f = pendingResolve; pendingResolve = null; f(m ? m[1] : null); }
+      else if (msg.startsWith('info') && curSearch) { Object.assign(curSearch.last, parseInfo(msg)); if (curSearch.onInfo) curSearch.onInfo({ ...curSearch.last }); }
+      else if (msg.startsWith('done') && curSearch) { const c = curSearch; curSearch = null; const m = msg.match(/move=(\S+)/); c.resolve({ ...c.last, move: m ? m[1] : null }); }
     };
     worker.postMessage('hub');
   });
   return workerReady;
 }
-async function askEngine(board, color, depth) {
-  await ensureWorker();
-  return new Promise((resolve) => {
-    pendingResolve = resolve;
-    worker.postMessage('pos pos=' + boardToHubPosition(board, color));
-    worker.postMessage('level depth=' + depth); worker.postMessage('go think');
-  });
+// Поиски идут строго по очереди (воркер один). mode: 'think' — ход бота, 'analyze' — оценка позиции.
+function engineSearch({ board, color, depth, mode, onInfo }) {
+  const run = async () => {
+    await ensureWorker();
+    return new Promise((resolve) => {
+      curSearch = { resolve, onInfo, last: {} };
+      worker.postMessage('pos pos=' + boardToHubPosition(board, color));
+      worker.postMessage('level depth=' + depth); worker.postMessage('go ' + (mode || 'think'));
+    });
+  };
+  const p = searchQueue.then(run); searchQueue = p.catch(() => {}); return p;
 }
+function stopSearch() { if (curSearch && worker) { try { worker.postMessage('stop'); } catch (e) {} } }
+async function askEngine(board, color, depth) { return (await engineSearch({ board, color, depth, mode: 'think' })).move; }
 async function botMove() {
   const board = lastBoard(), legal = getLegalMoves(board, turn); if (!legal.length || gameOver) return;
   setStatus('Scan думает…', '#e0a800');
@@ -829,6 +888,155 @@ async function botMove() {
   playMove(move || legal[Math.floor(Math.random() * legal.length)], false);
 }
 function material(color) { let s = 0; for (const row of lastBoard()) for (const p of row) if (p && p.color === color) s += p.king ? 3 : 1; return s; }
+
+/* ================= разбор партии движком ================= */
+const LIVE_DEPTH = 16, FULL_DEPTH = 12;     // глубина «живого» анализа текущей позиции и разбора всей партии
+const MARK_TXT = ['', '?!', '?', '??'], MARK_NAME = ['', 'неточность', 'ошибка', 'грубая ошибка'];
+let ana = null;                              // состояние разбора для открытой в просмотре партии
+const colorAt = (i) => (i % 2 === 0 ? 'w' : 'b');
+const curIdx = () => (viewIndex < 0 ? positions.length - 1 : viewIndex);
+const anaKey = (rec) => `draughtsAna1:${rec.date}:${rec.hub.length}`;
+function newAna(rec) { return { rec, on: false, token: (ana ? ana.token : 0) + 1, liveTok: 0, w: [], best: [], pv: [], dep: [], full: false, running: false, cancel: false, marks: [], loss: [] }; }
+function dropAna() { if (ana) ana.token++; ana = null; stopSearch(); show('ana', false); }
+
+// Оценка позиции i (в «шашках», с точки зрения БЕЛЫХ) + лучший ход и вариант. Scan отдаёт оценку с точки зрения ходящего.
+async function analyzePos(i, depth, onInfo) {
+  const color = colorAt(i);
+  if (!getLegalMoves(positions[i], color).length) return { w: color === 'w' ? -10 : 10, best: null, pv: [], depth: 99 };
+  const sgn = color === 'w' ? 1 : -1;
+  const r = await engineSearch({ board: positions[i], color, depth, mode: 'analyze',
+    onInfo: onInfo ? (inf) => onInfo({ w: inf.score != null ? sgn * inf.score : null, pv: inf.pv, depth: inf.depth }) : null });
+  return { w: r.score != null ? sgn * r.score : 0, best: r.move, pv: r.pv && r.pv.length ? r.pv : (r.move ? [r.move] : []), depth };
+}
+function putAna(i, r) { ana.w[i] = r.w; ana.best[i] = r.best; ana.pv[i] = r.pv; ana.dep[i] = r.depth; }
+
+function bestMoveObj(i) {
+  if (!ana) return null; const h = (ana.pv[i] && ana.pv[i][0]) || ana.best[i]; if (!h || i >= positions.length) return null;
+  return findMoveForNotation(getLegalMoves(positions[i], colorAt(i)), h);
+}
+function pvShown(i, limit) {
+  let b = positions[i], c = colorAt(i); const out = [];
+  for (const h of (ana.pv[i] || []).slice(0, limit)) {
+    const mv = findMoveForNotation(getLegalMoves(b, c), h); if (!mv) break;
+    out.push(displayNotation(mv)); b = applyMove(b, mv).board; c = other(c);
+  }
+  return out.join(' ');
+}
+const evText = (w) => (w == null ? '…' : Math.abs(w) >= 9.99 ? (w > 0 ? '1–0' : '0–1') : (w > 0 ? '+' : '') + w.toFixed(2));
+
+// Потеря сделавшей ход стороны (в шашках) и оценка хода: 1 — неточность, 2 — ошибка, 3 — грубая ошибка.
+function computeMarks() {
+  ana.marks = []; ana.loss = [];
+  for (let i = 0; i < positions.length - 1; i++) {
+    const mover = colorAt(i), a = ana.w[i], b = ana.w[i + 1];
+    if (a == null || b == null) continue;
+    const before = mover === 'w' ? a : -a, loss = Math.max(0, mover === 'w' ? a - b : b - a);
+    ana.loss[i] = loss;
+    if (before > 5 && loss < 3) continue;           // уже выигрывали с запасом — не придираемся
+    if (before < -5 && loss < 3) continue;          // уже проигрывали — тоже
+    ana.marks[i] = loss >= 1.8 ? 3 : loss >= 0.9 ? 2 : loss >= 0.4 ? 1 : 0;
+  }
+}
+function summaryHtml() {
+  const row = (c, name) => {
+    let n = [0, 0, 0, 0], sum = 0, cnt = 0;
+    for (let i = 0; i < positions.length - 1; i++) if (colorAt(i) === c && ana.loss[i] != null) { n[ana.marks[i] || 0]++; sum += Math.min(ana.loss[i], 3); cnt++; }
+    return `<b>${name}:</b> неточностей ${n[1]} · ошибок ${n[2]} · грубых ${n[3]} · средняя потеря ${(cnt ? sum / cnt : 0).toFixed(2)}`;
+  };
+  return row('w', 'Белые') + '<br>' + row('b', 'Чёрные');
+}
+
+function renderGraph() {
+  const el = $('ana-graph'); if (!ana || !ana.full) { el.innerHTML = ''; return; }
+  const n = positions.length, W = 300, H = 64, P = 5;
+  const X = (i) => P + (W - 2 * P) * i / Math.max(1, n - 1), Y = (w) => H / 2 - (H / 2 - P) * Math.max(-5, Math.min(5, w)) / 5;
+  const pts = ana.w.map((w, i) => `${X(i).toFixed(1)},${Y(w).toFixed(1)}`).join(' ');
+  const dots = ana.marks.map((m, i) => (m >= 2 ? `<circle cx="${X(i + 1).toFixed(1)}" cy="${Y(ana.w[i + 1]).toFixed(1)}" r="2.6" fill="${m === 3 ? '#C0392B' : '#D9822B'}"/>` : '')).join('');
+  const ci = curIdx();
+  el.innerHTML = `<svg class="agraph" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" id="agraph-svg">
+    <line x1="${P}" x2="${W - P}" y1="${H / 2}" y2="${H / 2}" stroke="#B7BAA5" stroke-dasharray="3 4" stroke-width="1" vector-effect="non-scaling-stroke"/>
+    <polyline points="${pts}" fill="none" stroke="#3B5D4A" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>${dots}
+    <line x1="${X(ci).toFixed(1)}" x2="${X(ci).toFixed(1)}" y1="0" y2="${H}" stroke="#2F3A56" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+  $('agraph-svg').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); const i = Math.round(((e.clientX - r.left) / r.width * W - P) / (W - 2 * P) * (n - 1)); gotoView(Math.max(0, Math.min(n - 1, i))); };
+}
+function renderAna() {
+  const on = !!(ana && ana.on); show('ana-body', on); $('ana-toggle').textContent = on ? 'Скрыть' : 'Включить';
+  if (!on) return;
+  const i = curIdx(), w = ana.w[i];
+  $('ev-w').style.width = (w == null ? 50 : 50 + 50 * Math.tanh(w / 3)) + '%'; $('ev-l').textContent = evText(w);
+  const bm = bestMoveObj(i), played = i < shownMoves.length ? shownMoves[i] : null;
+  let html;
+  if (w == null) html = 'Считаю позицию…';
+  else if (i === positions.length - 1 && !getLegalMoves(positions[i], colorAt(i)).length) html = `Партия окончена: у ${colorAt(i) === 'w' ? 'белых' : 'чёрных'} нет ходов`;
+  else {
+    html = bm ? `Лучший ход: <b>${displayNotation(bm)}</b> <span class="dim">(глубина ${ana.dep[i] >= 99 ? '' : (ana.dep[i] || '…')})</span>` : 'Считаю…';
+    if (played && ana.marks[i]) html += `<br>Сыграно: <b>${played}</b> <span class="mk q${ana.marks[i]}">${MARK_TXT[ana.marks[i]]}</span> ${MARK_NAME[ana.marks[i]]}, потеря ${ana.loss[i].toFixed(2)}`;
+    else if (played && ana.loss[i] != null) html += `<br>Сыграно: <b>${played}</b> — хороший ход`;
+  }
+  $('ana-best').innerHTML = html; $('ana-pv').textContent = ana.pv[i] && ana.pv[i].length ? pvShown(i, 8) : '';
+  $('ana-sum').innerHTML = ana.full ? summaryHtml() : '';
+  const btn = $('ana-all'); show('ana-all', !ana.full);
+  btn.textContent = ana.running ? 'Остановить' : 'Разобрать всю партию';
+  renderGraph();
+}
+function markBest(idx) {
+  const bm = ana && ana.on ? bestMoveObj(idx) : null; if (!bm) return;
+  sqEl(bm.fromRow, bm.fromCol).classList.add('best'); sqEl(bm.finalRow, bm.finalCol).classList.add('bestto');
+}
+
+// Живой анализ показанной позиции (глубже, чем при разборе всей партии); при листании предыдущий поиск прерывается.
+async function showAnalysis() {
+  if (!ana || !ana.on) return;
+  renderAna(); paintMarks();
+  if (ana.running) return;                              // идёт разбор всей партии — отдельный поиск не нужен
+  const i = curIdx(), tok = ++ana.liveTok, token = ana.token;
+  if (ana.dep[i] >= LIVE_DEPTH) return;
+  stopSearch();
+  const r = await analyzePos(i, LIVE_DEPTH, (inf) => { if (tok !== ana.liveTok || token !== ana.token || inf.w == null) return; ana.w[i] = inf.w; if (inf.pv && inf.pv.length) ana.pv[i] = inf.pv; ana.dep[i] = inf.depth; renderAna(); paintMarks(); });
+  if (tok !== ana.liveTok || token !== ana.token) return;
+  putAna(i, r); if (ana.full) computeMarks(); renderAna(); renderMoves(); paintMarks();
+}
+async function analyzeAll() {
+  if (!ana) return;
+  if (ana.running) { ana.cancel = true; stopSearch(); return; }
+  ana.running = true; ana.cancel = false; const token = ana.token, n = positions.length;
+  ana.liveTok++; stopSearch();
+  for (let i = 0; i < n; i++) {
+    if (ana.cancel || token !== ana.token) break;
+    $('ana-prog').textContent = `Позиция ${i + 1} из ${n}`;
+    if (!(ana.dep[i] >= FULL_DEPTH)) {
+      const r = await analyzePos(i, FULL_DEPTH);
+      if (ana.cancel || token !== ana.token) break;           // прерванный поиск даёт неполный результат — выбрасываем
+      putAna(i, r);
+    }
+    renderAna();
+  }
+  if (token !== ana.token) return;
+  const finished = !ana.cancel; ana.running = false; ana.cancel = false; $('ana-prog').textContent = '';
+  if (finished) { ana.full = true; computeMarks(); saveAnaCache(); renderMoves(); }
+  renderAna(); paintMarks(); if (!finished) showAnalysis();
+}
+function saveAnaCache() {
+  try {
+    const key = anaKey(ana.rec); localStorage.setItem(key, JSON.stringify({ w: ana.w, best: ana.best, pv: ana.pv.map((p) => (p || []).slice(0, 10)) }));
+    const keys = JSON.parse(localStorage.getItem('draughtsAnaKeys') || '[]').filter((k) => k !== key); keys.unshift(key);
+    keys.slice(15).forEach((k) => localStorage.removeItem(k)); localStorage.setItem('draughtsAnaKeys', JSON.stringify(keys.slice(0, 15)));
+  } catch (e) {}
+}
+function loadAnaCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(anaKey(ana.rec)) || 'null'); if (!c || c.w.length !== positions.length) return false;
+    ana.w = c.w; ana.best = c.best; ana.pv = c.pv; ana.dep = c.w.map(() => FULL_DEPTH); ana.full = true; computeMarks(); return true;
+  } catch (e) { return false; }
+}
+function enableAnalysis() {
+  if (!ana) return; ana.on = true;
+  if (!ana.full) loadAnaCache();
+  renderMoves(); showAnalysis();
+}
+function disableAnalysis() { if (!ana) return; ana.on = false; ana.liveTok++; if (ana.running) { ana.cancel = true; } stopSearch(); renderAna(); renderMoves(); paintMarks(); }
+$('ana-toggle').onclick = () => (ana && ana.on ? disableAnalysis() : enableAnalysis());
+$('ana-all').onclick = analyzeAll;
 
 /* ================= часы ================= */
 const fmt = (s) => { s = Math.max(0, s); return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; };
@@ -876,13 +1084,19 @@ function renderMoves() {
     const n = document.createElement('div'); n.className = 'mn'; n.textContent = (i / 2 + 1) + '.'; box.appendChild(n);
     for (let k = 0; k < 2; k++) {
       const idx = i + k, d = document.createElement('div'); d.className = 'mv';
-      if (idx < shownMoves.length) { d.textContent = shownMoves[idx]; d.onclick = () => gotoView(idx + 1); if ((viewIndex < 0 ? shownMoves.length : viewIndex) === idx + 1) d.classList.add('cur'); }
+      if (idx < shownMoves.length) {
+        d.textContent = shownMoves[idx]; d.onclick = () => gotoView(idx + 1);
+        if (typeof ana !== 'undefined' && ana && ana.on && ana.marks[idx]) { const s = document.createElement('span'); s.className = 'mk q' + ana.marks[idx]; s.textContent = MARK_TXT[ana.marks[idx]]; d.appendChild(s); d.title = MARK_NAME[ana.marks[idx]]; }
+        if ((viewIndex < 0 ? shownMoves.length : viewIndex) === idx + 1) d.classList.add('cur');
+      }
       box.appendChild(d);
     }
   }
-  box.scrollTop = box.scrollHeight; updateNav();
+  const curEl = box.querySelector('.mv.cur');
+  if (curEl) box.scrollTop = Math.max(0, curEl.offsetTop - box.clientHeight / 2); else box.scrollTop = viewIndex === 0 ? 0 : box.scrollHeight;
+  updateNav();
 }
-function gotoView(i) { const last = positions.length - 1; viewIndex = i >= last ? -1 : Math.max(0, i); resetSel(); renderPieces(); renderMoves(); paintMarks(); }
+function gotoView(i) { const last = positions.length - 1; viewIndex = i >= last ? -1 : Math.max(0, i); resetSel(); renderPieces(); renderMoves(); paintMarks(); if (typeof ana !== 'undefined' && ana && ana.on) showAnalysis(); }
 function updateNav() {
   const cur = viewIndex < 0 ? positions.length - 1 : viewIndex;
   $('n-first').disabled = $('n-prev').disabled = cur <= 0; $('n-next').disabled = $('n-last').disabled = viewIndex < 0;
@@ -905,7 +1119,7 @@ function startGame(cfg = { mode: 'bot' }) {
   }
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
   turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
-  resetSel(); premove = null; pmSel = null; lastTick = null;
+  resetSel(); premove = null; pmSel = null; lastTick = null; dropAna();
   show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
   $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
   { const orat = mode === 'online' ? oppRating() : null, mine = mode === 'online' && online ? online.myRating : null;
@@ -918,12 +1132,19 @@ function startGame(cfg = { mode: 'bot' }) {
   if (mode === 'bot' && turn !== userColor) botMove();
 }
 function toMenu() {
-  stopClock(); gameOver = true; pendingResolve = null; leaveOnline();
-  if (worker) { try { worker.postMessage('stop'); } catch (e) {} }
+  stopClock(); gameOver = true; leaveOnline(); dropAna(); stopSearch();
   ['game', 'history'].forEach((id) => show(id, false)); show('setup', true); showView('config'); paintMenu();
 }
 $('start-btn').onclick = () => (uiMode === 'online' ? createOnline() : startGame({ mode: 'bot' }));
+// Выход из просмотра партии: туда, откуда пришли (профиль в общем меню / список партий / меню игры)
+function leaveReplay() {
+  if (replayFrom === 'profile') { location.replace('../?profile=1'); return; }
+  const from = replayFrom, kind = histKind; replayFrom = null; dropAna(); stopSearch(); replayMode = false;
+  if (from === 'history') { show('game', false); if (kind === 'cloud') openMyGames(); else openHistory(); return; }
+  toMenu();
+}
 $('exit-btn').onclick = () => {
+  if (replayMode) return leaveReplay();
   const active = !gameOver && !replayMode && shownMoves.length > 0;
   if (active && !confirm('Партия будет прервана и засчитана как поражение. Выйти?')) return;
   if (active) endGame('loss', 'abandon');
@@ -953,6 +1174,7 @@ function saveHistory(text, code) {
   if (!shownMoves.length) return;
   const rec = { date: new Date().toISOString(), userColor, level: mode === 'bot' ? level : null, opponent: mode === 'online' ? (online && online.oppName) || 'Соперник' : null,
     result: code, resultText: text, hub: hubMoves.slice(), shown: shownMoves.slice() };
+  lastRec = rec;
   const list = loadHistory(); list.unshift(rec);
   try { localStorage.setItem(HKEY, JSON.stringify(list.slice(0, 100))); } catch (e) {}
   const u = OD() && OD().currentUser;
@@ -966,19 +1188,19 @@ function renderHistory(list, emptyText) {
     const dt = new Date(rec.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const who = rec.opponent ? `против ${rec.opponent} (по сети)` : `уровень ${rec.level}`;
     d.innerHTML = `<div class="h-dot ${rec.result}"></div><div><div>${rec.resultText}</div><div class="h-meta">${dt} · вы играли ${rec.userColor === 'w' ? 'белыми' : 'чёрными'} · ${who} · ${rec.shown.length} ходов</div></div>`;
-    d.onclick = () => viewRecord(rec); box.appendChild(d);
+    d.onclick = () => viewRecord(rec, { from: 'history' }); box.appendChild(d);
   });
 }
-function openHistory() { show('setup', false); show('history', true); $('hist-title').textContent = 'История партий'; renderHistory(loadHistory(), 'Пока нет сыгранных партий'); }
+function openHistory() { histKind = 'local'; show('setup', false); show('history', true); $('hist-title').textContent = 'История партий'; renderHistory(loadHistory(), 'Пока нет сыгранных партий'); }
 async function openMyGames() {
-  show('setup', false); show('history', true); $('hist-title').textContent = 'Мои онлайн-партии';
+  histKind = 'cloud'; show('setup', false); show('history', true); $('hist-title').textContent = 'Мои онлайн-партии';
   $('hist-list').innerHTML = '<div class="h-empty">Загрузка…</div>';
   const u = OD() && OD().currentUser; if (!u) return renderHistory([], 'Войдите через Google, чтобы видеть свою историю');
   try { renderHistory(await OD().listMyGames(u.uid, 50), 'Здесь пока нет завершённых сетевых партий'); }
   catch (e) { console.error(e); $('hist-list').innerHTML = '<div class="h-empty">Не удалось загрузить историю. Проверьте интернет.</div>'; }
 }
-function viewRecord(rec) {
-  show('setup', false);
+function viewRecord(rec, opts = {}) {
+  dropAna(); replayFrom = opts.from || null; show('setup', false);
   userColor = rec.userColor; mode = 'bot'; replayMode = true; gameOver = true; stopClock(); timed = false;
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = []; let t = 'w';
   for (const h of rec.hub) {
@@ -988,7 +1210,11 @@ function viewRecord(rec) {
   }
   turn = t; viewIndex = -1; resetSel(); show('history', false); show('game', true); show('post', false); show('actions', false); show('banner', false);
   $('name-bottom').textContent = 'Просмотр: ' + rec.resultText;
-  resize(); buildBoard(); renderPieces(); renderMoves(); setStatus('Просмотр партии'); $('t-top').textContent = $('t-bottom').textContent = '—'; gotoView(0);
+  resize(); buildBoard(); renderPieces(); renderMoves(); setStatus('Просмотр партии'); $('t-top').textContent = $('t-bottom').textContent = '—';
+  $('name-top').textContent = rec.opponent ? `${rec.opponent} (по сети)` : 'Scan 3.1' + (rec.level ? ' · уровень ' + rec.level : '');
+  ana = newAna(rec); show('ana', true); renderAna();
+  gotoView(positions.length - 1);                       // партия открывается на итоговой позиции; листать можно по списку ходов
+  if (opts.analyze) enableAnalysis();
 }
 $('hist-btn').onclick = openHistory; $('my-btn').onclick = openMyGames;
 $('hist-back').onclick = () => { show('history', false); show('setup', true); };
@@ -1142,21 +1368,25 @@ function handleRemote(data) {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
 }
-window.__draughts = { get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+window.__draughts = { get ana() { return ana; }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
 checkInvite();
 
 // Ссылка из личного профиля в общем меню: ?replay=local:N или ?replay=cloud:ID
 async function checkReplay() {
-  const param = new URLSearchParams(location.search).get('replay'); if (!param) return;
+  const params = new URLSearchParams(location.search), param = params.get('replay'); if (!param) return;
+  const fromProfile = params.get('from') === 'profile';
   history.replaceState(null, '', location.pathname);
-  const [kind, ref] = param.split(':');
-  if (kind === 'local') { const rec = loadHistory()[parseInt(ref, 10)]; if (rec) viewRecord(rec); return; }
-  if (kind !== 'cloud') return;
-  if (!(await waitOnline())) return alert('Не удалось загрузить партию: нет связи с сервером.');
-  for (let i = 0; i < 50 && !(OD() && OD().currentUser); i++) await sleep(100);
-  const u = OD().currentUser; if (!u) return alert('Чтобы открыть облачную партию, войдите через Google.');
-  try { const rec = (await OD().listMyGames(u.uid, 100)).find((g) => g.id === ref); if (rec) viewRecord(rec); else alert('Партия не найдена в вашей истории.'); }
-  catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+  try {
+    const [kind, ref] = param.split(':');
+    if (kind === 'local') { const rec = loadHistory()[parseInt(ref, 10)]; if (rec) viewRecord(rec, { from: fromProfile ? 'profile' : null }); return; }
+    if (kind !== 'cloud') return;
+    if (!(await waitOnline())) return alert('Не удалось загрузить партию: нет связи с сервером.');
+    for (let i = 0; i < 50 && !(OD() && OD().currentUser); i++) await sleep(100);
+    const u = OD().currentUser; if (!u) return alert('Чтобы открыть облачную партию, войдите через Google.');
+    const rec = (await OD().listMyGames(u.uid, 100)).find((g) => g.id === ref);
+    if (rec) viewRecord(rec, { from: fromProfile ? 'profile' : null }); else alert('Партия не найдена в вашей истории.');
+  } catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+  finally { document.documentElement.classList.remove('boot-replay'); }   // меню покажется только если партию открыть не удалось
 }
 checkReplay();
 })();

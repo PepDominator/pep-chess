@@ -325,7 +325,11 @@ function botStats(game, local) {
 }
 const pluralMoves = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'ход' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'хода' : 'ходов'));
 let mp = null;
-async function openMyProfile() {
+// Перед уходом в разбор партии запоминаем вкладку, фильтры и прокрутку — чтобы вернуть пользователя ровно на то же место.
+function rememberProfile() {
+  try { sessionStorage.setItem('pgProfState', JSON.stringify({ tab: mp.tab, fg: mp.fg, fs: mp.fs, shown: mp.shown, scroll: document.querySelector('.prof').scrollTop })); } catch (e) {}
+}
+async function openMyProfile(restore) {
   const D = window.PGData; if (!D || !D.me) return;
   const ov = document.getElementById('ov'), body = document.getElementById('prof-body'), box = document.querySelector('.prof');
   box.classList.add('wide'); ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
@@ -334,15 +338,17 @@ async function openMyProfile() {
   const localC = loadLocal('chess'), localD = loadLocal('draughts');
   const cloudFail = cc.status === 'rejected' || cd.status === 'rejected';
   const cloud = [].concat(cc.status === 'fulfilled' ? cc.value.map((r) => ({ ...r, game: 'chess' })) : [], cd.status === 'fulfilled' ? cd.value.map((r) => ({ ...r, game: 'draughts' })) : []);
-  const items = cloud.map((r) => normalize(r, `${r.game}/?replay=cloud:${encodeURIComponent(r.id)}`, true));
+  const items = cloud.map((r) => normalize(r, `${r.game}/?replay=cloud:${encodeURIComponent(r.id)}&from=profile`, true));
   // локальные копии онлайн-партий, которые уже есть в облаке, не дублируем
   [].concat(localC, localD).forEach((r) => {
     if (r.opponent && cloud.some((c) => c.game === r.game && Math.abs(new Date(c.date) - new Date(r.date)) < 10000)) return;
-    items.push(normalize(r, `${r.game}/?replay=local:${r.idx}`, !!r.opponent));
+    items.push(normalize(r, `${r.game}/?replay=local:${r.idx}&from=profile`, !!r.opponent));
   });
   items.sort((a, b) => new Date(b.date) - new Date(a.date));
   mp = { p, items, local: { chess: localC, draughts: localD }, cloudFail, tab: 'ov', fg: 'all', fs: 'all', shown: 25 };
+  if (restore) Object.assign(mp, { tab: restore.tab, fg: restore.fg, fs: restore.fs, shown: restore.shown });
   renderMy();
+  if (restore && restore.scroll) document.querySelector('.prof').scrollTop = restore.scroll;
 }
 function renderMy() {
   const { p, items, local, cloudFail } = mp, body = document.getElementById('prof-body');
@@ -370,11 +376,24 @@ function renderMy() {
     }
   }
   body.innerHTML = html;
+  body.querySelectorAll('.gi').forEach((a) => a.addEventListener('click', rememberProfile));
   body.querySelectorAll('.ptabs button').forEach((b) => { b.onclick = () => { mp.tab = b.dataset.t; renderMy(); }; });
   body.querySelectorAll('.filters .seg').forEach((s) => s.querySelectorAll('button').forEach((b) => { b.onclick = () => { mp[s.dataset.f] = b.dataset.v; mp.shown = 25; renderMy(); }; }));
   const more = document.getElementById('more'); if (more) more.onclick = () => { mp.shown += 25; renderMy(); };
 }
-document.getElementById('acc-btn').addEventListener('click', openMyProfile);
+document.getElementById('acc-btn').addEventListener('click', () => openMyProfile());
+
+// Возврат из разбора партии: ссылка вида /?profile=1 (или кнопка «Назад» браузера) сразу открывает профиль на прежнем месте.
+let wantProfile = new URLSearchParams(location.search).get('profile') === '1';
+try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && nav.type === 'back_forward' && sessionStorage.getItem('pgProfState')) wantProfile = true; } catch (e) {}
+if (new URLSearchParams(location.search).get('profile')) history.replaceState(null, '', location.pathname);
+function openWantedProfile() {
+  if (!wantProfile || !window.PGData || !window.PGData.me) return;
+  wantProfile = false; let st = null;
+  try { st = JSON.parse(sessionStorage.getItem('pgProfState') || 'null'); sessionStorage.removeItem('pgProfState'); } catch (e) {}
+  openMyProfile(st);
+}
+window.addEventListener('pg-auth', openWantedProfile); window.addEventListener('pg-ready', openWantedProfile); openWantedProfile();
 document.getElementById('ov-x').onclick = closeProfile;
 document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeProfile(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfile(); });
@@ -425,6 +444,7 @@ $('acc-out').onclick = () => signOut(auth);
 onAuthStateChanged(auth, async (u) => {
   $('acc-in').classList.toggle('hidden', !!u); $('acc-user').classList.toggle('hidden', !u); $('acc-rate').textContent = '';
   if (!u) return;
+  window.dispatchEvent(new Event('pg-auth'));
   $('acc-name').textContent = u.displayName || 'Игрок'; $('acc-img').src = u.photoURL || ''; $('acc-img').style.display = u.photoURL ? '' : 'none';
   try {
     const ref = doc(db, 'profiles', u.uid), snap = await getDoc(ref);
