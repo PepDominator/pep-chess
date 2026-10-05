@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF0E7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Pep Draughts</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<style>
+:root {
+  --bg:#EEF0E7; --panel:#FBFBF8; --green:#3B5D4A; --text:#2A2E24; --muted:#6E7568; --border:#D9DBCC;
+  --sq-light:#F6F4EB; --sq-dark:#C7CAB4; --cell:72px;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { font-family:'Noto Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh;
+  display:flex; justify-content:center; align-items:center; padding:12px; }
+.serif { font-family:Georgia,'Iowan Old Style','Palatino Linotype','Times New Roman',serif; }
+.hidden { display:none !important; }
+
+/* ---------- Меню ---------- */
+.modal { background:#FDFDFA; width:600px; max-width:calc(100vw - 24px); border:1px solid var(--border);
+  box-shadow:0 18px 50px rgba(42,46,36,.10),0 2px 8px rgba(42,46,36,.06); padding-bottom:24px; }
+.brand { text-align:center; font-size:13px; font-weight:600; letter-spacing:3px; text-transform:uppercase; color:var(--green);
+  padding-top:24px; display:flex; align-items:center; justify-content:center; gap:10px; }
+.brand::before,.brand::after { content:''; width:24px; height:1px; background:var(--border); }
+h2 { font-weight:400; font-size:27px; margin:0; padding:10px 0 22px; text-align:center; font-style:italic; }
+.content { padding:0 32px; }
+.lbl { font-size:13px; color:var(--muted); margin-bottom:8px; display:block; }
+.title { font-size:13px; color:var(--muted); margin:18px 0 8px; text-align:center; }
+input[type=text] { width:100%; background:#F3F2EA; border:1px solid var(--border); padding:9px 12px; font-size:14px; color:var(--text); font-family:inherit; }
+input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(59,93,74,.15); }
+.presets { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:6px; }
+.btn-s { background:#F3F2EA; border:1px solid var(--border); color:var(--muted); font-size:13px; padding:7px 4px; cursor:pointer; font-family:inherit; }
+.btn-s:hover { background:#EAEADF; }
+.btn-s.active { background:var(--green); color:#fff; border-color:var(--green); }
+.levels { display:flex; border:1px solid var(--border); background:#F3F2EA; }
+.levels .btn-s { flex:1; border:none; border-right:1px solid var(--border); font-weight:700; padding:10px 0; }
+.levels .btn-s:last-child { border-right:none; }
+.sides { display:flex; gap:8px; }
+.side { flex:1; height:84px; background:#F3F2EA; border:1px solid var(--border); display:flex; flex-direction:column;
+  justify-content:center; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--muted); }
+.side:hover:not(.active) { background:#EAEADF; }
+.side.active { background:var(--green); color:#fff; border-color:var(--green); }
+.side i { width:30px; height:30px; border-radius:50%; border:2px solid var(--text); display:block; }
+.side i.w { background:#FBFAF4; } .side i.b { background:#2A2E24; border-color:#FBFAF4; box-shadow:0 0 0 1px #2A2E24; }
+.side i.r { background:linear-gradient(90deg,#2A2E24 50%,#FBFAF4 50%); }
+.start { background:var(--green); color:#fff; border:none; width:100%; padding:16px; font-size:16px; font-weight:700; cursor:pointer;
+  margin-top:22px; box-shadow:0 6px 16px rgba(59,93,74,.25); font-family:inherit; }
+.start:hover { filter:brightness(1.08); }
+.link { display:block; width:100%; background:none; border:none; color:var(--muted); font-size:14px; padding:12px; cursor:pointer; font-family:inherit; }
+.link:hover { color:var(--text); }
+.time-row { display:flex; gap:16px; }
+.time-row > div { flex:1; }
+
+/* ---------- Игра ---------- */
+#game { display:flex; align-items:flex-start; gap:0; }
+#board-wrap { position:relative; width:calc(var(--cell)*10); height:calc(var(--cell)*10);
+  box-shadow:0 2px 14px rgba(42,46,36,.14),0 0 0 1px rgba(42,46,36,.08); user-select:none; touch-action:manipulation; }
+#board { position:absolute; inset:0; display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(10,1fr); }
+.sq { position:relative; }
+.sq.l { background:var(--sq-light); } .sq.d { background:var(--sq-dark); cursor:pointer; }
+.sq .num { position:absolute; top:2px; left:4px; font-size:10px; font-weight:700; color:rgba(42,46,36,.38); pointer-events:none; }
+.sq.last { box-shadow:inset 0 0 0 1000px rgba(196,154,54,.30); }
+.sq.sel { box-shadow:inset 0 0 0 1000px rgba(196,154,54,.42); }
+.sq.path { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.28); }
+.sq.movable::before { content:''; position:absolute; inset:0; box-shadow:inset 0 0 0 3px rgba(59,93,74,.55); pointer-events:none; }
+.sq.target::after { content:''; position:absolute; left:50%; top:50%; width:28%; height:28%; transform:translate(-50%,-50%);
+  background:rgba(42,46,36,.35); border-radius:50%; pointer-events:none; }
+.sq.target.cap::after { width:84%; height:84%; background:none; border:5px solid rgba(162,59,51,.55); }
+#pieces { position:absolute; inset:0; pointer-events:none; }
+.piece { position:absolute; left:0; top:0; width:10%; height:10%; background-size:86%; background-repeat:no-repeat; background-position:center;
+  transition:transform .22s cubic-bezier(.35,.5,.35,1), opacity .18s; will-change:transform; }
+.piece.moving { z-index:20; } .piece.fading { opacity:0; } .piece.noanim { transition:none; }
+
+#side { width:320px; height:calc(var(--cell)*10); background:var(--panel); display:flex; flex-direction:column; }
+.clock { font-family:'Roboto Mono',ui-monospace,Menlo,monospace; font-size:38px; letter-spacing:1px; color:#AEB2A0; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+.clock.active { color:var(--text); } .clock.low { background:#A23B33; color:#fff; }
+.clock .x { font-size:16px; background:none; border:none; color:var(--muted); cursor:pointer; width:28px; height:28px; }
+.clock .x:hover { color:#A23B33; background:#EAEADF; }
+.status { background:#F3F2EA; padding:8px 16px; font-size:14px; display:flex; align-items:center; gap:8px; min-height:36px; }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; }
+.nav { display:flex; background:#F3F2EA; border-bottom:1px solid var(--border); }
+.nav button { flex:1; background:none; border:none; border-right:1px solid var(--border); color:#9A9D8E; padding:8px 0; cursor:pointer; font-size:15px; }
+.nav button:last-child { border-right:none; } .nav button:hover:not(:disabled) { background:#EAEADF; color:var(--text); }
+.nav button:disabled { color:#C7CABC; cursor:default; }
+#moves { flex:1; overflow-y:auto; background:#F8F7F1; font-size:15px; display:grid; grid-template-columns:38px 1fr 1fr; align-content:start; }
+.mn { color:var(--muted); text-align:right; padding:4px 8px 4px 0; line-height:1.6; }
+.mv { cursor:pointer; padding:4px 6px; line-height:1.6; } .mv:hover { background:#EAEADF; }
+.mv.cur { background:#2F3A56; color:#fff; }
+.welcome { grid-column:1/-1; padding:16px; color:var(--muted); font-size:14px; line-height:1.5; }
+.actions { background:#F3F2EA; border-top:1px solid var(--border); padding:10px 16px; display:flex; justify-content:center; gap:28px; }
+.actions button { background:none; border:none; color:#8B8E7F; font-size:20px; cursor:pointer; width:34px; height:34px; }
+.actions button:hover { background:#EAEADF; color:var(--text); }
+.player { background:#F3F2EA; padding:10px 16px; font-size:14px; color:var(--text); }
+#post { background:#F3F2EA; padding:12px 16px; border-top:1px solid var(--border); }
+#post .res { font-family:'Roboto Mono',monospace; font-size:20px; font-weight:700; text-align:center; }
+#post .rt { font-size:13px; color:var(--muted); text-align:center; margin:2px 0 12px; }
+#post button { display:block; width:100%; padding:10px; margin-bottom:8px; border:none; cursor:pointer; font-weight:700; font-size:13px; font-family:inherit; }
+#post .p { background:var(--green); color:#fff; } #post .s { background:#FBFBF8; color:var(--text); border:1px solid var(--border); }
+
+/* история */
+#history .content { max-height:480px; overflow-y:auto; }
+.h-item { display:flex; gap:12px; padding:12px 8px; border-bottom:1px solid var(--border); cursor:pointer; align-items:center; }
+.h-item:hover { background:#F3F2EA; }
+.h-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; background:#9A9D8E; } .h-dot.win{background:#3B5D4A} .h-dot.loss{background:#A23B33}
+.h-meta { font-size:12px; color:var(--muted); } .h-empty { text-align:center; color:var(--muted); padding:30px 0; }
+
+@media (max-width:760px) {
+  body { align-items:flex-start; }
+  #game { flex-direction:column; align-items:center; }
+  #side { width:calc(var(--cell)*10); height:auto; min-height:320px; }
+  #moves { max-height:160px; min-height:90px; }
+  .content { padding:0 16px; }
+}
+.acc-bar { display:flex; justify-content:center; padding:14px 24px 0; min-height:20px; }
+.acc-in { display:flex; align-items:center; gap:8px; background:#FDFDFA; border:1px solid var(--border); padding:6px 14px; font-size:13px; color:var(--text); cursor:pointer; font-family:inherit; }
+.acc-in:hover { background:#F3F2EA; }
+.acc-user { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+.acc-img { width:22px; height:22px; border-radius:50%; }
+.acc-out { background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; font-size:12px; font-family:inherit; }
+.tabs { display:flex; background:#F3F2EA; border:1px solid var(--border); margin-bottom:20px; }
+.tab { flex:1; border:none; background:none; color:var(--muted); padding:9px 0; cursor:pointer; font-size:14px; font-weight:700; font-family:inherit; }
+.tab:hover:not(.active) { background:#EAEADF; } .tab.active { background:var(--green); color:#fff; }
+.or { display:flex; align-items:center; color:var(--muted); font-size:12px; margin:14px 0; }
+.or::before,.or::after { content:''; flex:1; height:1px; background:var(--border); } .or span { padding:0 10px; }
+.join-f { display:flex; gap:8px; } .join-f button { background:var(--green); color:#fff; border:none; padding:0 18px; font-weight:700; cursor:pointer; font-family:inherit; }
+.err { color:#A23B33; font-size:13px; margin-top:8px; }
+.center { text-align:center; } .big-icon { font-size:40px; color:var(--green); animation:pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:.55} 50%{opacity:1} }
+.wt { font-size:20px; font-style:italic; margin:6px 0; } .ws { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.5; }
+#link-box { text-align:center; font-family:'Roboto Mono',monospace; font-size:13px; }
+.sq.pre { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38); }
+.piece.drag { z-index:30; transition:none; cursor:grabbing; }
+.banner { background:#F3F2EA; border-top:1px solid var(--border); padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; }
+.banner button { border:none; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.banner .ok { background:var(--green); color:#fff; } .banner .no { background:#EAEADF; color:var(--text); }
+.actions button:disabled { opacity:.3; cursor:default; }
+</style>
+</head>
+<body>
+
+<div id="setup" class="modal">
+  <div class="acc-bar">
+    <button class="acc-in" id="acc-in"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>Войти через Google</button>
+    <div class="acc-user hidden" id="acc-user"><img id="acc-img" class="acc-img" alt=""><span id="acc-name"></span><button class="acc-out" id="acc-out">Выйти</button></div>
+  </div>
+  <div class="brand">Pep Draughts</div>
+  <h2 class="serif">Международные шашки</h2>
+  <div class="content">
+    <div class="tabs"><button class="tab active" id="tab-bot">Компьютер</button><button class="tab" id="tab-online">Играть по сети</button></div>
+
+    <div id="v-config">
+      <label class="lbl" for="nick">Ваш никнейм</label>
+      <input type="text" id="nick" placeholder="Вы" maxlength="20" autocomplete="off">
+      <div class="title">Время на партию</div>
+      <div class="presets" id="presets"></div>
+      <div id="level-box"><div class="title">Сложность (движок Scan 3.1)</div><div class="levels" id="levels"></div></div>
+      <div class="title" id="side-title">Сторона</div>
+      <div class="sides">
+        <div class="side" data-side="b"><i class="b"></i>Чёрные</div>
+        <div class="side active" data-side="r"><i class="r"></i>Случайный цвет</div>
+        <div class="side" data-side="w"><i class="w"></i>Белые</div>
+      </div>
+      <button class="start" id="start-btn">Сыграть с компьютером</button>
+      <div id="join-row" class="hidden">
+        <div class="or"><span>или</span></div>
+        <label class="lbl" for="join-code">Код игры от друга</label>
+        <div class="join-f"><input type="text" id="join-code" placeholder="Вставьте код или ссылку" autocomplete="off"><button id="join-btn">Войти</button></div>
+      </div>
+      <div class="err hidden" id="err"></div>
+      <button class="link" id="hist-btn">История партий</button>
+      <button class="link hidden" id="my-btn">Мои онлайн-партии</button>
+    </div>
+
+    <div id="v-wait" class="hidden center">
+      <div class="big-icon">⛀</div><div class="wt serif">Ждём соперника…</div>
+      <div class="ws">Отправьте эту ссылку другу — партия начнётся, как только он её откроет</div>
+      <div class="join-f"><input type="text" id="link-box" readonly><button id="copy-btn">Копировать</button></div>
+      <button class="link" id="wait-cancel">Отменить</button>
+    </div>
+
+    <div id="v-invite" class="hidden center">
+      <div class="big-icon">⛀</div><div class="wt serif">Вас пригласили на партию</div>
+      <div class="ws" id="inv-text"></div>
+      <label class="lbl" for="inv-nick" style="text-align:left">Ваш никнейм</label>
+      <input type="text" id="inv-nick" placeholder="Вы" maxlength="20" autocomplete="off">
+      <button class="start" id="inv-ok">Присоединиться и начать</button>
+      <button class="link" id="inv-no">Не сейчас</button>
+    </div>
+  </div>
+</div>
+
+<div id="history" class="modal hidden">
+  <h2 class="serif" id="hist-title" style="padding-top:24px">История партий</h2>
+  <div class="content"><div id="hist-list"></div></div>
+  <div class="content"><button class="start" id="hist-back">Назад</button></div>
+</div>
+
+<div id="game" class="hidden">
+  <div id="board-wrap"><div id="board"></div><div id="pieces"></div></div>
+  <div id="side">
+    <div class="clock" id="clock-top"><button class="x" id="exit-btn" title="В меню">✕</button><span id="t-top">10:00</span></div>
+    <div class="status" id="status"></div>
+    <div class="nav">
+      <button id="n-first">⏮</button><button id="n-prev">◀</button><button id="n-next">▶</button><button id="n-last">⏭</button>
+    </div>
+    <div id="moves"></div>
+    <div class="banner hidden" id="banner"></div>
+    <div class="actions" id="actions">
+      <button id="take-btn" title="Взять ход назад">↩</button>
+      <button id="draw-btn" title="Предложить ничью">½</button>
+      <button id="resign-btn" title="Сдаться">⚐</button>
+    </div>
+    <div id="post" class="hidden"></div>
+    <div class="player" id="name-bottom">Вы</div>
+    <div class="clock" id="clock-bottom"><span></span><span id="t-bottom">10:00</span></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Движок правил международных шашек (10x10, FMJD / бразильские правила)
+// Без внешних зависимостей — аналог chess.js, но для шашек.
+// ============================================================
+
+// Представление доски: массив 10x10, индекс [row][col], row 0..9, col 0..9.
+// Играбельные клетки — где (row+col) нечётно (тёмные клетки).
+// Фигура: { color: 'w'|'b', king: bool } или null (пусто).
+// row 0 = верх доски (чёрные стоят здесь в начале), row 9 = низ (белые).
+// Белые ходят "вверх" (уменьшение row), чёрные — "вниз" (увеличение row).
+
+window.isPlayable = function(row, col) {
+    return row >= 0 && row < 10 && col >= 0 && col < 10 && (row + col) % 2 === 1;
+}
+
+window.createInitialBoard = function() {
+    const board = Array.from({ length: 10 }, () => Array(10).fill(null));
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 10; col++) {
+            if (isPlayable(row, col)) board[row][col] = { color: 'b', king: false };
+        }
+    }
+    for (let row = 6; row < 10; row++) {
+        for (let col = 0; col < 10; col++) {
+            if (isPlayable(row, col)) board[row][col] = { color: 'w', king: false };
+        }
+    }
+    return board;
+}
+
+window.cloneBoard = function(board) {
+    return board.map(row => row.map(cell => (cell ? { ...cell } : null)));
+}
+
+const DIAGONALS = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+
+// Находит все последовательности взятия для ОДНОЙ фигуры, начиная с (row,col),
+// рекурсивно продолжая мульти-взятие. Возвращает массив путей;
+// каждый путь — { captures: [{row,col}], finalRow, finalCol, path: [{row,col},...] }
+window.findCaptureSequencesForPiece = function(board, row, col, piece, capturedSoFar = [], pathSoFar = null) {
+    const path = pathSoFar || [{ row, col }];
+    let found = [];
+    const directions = piece.king ? DIAGONALS : DIAGONALS; // и дамка, и простая бьют в любом из 4 направлений
+
+    for (const [dr, dc] of directions) {
+        if (piece.king) {
+            // Летающая дамка: едет по диагонали, ищет ровно одну вражескую фигуру,
+            // затем может приземлиться на любую свободную клетку за ней.
+            let r = row + dr, c = col + dc;
+            let foundEnemy = null;
+            while (isPlayable(r, c) && board[r][c] === null) { r += dr; c += dc; }
+            if (isPlayable(r, c) && board[r][c] && board[r][c].color !== piece.color) {
+                const enemyKey = `${r},${c}`;
+                if (!capturedSoFar.some(cp => cp.row === r && cp.col === c)) {
+                    foundEnemy = { row: r, col: c };
+                    let lr = r + dr, lc = c + dc;
+                    while (isPlayable(lr, lc) && board[lr][lc] === null) {
+                        // Приземление на (lr,lc), бьём foundEnemy
+                        const newBoard = cloneBoard(board);
+                        newBoard[row][col] = null;
+                        newBoard[lr][lc] = { ...piece };
+                        newBoard[foundEnemy.row][foundEnemy.col] = null; // снимаем сразу (правило: бить одну и ту же нельзя дважды, но клетка освобождается только в конце хода — для поиска дальнейших не важно, т.к. мы её уже исключили через capturedSoFar)
+                        const newCaptured = [...capturedSoFar, foundEnemy];
+                        const newPath = [...path, { row: lr, col: lc }];
+                        const further = findCaptureSequencesForPiece(newBoard, lr, lc, piece, newCaptured, newPath);
+                        if (further.length > 0) {
+                            found = found.concat(further);
+                        } else {
+                            found.push({ captures: newCaptured, finalRow: lr, finalCol: lc, path: newPath });
+                        }
+                        lr += dr; lc += dc;
+                    }
+                }
+            }
+        } else {
+            // Простая шашка: бьёт на расстояние ровно 2 (через одну вражескую клетку), в любом из 4 направлений.
+            const mr = row + dr, mc = col + dc; // клетка с вражеской фигурой
+            const lr = row + 2 * dr, lc = col + 2 * dc; // клетка приземления
+            if (isPlayable(lr, lc) && board[lr][lc] === null && isPlayable(mr, mc) && board[mr][mc] && board[mr][mc].color !== piece.color) {
+                if (!capturedSoFar.some(cp => cp.row === mr && cp.col === mc)) {
+                    const newBoard = cloneBoard(board);
+                    newBoard[row][col] = null;
+                    newBoard[mr][mc] = null;
+                    newBoard[lr][lc] = { ...piece };
+                    const newCaptured = [...capturedSoFar, { row: mr, col: mc }];
+                    const newPath = [...path, { row: lr, col: lc }];
+                    const further = findCaptureSequencesForPiece(newBoard, lr, lc, piece, newCaptured, newPath);
+                    if (further.length > 0) {
+                        found = found.concat(further);
+                    } else {
+                        found.push({ captures: newCaptured, finalRow: lr, finalCol: lc, path: newPath });
+                    }
+                }
+            }
+        }
+    }
+    return found;
+}
+
+// Все доступные взятия для цвета color, с учётом правила большинства (оставляет только максимальные по числу битых).
+window.getAllCaptureSequences = function(board, color) {
+    let all = [];
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 10; col++) {
+            const piece = board[row][col];
+            if (piece && piece.color === color) {
+                const seqs = findCaptureSequencesForPiece(board, row, col, piece);
+                seqs.forEach(s => all.push({ ...s, fromRow: row, fromCol: col }));
+            }
+        }
+    }
+    if (all.length === 0) return [];
+    const maxCaptures = Math.max(...all.map(s => s.captures.length));
+    return all.filter(s => s.captures.length === maxCaptures);
+}
+
+// Обычные (небьющие) ходы для цвета color.
+window.getAllQuietMoves = function(board, color) {
+    let moves = [];
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 10; col++) {
+            const piece = board[row][col];
+            if (!piece || piece.color !== color) continue;
+            if (piece.king) {
+                for (const [dr, dc] of DIAGONALS) {
+                    let r = row + dr, c = col + dc;
+                    while (isPlayable(r, c) && board[r][c] === null) {
+                        moves.push({ fromRow: row, fromCol: col, finalRow: r, finalCol: c, captures: [], path: [{ row, col }, { row: r, col: c }] });
+                        r += dr; c += dc;
+                    }
+                }
+            } else {
+                const forwardDr = piece.color === 'w' ? -1 : 1;
+                for (const dc of [-1, 1]) {
+                    const r = row + forwardDr, c = col + dc;
+                    if (isPlayable(r, c) && board[r][c] === null) {
+                        moves.push({ fromRow: row, fromCol: col, finalRow: r, finalCol: c, captures: [], path: [{ row, col }, { row: r, col: c }] });
+                    }
+                }
+            }
+        }
+    }
+    return moves;
+}
+
+// Все легальные ходы для цвета (с учётом обязательности взятия и правила большинства).
+window.getLegalMoves = function(board, color) {
+    const captures = getAllCaptureSequences(board, color);
+    if (captures.length > 0) return captures;
+    return getAllQuietMoves(board, color);
+}
+
+// Применяет ход (из getLegalMoves) к доске, возвращает НОВУЮ доску + флаг превращения в дамку.
+window.applyMove = function(board, move) {
+    const newBoard = cloneBoard(board);
+    const piece = newBoard[move.fromRow][move.fromCol];
+    newBoard[move.fromRow][move.fromCol] = null;
+    move.captures.forEach(cp => { newBoard[cp.row][cp.col] = null; });
+    const promotionRow = piece.color === 'w' ? 0 : 9;
+    const becomesKing = !piece.king && move.finalRow === promotionRow;
+    newBoard[move.finalRow][move.finalCol] = { color: piece.color, king: piece.king || becomesKing };
+    return { board: newBoard, becomesKing };
+}
+
+
+</script>
+<script>
+// ============================================================
+// Мост между моим представлением доски (rules.js) и протоколом Hub движка Scan.
+// ============================================================
+
+
+// Номер клетки (1..50) по стандартной международной нумерации <-> (row,col).
+// row 0 = верх доски (чёрные), row 9 = низ (белые).
+window.rowColToSquare = function(row, col) {
+    // На каждую строку приходится 5 играбельных клеток, слева направо в порядке возрастания номера.
+    const playableColsInRow = [];
+    for (let c = 0; c < 10; c++) if (isPlayable(row, c)) playableColsInRow.push(c);
+    const idx = playableColsInRow.indexOf(col);
+    return row * 5 + idx + 1;
+}
+
+window.squareToRowCol = function(square) {
+    const row = Math.floor((square - 1) / 5);
+    const idxInRow = (square - 1) % 5;
+    const playableColsInRow = [];
+    for (let c = 0; c < 10; c++) if (isPlayable(row, c)) playableColsInRow.push(c);
+    return { row, col: playableColsInRow[idxInRow] };
+}
+
+// Строка позиции для Hub-протокола: 1 символ "кто ходит" + 50 символов (по клеткам 1..50).
+window.boardToHubPosition = function(board, turnColor) {
+    let s = turnColor === 'w' ? 'W' : 'B';
+    for (let sq = 1; sq <= 50; sq++) {
+        const { row, col } = squareToRowCol(sq);
+        const piece = board[row][col];
+        if (!piece) s += 'e';
+        else if (piece.color === 'w') s += piece.king ? 'W' : 'w';
+        else s += piece.king ? 'B' : 'b';
+    }
+    return s;
+}
+
+// Ход (из getLegalMoves/applyMove в rules.js) -> строка в нотации Scan.
+// ВАЖНО (разобрались через тестирование с реальным движком): формат для взятия — это
+// НЕ последовательность клеток приземления по ходу серии прыжков, а ровно
+// "откуда x куда x битая1 x битая2 x ..." — где "куда" это ФИНАЛЬНАЯ клетка после всей
+// серии взятий, а дальше перечислены клетки ВСЕХ побитых шашек (в любом порядке),
+// независимо от того, сколько реальных прыжков было сделано по пути.
+window.moveToHubNotation = function(move) {
+    const from = rowColToSquare(move.fromRow, move.fromCol);
+    const to = rowColToSquare(move.finalRow, move.finalCol);
+    if (move.captures.length === 0) return `${from}-${to}`;
+    const capturedSquares = move.captures.map(({ row, col }) => rowColToSquare(row, col));
+    return [from, to, ...capturedSquares].join('x');
+}
+
+// Строка в нотации Scan ("32-28" или "34x25x30") -> { fromSquare, toSquare, capturedSquares: [...] }
+// (без обращения к rules.js — просто разбор строки; сопоставление с конкретным легальным
+// ходом из getLegalMoves делается отдельно, через сравнение набора побитых клеток).
+window.parseHubNotation = function(notation) {
+    const isCapture = notation.includes('x');
+    const squares = notation.split(isCapture ? 'x' : '-').map(Number);
+    return {
+        isCapture,
+        fromSquare: squares[0],
+        toSquare: squares[1],
+        capturedSquares: isCapture ? squares.slice(2) : []
+    };
+}
+
+// Находит среди легальных ходов (getLegalMoves) тот, что соответствует разобранной нотации
+// от движка — по клетке "откуда", клетке "куда" и НАБОРУ (без учёта порядка) побитых клеток.
+window.findMoveForNotation = function(legalMoves, notation) {
+    const parsed = parseHubNotation(notation);
+    const fromRC = squareToRowCol(parsed.fromSquare);
+    const toRC = squareToRowCol(parsed.toSquare);
+    const capturedSet = new Set(parsed.capturedSquares.slice().sort());
+    return legalMoves.find((m) => {
+        if (m.fromRow !== fromRC.row || m.fromCol !== fromRC.col) return false;
+        if (m.finalRow !== toRC.row || m.finalCol !== toRC.col) return false;
+        const mCapturedSet = m.captures.map((c) => rowColToSquare(c.row, c.col)).sort();
+        if (mCapturedSet.length !== capturedSet.size) return false;
+        return mCapturedSet.every((sq) => capturedSet.has(sq));
+    }) || null;
+}
+
+
+</script>
+<script>
+        const genericNotifyB64 = 'data:audio/mp3;base64,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vI1YT9GBInKDTec789DZGbIjuAhROqkxsOQqaMzMalw5sgYUpEpad0VEK9zObqImMbPrvLRKsv0Zd2ZaaZjP9Kre771bR9mv/SvqqtuhqFEbSxhXFVus7lOzCBhI5iEHvE1BEIwdCBWKU6nKjio9QIGIwAAPxf/+YS+WTX+iEyhwnZ7/v/7ff///+n///7fbnt/TSiKwPM5mWrIhCinFmLUKUrlIxgisOHYppVBDqCjVTEFNRVUIAAulfX///////6V/pf+n6+if//////23Ndq9/XRCmUhYI0xANjBVFRY/NgQdHIpKgYOwYWOVTP/7YMT7gBBtISPsmGvJ8p3kfYYNEEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMTzgQ8J5xmnjK3BBTxjKBALiVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+xDE8YPGyecYQAh52AAAP8AAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==';
+        const sounds = {
+            move: new Audio('data:audio/mp3;base64,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'),
+            capture: new Audio('data:audio/mp3;base64,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'),
+            check: new Audio('data:audio/mp3;base64,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'), // у Lichess отдельного звука шаха в стандартном наборе нет, используется звук хода
+            start: new Audio(genericNotifyB64),
+            end: new Audio(genericNotifyB64)
+
+        };
+
+const PIECE_IMG = {
+'w': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MiIgZmlsbD0iI0ZCRkFGNCIgc3Ryb2tlPSIjMkEyRTI0IiBzdHJva2Utd2lkdGg9IjMiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkEyRTI0IiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC41NSIvPgo8L3N2Zz4=',
+'W': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MiIgZmlsbD0iI0ZCRkFGNCIgc3Ryb2tlPSIjMkEyRTI0IiBzdHJva2Utd2lkdGg9IjMiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkEyRTI0IiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC41NSIvPgogIDxwYXRoIGQ9Ik0zMCA0NSBMMzggNTggTDUwIDQyIEw2MiA1OCBMNzAgNDUgTDY2IDYyIEwzNCA2MiBaIiBmaWxsPSIjMkEyRTI0IiBvcGFjaXR5PSIwLjkiLz4KPC9zdmc+',
+'b': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MiIgZmlsbD0iIzJBMkUyNCIgc3Ryb2tlPSIjRkJGQUY0IiBzdHJva2Utd2lkdGg9IjMiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRkJGQUY0IiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC41NSIvPgo8L3N2Zz4=',
+'B': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MiIgZmlsbD0iIzJBMkUyNCIgc3Ryb2tlPSIjRkJGQUY0IiBzdHJva2Utd2lkdGg9IjMiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRkJGQUY0IiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC41NSIvPgogIDxwYXRoIGQ9Ik0zMCA0NSBMMzggNTggTDUwIDQyIEw2MiA1OCBMNzAgNDUgTDY2IDYyIEwzNCA2MiBaIiBmaWxsPSIjRkJGQUY0IiBvcGFjaXR5PSIwLjkiLz4KPC9zdmc+',
+
+};
+</script>
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const show = (id, on) => $(id).classList.toggle('hidden', !on);
+
+/* ================= настройки меню ================= */
+const PRESETS = [[1,0],[3,2],[5,0],[5,3],[10,0],[10,5],[15,10],[30,0],[30,20],[60,0],[0,0]];
+const LEVEL_DEPTH = [1, 2, 3, 5, 7, 9, 12, 16];
+let settings = { preset: 5, level: 3, side: 'r' };
+try { settings = Object.assign(settings, JSON.parse(localStorage.getItem('draughtsSettings') || '{}')); } catch (e) {}
+const saveSettings = () => { try { localStorage.setItem('draughtsSettings', JSON.stringify(settings)); } catch (e) {} };
+let uiMode = 'bot';
+
+PRESETS.forEach(([m, i], idx) => {
+  const b = document.createElement('button'); b.className = 'btn-s'; b.textContent = m === 0 ? '∞' : `${m}+${i}`;
+  b.onclick = () => { settings.preset = idx; saveSettings(); paintMenu(); }; $('presets').appendChild(b);
+});
+for (let l = 1; l <= 8; l++) {
+  const b = document.createElement('button'); b.className = 'btn-s'; b.textContent = l;
+  b.onclick = () => { settings.level = l; saveSettings(); paintMenu(); }; $('levels').appendChild(b);
+}
+document.querySelectorAll('.side').forEach((el) => { el.onclick = () => { settings.side = el.dataset.side; saveSettings(); paintMenu(); }; });
+function paintMenu() {
+  [...$('presets').children].forEach((b, i) => b.classList.toggle('active', i === settings.preset));
+  [...$('levels').children].forEach((b, i) => b.classList.toggle('active', i + 1 === settings.level));
+  document.querySelectorAll('.side').forEach((el) => el.classList.toggle('active', el.dataset.side === settings.side));
+  $('tab-bot').classList.toggle('active', uiMode === 'bot'); $('tab-online').classList.toggle('active', uiMode === 'online');
+  show('level-box', uiMode === 'bot'); show('join-row', uiMode === 'online');
+  $('side-title').textContent = uiMode === 'online' ? 'Ваш цвет' : 'Сторона';
+  $('start-btn').textContent = uiMode === 'online' ? 'Создать игру по ссылке' : 'Сыграть с компьютером';
+  show('err', false);
+}
+$('tab-bot').onclick = () => { uiMode = 'bot'; paintMenu(); };
+$('tab-online').onclick = () => { uiMode = 'online'; paintMenu(); };
+paintMenu();
+try { $('nick').value = localStorage.getItem('draughtsNickname') || ''; } catch (e) {}
+$('nick').oninput = () => { try { localStorage.setItem('draughtsNickname', $('nick').value.trim()); } catch (e) {} };
+const myNick = () => $('nick').value.trim() || 'Игрок';
+function menuError(t) { $('err').textContent = t; show('err', true); }
+
+/* ================= состояние партии ================= */
+let mode = 'bot', userColor = 'w', level = 3;
+let positions = [], hubMoves = [], shownMoves = [], lastMoveSq = [];
+let turn = 'w', viewIndex = -1, gameOver = false, busy = false, replayMode = false;
+let timers = { w: 600, b: 600 }, incSec = 0, timed = true, lastTick = null, tickHandle = null;
+let sel = null, candidates = [], stepIdx = 1, chosen = [];
+let premove = null, pmSel = null, quietPlies = 0, suppressClick = false;
+let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
+const OD = () => window.OnlineDraughts;
+
+const sqNum = (r, c) => rowColToSquare(r, c);
+const flipped = () => userColor === 'b';
+const dispRC = (r, c) => (flipped() ? [9 - r, 9 - c] : [r, c]);
+const other = (c) => (c === 'w' ? 'b' : 'w');
+const lastBoard = () => positions[positions.length - 1];
+
+function resize() {
+  const stacked = window.innerWidth <= 760;
+  const availW = stacked ? window.innerWidth - 24 : window.innerWidth - 24 - 320;
+  const availH = window.innerHeight - 24;
+  const cell = Math.max(32, Math.floor(Math.min(availW / 10, stacked ? availW / 10 : availH / 10, 84)));
+  document.documentElement.style.setProperty('--cell', cell + 'px');
+}
+window.addEventListener('resize', resize); resize();
+
+/* ================= доска ================= */
+function buildBoard() {
+  const el = $('board'); el.innerHTML = '';
+  for (let dr = 0; dr < 10; dr++) for (let dc = 0; dc < 10; dc++) {
+    const r = flipped() ? 9 - dr : dr, c = flipped() ? 9 - dc : dc;
+    const d = document.createElement('div'); const pl = isPlayable(r, c);
+    d.className = 'sq ' + (pl ? 'd' : 'l'); d.dataset.r = r; d.dataset.c = c;
+    if (pl) { const n = document.createElement('span'); n.className = 'num'; n.textContent = sqNum(r, c); d.appendChild(n); d.onclick = () => { if (suppressClick) return; onSquare(r, c); }; }
+    el.appendChild(d);
+  }
+}
+const sqEl = (r, c) => { const [dr, dc] = dispRC(r, c); return $('board').children[dr * 10 + dc]; };
+const pieceKey = (p) => (p.color === 'w' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b'));
+function placePiece(el, r, c) { const [dr, dc] = dispRC(r, c); el.style.transform = `translate(${dc * 100}%, ${dr * 100}%)`; }
+function makePiece(p, r, c) {
+  const el = document.createElement('div'); el.className = 'piece noanim';
+  el.style.backgroundImage = `url(${PIECE_IMG[pieceKey(p)]})`; el.dataset.r = r; el.dataset.c = c; placePiece(el, r, c); return el;
+}
+function renderPieces() {
+  const layer = $('pieces'); layer.innerHTML = '';
+  const b = positions[viewIndex < 0 ? positions.length - 1 : viewIndex];
+  for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) if (b[r][c]) layer.appendChild(makePiece(b[r][c], r, c));
+}
+const pieceElAt = (r, c) => $('pieces').querySelector(`.piece[data-r="${r}"][data-c="${c}"]`);
+function paintMarks() {
+  document.querySelectorAll('#board .sq').forEach((s) => s.classList.remove('sel', 'target', 'cap', 'path', 'last', 'movable', 'pre'));
+  const live = viewIndex < 0, idx = live ? positions.length - 1 : viewIndex;
+  if (idx > 0 && lastMoveSq[idx - 1]) lastMoveSq[idx - 1].forEach(([r, c]) => sqEl(r, c).classList.add('last'));
+  if (!live || gameOver || replayMode) return;
+  if (turn !== userColor) {
+    if (pmSel) sqEl(pmSel[0], pmSel[1]).classList.add('pre');
+    if (premove) { sqEl(premove.from[0], premove.from[1]).classList.add('pre'); sqEl(premove.to[0], premove.to[1]).classList.add('pre'); }
+    return;
+  }
+  if (busy) return;
+  if (!sel) {
+    const froms = new Set(getLegalMoves(lastBoard(), userColor).map((m) => m.fromRow + ',' + m.fromCol));
+    froms.forEach((k) => { const [r, c] = k.split(',').map(Number); sqEl(r, c).classList.add('movable'); });
+  } else {
+    sqEl(sel[0], sel[1]).classList.add('sel');
+    chosen.slice(1).forEach(([r, c]) => sqEl(r, c).classList.add('path'));
+    new Set(candidates.map((m) => m.path[stepIdx].row + ',' + m.path[stepIdx].col)).forEach((k) => {
+      const [r, c] = k.split(',').map(Number); const e = sqEl(r, c); e.classList.add('target');
+      if (candidates.some((m) => m.captures.length && m.path[stepIdx].row === r && m.path[stepIdx].col === c)) e.classList.add('cap');
+    });
+  }
+}
+
+/* ================= клики / премув ================= */
+function resetSel() { sel = null; candidates = []; stepIdx = 1; chosen = []; }
+function flashStatus(t) { setStatus(t, '#e0a800'); setTimeout(updateStatus, 1800); }
+
+function onSquare(r, c) {
+  if (gameOver || replayMode || viewIndex >= 0) return;
+  if (turn !== userColor) return premoveClick(r, c);
+  if (busy) return;
+  const board = lastBoard(), p = board[r][c];
+  if (sel && candidates.length) {
+    const hit = candidates.filter((m) => m.path[stepIdx].row === r && m.path[stepIdx].col === c);
+    if (hit.length) {
+      chosen.push([r, c]);
+      if (hit.length === 1 && hit[0].path.length === stepIdx + 1) { const mv = hit[0]; resetSel(); playMove(mv, true); return; }
+      candidates = hit; stepIdx++;
+      if (hit.every((m) => m.path.length === stepIdx)) { const mv = hit[0]; resetSel(); playMove(mv, true); return; }
+      paintMarks(); return;
+    }
+  }
+  if (p && p.color === userColor) {
+    const mine = getLegalMoves(board, userColor);
+    const all = mine.filter((m) => m.fromRow === r && m.fromCol === c);
+    if (all.length) { sel = [r, c]; candidates = all; stepIdx = 1; chosen = [[r, c]]; }
+    else { resetSel(); flashStatus(mine.some((m) => m.captures.length) ? 'Обязательно бить (и максимальное число шашек)' : 'У этой шашки нет ходов'); }
+  } else resetSel();
+  paintMarks();
+}
+function premoveClick(r, c) {
+  const p = lastBoard()[r][c];
+  if (pmSel) {
+    if (pmSel[0] === r && pmSel[1] === c) pmSel = null;
+    else if (!p || p.color !== userColor) { premove = { from: pmSel, to: [r, c] }; pmSel = null; }
+    else pmSel = [r, c];
+  } else if (p && p.color === userColor) { pmSel = [r, c]; premove = null; }
+  else premove = null;
+  paintMarks();
+}
+function tryPremove() {
+  if (!premove || turn !== userColor || gameOver) { premove = null; pmSel = null; return false; }
+  const pm = premove; premove = null; pmSel = null;
+  const ms = getLegalMoves(lastBoard(), userColor).filter((m) => m.fromRow === pm.from[0] && m.fromCol === pm.from[1] && m.finalRow === pm.to[0] && m.finalCol === pm.to[1]);
+  if (ms.length === 1) { setTimeout(() => playMove(ms[0], true), 60); return true; }
+  return false;
+}
+
+/* ================= перетаскивание ================= */
+let drag = null;
+function evRC(e) {
+  const rect = $('board').getBoundingClientRect(), cell = rect.width / 10;
+  const dc = Math.floor((e.clientX - rect.left) / cell), dr = Math.floor((e.clientY - rect.top) / cell);
+  if (dc < 0 || dc > 9 || dr < 0 || dr > 9) return null;
+  return flipped() ? [9 - dr, 9 - dc] : [dr, dc];
+}
+$('board-wrap').addEventListener('pointerdown', (e) => {
+  if (e.button > 0 || gameOver || busy || replayMode || viewIndex >= 0 || turn !== userColor) return;
+  const rc = evRC(e); if (!rc) return;
+  const p = lastBoard()[rc[0]][rc[1]]; if (!p || p.color !== userColor) return;
+  const mvs = getLegalMoves(lastBoard(), userColor).filter((m) => m.fromRow === rc[0] && m.fromCol === rc[1]);
+  if (!mvs.length) return;
+  sel = rc; candidates = mvs; stepIdx = 1; chosen = [rc]; paintMarks();
+  drag = { rc, el: pieceElAt(rc[0], rc[1]), moved: false, sx: e.clientX, sy: e.clientY };
+  try { $('board-wrap').setPointerCapture(e.pointerId); } catch (err) {}
+});
+$('board-wrap').addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return;
+  drag.moved = true; if (!drag.el) return; drag.el.classList.add('drag');
+  const rect = $('board').getBoundingClientRect(), cell = rect.width / 10;
+  drag.el.style.transform = `translate(${e.clientX - rect.left - cell / 2}px, ${e.clientY - rect.top - cell / 2}px)`;
+});
+$('board-wrap').addEventListener('pointerup', async (e) => {
+  if (!drag) return; const d = drag; drag = null;
+  if (!d.moved) return; // обычный клик — обработает onSquare
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 0);
+  const rc = evRC(e);
+  const restore = () => { renderPieces(); paintMarks(); };
+  if (!rc) return restore();
+  const finals = candidates.filter((m) => m.finalRow === rc[0] && m.finalCol === rc[1]);
+  if (finals.length === 1) { const mv = finals[0]; resetSel(); return playMove(mv, true, { instant: true }); }
+  restore();
+  if (candidates.some((m) => m.path[stepIdx].row === rc[0] && m.path[stepIdx].col === rc[1])) onSquare(rc[0], rc[1]);
+});
+
+/* ================= ход ================= */
+async function animateMove(move) {
+  const el = pieceElAt(move.fromRow, move.fromCol); if (!el) return;
+  el.classList.remove('noanim'); el.classList.add('moving');
+  for (let i = 1; i < move.path.length; i++) {
+    placePiece(el, move.path[i].row, move.path[i].col);
+    await sleep(move.captures.length ? 230 : 200);
+    const cp = move.captures[i - 1];
+    if (cp) { const ce = pieceElAt(cp.row, cp.col); if (ce) { ce.classList.remove('noanim'); ce.classList.add('fading'); } }
+  }
+  await sleep(110);
+}
+const displayNotation = (m) => `${sqNum(m.fromRow, m.fromCol)}${m.captures.length ? 'x' : '-'}${sqNum(m.finalRow, m.finalCol)}`;
+function playSnd(n) { try { const a = sounds[n]; if (a) { a.currentTime = 0; a.play().catch(() => {}); } } catch (e) {} }
+
+async function playMove(move, byUser, opts = {}) {
+  busy = true; paintMarks();
+  const before = lastBoard(), mover = turn;
+  if (!opts.instant) await animateMove(move);
+  const after = applyMove(before, move).board;
+  positions.push(after); hubMoves.push(moveToHubNotation(move)); shownMoves.push(displayNotation(move));
+  lastMoveSq.push([[move.fromRow, move.fromCol], [move.finalRow, move.finalCol]]);
+  quietPlies = (move.captures.length || !before[move.fromRow][move.fromCol].king) ? 0 : quietPlies + 1;
+  if (opts.remoteTimes) { timers.w = opts.remoteTimes.w; timers.b = opts.remoteTimes.b; } else if (timed) timers[mover] += incSec;
+  lastTick = null; turn = other(turn); viewIndex = -1;
+  renderPieces(); renderMoves(); playSnd(move.captures.length ? 'capture' : 'move');
+  busy = false;
+  if (mode === 'online' && byUser) sendOnlineMove();
+  if (checkEnd()) return;
+  paintMarks(); updateStatus(); updateClocks(); updateButtons();
+  if (tryPremove()) return;
+  if (mode === 'bot' && turn !== userColor) botMove();
+}
+
+/* ================= конец партии ================= */
+function resultText(code, reason) {
+  const win = code === 'win';
+  switch (reason) {
+    case 'resign': return win ? 'Победа — соперник сдался' : 'Вы сдались';
+    case 'timeout': return win ? 'Победа по времени' : 'Поражение по времени';
+    case 'nomoves': return win ? 'Победа — у соперника нет ходов' : 'Поражение — у вас нет ходов';
+    case 'abandon': return win ? 'Победа — соперник вышел из партии' : 'Партия прервана';
+    case 'draw-agree': return 'Ничья по соглашению';
+    case 'draw-rule': return 'Ничья (25 ходов только дамками)';
+    default: return win ? 'Победа' : code === 'draw' ? 'Ничья' : 'Поражение';
+  }
+}
+function checkEnd() {
+  const board = lastBoard();
+  if (getLegalMoves(board, turn).length === 0) { endGame(turn !== userColor ? 'win' : 'loss', 'nomoves'); return true; }
+  let onlyKings = true;
+  for (const row of board) for (const p of row) if (p && !p.king) onlyKings = false;
+  if (onlyKings && quietPlies >= 50) { endGame('draw', 'draw-rule'); return true; }
+  return false;
+}
+function endGame(code, reason) {
+  if (gameOver) return;
+  gameOver = true; stopClock(); resetSel(); premove = null; pmSel = null; drag = null;
+  const text = resultText(code, reason);
+  playSnd('end'); setStatus(text, '#a23b33'); show('banner', false); show('actions', false);
+  const score = code === 'win' ? (userColor === 'w' ? '1–0' : '0–1') : code === 'loss' ? (userColor === 'w' ? '0–1' : '1–0') : '½–½';
+  const post = $('post'); show('post', true);
+  post.innerHTML = `<div class="res">${score}</div><div class="rt">${text}</div>` +
+    (mode === 'bot' ? '<button class="p" id="p-rematch">РЕВАНШ</button>' : '') + '<button class="s" id="p-menu">В МЕНЮ</button>';
+  if ($('p-rematch')) $('p-rematch').onclick = () => startGame({ mode: 'bot' });
+  $('p-menu').onclick = toMenu;
+  paintMarks();
+  if (mode === 'online' && online) {
+    if (!online.suppress) {
+      const winner = code === 'draw' ? 'draw' : (code === 'win' ? userColor : other(userColor));
+      OD().sendResult(online.id, { winner, reason }).catch((e) => onlineError('сообщить результат', e));
+    }
+    online.suppress = false;
+  }
+  saveHistory(text, code);
+}
+
+/* ================= бот Scan ================= */
+let worker = null, workerReady = null, pendingResolve = null;
+function ensureWorker() {
+  if (workerReady) return workerReady;
+  workerReady = new Promise((resolve, reject) => {
+    try { worker = new Worker('scan_normal.js'); } catch (e) { reject(e); return; }
+    let inited = false; worker.onerror = (e) => reject(e);
+    worker.onmessage = (e) => {
+      const msg = String(e.data);
+      if (msg.includes('wait')) { worker.postMessage('set-param name=variant value=normal'); worker.postMessage('init'); }
+      else if (msg.includes('ready') && !inited) { inited = true; resolve(); }
+      else if (msg.startsWith('done') && pendingResolve) { const m = msg.match(/move=(\S+)/); const f = pendingResolve; pendingResolve = null; f(m ? m[1] : null); }
+    };
+    worker.postMessage('hub');
+  });
+  return workerReady;
+}
+async function askEngine(board, color, depth) {
+  await ensureWorker();
+  return new Promise((resolve) => {
+    pendingResolve = resolve;
+    worker.postMessage('pos pos=' + boardToHubPosition(board, color));
+    worker.postMessage('level depth=' + depth); worker.postMessage('go think');
+  });
+}
+async function botMove() {
+  const board = lastBoard(), legal = getLegalMoves(board, turn); if (!legal.length || gameOver) return;
+  setStatus('Scan думает…', '#e0a800');
+  const startedLen = positions.length; let move = null;
+  try {
+    const t0 = Date.now();
+    const notation = legal.length === 1 ? null : await askEngine(board, turn, LEVEL_DEPTH[level - 1]);
+    if (gameOver || positions.length !== startedLen) return;
+    if (notation) move = findMoveForNotation(legal, notation);
+    const spent = Date.now() - t0; if (spent < 450) await sleep(450 - spent);
+  } catch (err) { console.error('Движок недоступен:', err); }
+  if (gameOver || positions.length !== startedLen) return;
+  playMove(move || legal[Math.floor(Math.random() * legal.length)], false);
+}
+function material(color) { let s = 0; for (const row of lastBoard()) for (const p of row) if (p && p.color === color) s += p.king ? 3 : 1; return s; }
+
+/* ================= часы ================= */
+const fmt = (s) => { s = Math.max(0, s); return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; };
+function updateClocks() {
+  const topC = other(userColor);
+  $('t-top').textContent = timed ? fmt(timers[topC]) : '∞'; $('t-bottom').textContent = timed ? fmt(timers[userColor]) : '∞';
+  const run = !gameOver && shownMoves.length > 0 ? turn : null;
+  $('clock-top').classList.toggle('active', run === topC); $('clock-bottom').classList.toggle('active', run === userColor);
+  $('clock-top').classList.toggle('low', timed && timers[topC] < 10 && run === topC);
+  $('clock-bottom').classList.toggle('low', timed && timers[userColor] < 10 && run === userColor);
+}
+function stopClock() { if (tickHandle) clearInterval(tickHandle); tickHandle = null; }
+function tick() {
+  if (gameOver || replayMode || !timed || shownMoves.length === 0) { lastTick = null; updateClocks(); return; }
+  const now = performance.now(); if (lastTick == null) { lastTick = now; return; }
+  timers[turn] -= (now - lastTick) / 1000; lastTick = now;
+  if (timers[turn] <= 0) { timers[turn] = 0; updateClocks(); endGame(turn !== userColor ? 'win' : 'loss', 'timeout'); return; }
+  updateClocks();
+}
+
+/* ================= панель ================= */
+function setStatus(text, dot) { $('status').innerHTML = `<div class="dot" style="background:${dot || '#3B5D4A'}"></div><span>${text}</span>`; }
+function oppLabel() { return mode === 'online' ? (online && online.oppName) || 'Соперник' : 'Scan'; }
+function updateStatus() {
+  if (gameOver) return;
+  if (replayMode) return setStatus('Просмотр партии');
+  if (turn === userColor) {
+    const must = getLegalMoves(lastBoard(), turn).some((m) => m.captures.length);
+    setStatus(must ? 'Ваш ход — обязательное взятие!' : 'Ваш ход');
+  } else setStatus(mode === 'online' ? `Ход соперника (${oppLabel()})…` : 'Scan думает…', '#e0a800');
+}
+function updateButtons() {
+  $('take-btn').classList.toggle('hidden', mode !== 'bot');
+  $('take-btn').disabled = mode !== 'bot' || gameOver || busy || turn !== userColor || shownMoves.length < 2;
+  $('draw-btn').disabled = gameOver || busy || shownMoves.length < 2;
+}
+function renderMoves() {
+  const box = $('moves'); box.innerHTML = '';
+  if (!shownMoves.length) {
+    box.innerHTML = '<div class="welcome">Вы играете ' + (userColor === 'w' ? 'белыми' : 'чёрными') + '. Белые ходят первыми. Нумерация клеток — стандартная (1–50). Фигуры можно перетаскивать; пока ход соперника — можно сделать премув.</div>';
+    return updateNav();
+  }
+  for (let i = 0; i < shownMoves.length; i += 2) {
+    const n = document.createElement('div'); n.className = 'mn'; n.textContent = (i / 2 + 1) + '.'; box.appendChild(n);
+    for (let k = 0; k < 2; k++) {
+      const idx = i + k, d = document.createElement('div'); d.className = 'mv';
+      if (idx < shownMoves.length) { d.textContent = shownMoves[idx]; d.onclick = () => gotoView(idx + 1); if ((viewIndex < 0 ? shownMoves.length : viewIndex) === idx + 1) d.classList.add('cur'); }
+      box.appendChild(d);
+    }
+  }
+  box.scrollTop = box.scrollHeight; updateNav();
+}
+function gotoView(i) { const last = positions.length - 1; viewIndex = i >= last ? -1 : Math.max(0, i); resetSel(); renderPieces(); renderMoves(); paintMarks(); }
+function updateNav() {
+  const cur = viewIndex < 0 ? positions.length - 1 : viewIndex;
+  $('n-first').disabled = $('n-prev').disabled = cur <= 0; $('n-next').disabled = $('n-last').disabled = viewIndex < 0;
+}
+$('n-first').onclick = () => gotoView(0);
+$('n-prev').onclick = () => gotoView((viewIndex < 0 ? positions.length - 1 : viewIndex) - 1);
+$('n-next').onclick = () => gotoView((viewIndex < 0 ? positions.length - 1 : viewIndex) + 1);
+$('n-last').onclick = () => gotoView(positions.length - 1);
+
+/* ================= запуск партии ================= */
+// cfg: { mode:'bot'|'online', color, minutes, inc, oppName, data }
+function startGame(cfg = { mode: 'bot' }) {
+  mode = cfg.mode; level = settings.level;
+  if (mode === 'bot') {
+    userColor = settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
+    const [m, i] = PRESETS[settings.preset]; timed = m > 0; incSec = i; timers = { w: m * 60, b: m * 60 };
+  } else {
+    userColor = cfg.color; timed = cfg.minutes > 0; incSec = cfg.inc;
+    timers = { w: (cfg.data && cfg.data.whiteTimeMs != null ? cfg.data.whiteTimeMs : cfg.minutes * 60000) / 1000, b: (cfg.data && cfg.data.blackTimeMs != null ? cfg.data.blackTimeMs : cfg.minutes * 60000) / 1000 };
+  }
+  positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
+  turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
+  resetSel(); premove = null; pmSel = null; lastTick = null;
+  show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
+  $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
+  ['move', 'capture', 'end'].forEach((k) => { const a = sounds[k]; a.play().then(() => a.pause()).catch(() => {}); }); playSnd('start');
+  resize(); buildBoard(); renderPieces(); renderMoves(); updateStatus(); paintMarks(); updateClocks(); updateButtons();
+  stopClock(); tickHandle = setInterval(tick, 100);
+  if (mode === 'bot' && turn !== userColor) botMove();
+}
+function toMenu() {
+  stopClock(); gameOver = true; pendingResolve = null; leaveOnline();
+  if (worker) { try { worker.postMessage('stop'); } catch (e) {} }
+  ['game', 'history'].forEach((id) => show(id, false)); show('setup', true); showView('config'); paintMenu();
+}
+$('start-btn').onclick = () => (uiMode === 'online' ? createOnline() : startGame({ mode: 'bot' }));
+$('exit-btn').onclick = () => {
+  const active = !gameOver && !replayMode && shownMoves.length > 0;
+  if (active && !confirm('Партия будет прервана и засчитана как поражение. Выйти?')) return;
+  if (active) endGame('loss', 'abandon');
+  toMenu();
+};
+$('resign-btn').onclick = () => { if (!gameOver && !busy && shownMoves.length > 0) endGame('loss', 'resign'); };
+$('take-btn').onclick = () => {
+  if (mode !== 'bot' || gameOver || busy || turn !== userColor || shownMoves.length < 2) return;
+  for (let k = 0; k < 2; k++) { positions.pop(); hubMoves.pop(); shownMoves.pop(); lastMoveSq.pop(); }
+  quietPlies = 0; premove = null; resetSel(); viewIndex = -1; renderPieces(); renderMoves(); updateStatus(); paintMarks(); updateButtons();
+};
+$('draw-btn').onclick = () => {
+  if (gameOver || busy || shownMoves.length < 2) return;
+  if (mode === 'online') { OD().sendDrawOffer(online.id, userColor).catch((e) => onlineError('отправить предложение ничьи', e)); showBanner('Предложение ничьи отправлено…'); return; }
+  const botOk = shownMoves.length >= 30 && material(other(userColor)) <= material(userColor) + 1;
+  if (botOk) endGame('draw', 'draw-agree'); else flashStatus('Scan отклонил ничью');
+};
+function showBanner(html, ok, no) {
+  const b = $('banner'); b.innerHTML = html; show('banner', true);
+  if (ok) $('b-ok').onclick = ok; if (no) $('b-no').onclick = no;
+}
+
+/* ================= история ================= */
+const HKEY = 'draughtsHistory';
+const loadHistory = () => { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } };
+function saveHistory(text, code) {
+  if (!shownMoves.length) return;
+  const rec = { date: new Date().toISOString(), userColor, level: mode === 'bot' ? level : null, opponent: mode === 'online' ? (online && online.oppName) || 'Соперник' : null,
+    result: code, resultText: text, hub: hubMoves.slice(), shown: shownMoves.slice() };
+  const list = loadHistory(); list.unshift(rec);
+  try { localStorage.setItem(HKEY, JSON.stringify(list.slice(0, 100))); } catch (e) {}
+  const u = OD() && OD().currentUser;
+  if (mode === 'online' && online && u) OD().saveMyGame(u.uid, online.id, rec).catch((e) => console.error('Облачная история:', e));
+}
+function renderHistory(list, emptyText) {
+  const box = $('hist-list'); box.innerHTML = '';
+  if (!list.length) { box.innerHTML = `<div class="h-empty">${emptyText}</div>`; return; }
+  list.forEach((rec) => {
+    const d = document.createElement('div'); d.className = 'h-item';
+    const dt = new Date(rec.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const who = rec.opponent ? `против ${rec.opponent} (по сети)` : `уровень ${rec.level}`;
+    d.innerHTML = `<div class="h-dot ${rec.result}"></div><div><div>${rec.resultText}</div><div class="h-meta">${dt} · вы играли ${rec.userColor === 'w' ? 'белыми' : 'чёрными'} · ${who} · ${rec.shown.length} ходов</div></div>`;
+    d.onclick = () => viewRecord(rec); box.appendChild(d);
+  });
+}
+function openHistory() { show('setup', false); show('history', true); $('hist-title').textContent = 'История партий'; renderHistory(loadHistory(), 'Пока нет сыгранных партий'); }
+async function openMyGames() {
+  show('setup', false); show('history', true); $('hist-title').textContent = 'Мои онлайн-партии';
+  $('hist-list').innerHTML = '<div class="h-empty">Загрузка…</div>';
+  const u = OD() && OD().currentUser; if (!u) return renderHistory([], 'Войдите через Google, чтобы видеть свою историю');
+  try { renderHistory(await OD().listMyGames(u.uid, 50), 'Здесь пока нет завершённых сетевых партий'); }
+  catch (e) { console.error(e); $('hist-list').innerHTML = '<div class="h-empty">Не удалось загрузить историю. Проверьте интернет.</div>'; }
+}
+function viewRecord(rec) {
+  userColor = rec.userColor; mode = 'bot'; replayMode = true; gameOver = true; stopClock(); timed = false;
+  positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = []; let t = 'w';
+  for (const h of rec.hub) {
+    const mv = findMoveForNotation(getLegalMoves(lastBoard(), t), h); if (!mv) break;
+    positions.push(applyMove(lastBoard(), mv).board); hubMoves.push(h); shownMoves.push(displayNotation(mv));
+    lastMoveSq.push([[mv.fromRow, mv.fromCol], [mv.finalRow, mv.finalCol]]); t = other(t);
+  }
+  turn = t; viewIndex = -1; resetSel(); show('history', false); show('game', true); show('post', false); show('actions', false); show('banner', false);
+  $('name-bottom').textContent = 'Просмотр: ' + rec.resultText;
+  resize(); buildBoard(); renderPieces(); renderMoves(); setStatus('Просмотр партии'); $('t-top').textContent = $('t-bottom').textContent = '—'; gotoView(0);
+}
+$('hist-btn').onclick = openHistory; $('my-btn').onclick = openMyGames;
+$('hist-back').onclick = () => { show('history', false); show('setup', true); };
+
+/* ================= аккаунт ================= */
+function paintAccount() {
+  const u = OD() && OD().currentUser;
+  show('acc-in', !u); show('acc-user', !!u); show('my-btn', !!u);
+  if (u) {
+    $('acc-name').textContent = u.displayName || 'Игрок'; $('acc-img').src = u.photoURL || ''; $('acc-img').style.display = u.photoURL ? '' : 'none';
+    if (!$('nick').value) $('nick').value = (u.displayName || '').split(' ')[0] || '';
+  }
+}
+$('acc-in').onclick = async () => {
+  if (!(await waitOnline())) return alert('Не удалось подключиться к серверу. Проверьте интернет.');
+  try { await OD().signIn(); } catch (e) { if (!e || e.code !== 'auth/popup-closed-by-user') { console.error(e); alert('Не удалось войти через Google. Попробуйте ещё раз.'); } }
+};
+$('acc-out').onclick = async () => { try { await OD().signOutUser(); } catch (e) { console.error(e); } };
+window.addEventListener('od-auth', paintAccount); window.addEventListener('od-ready', paintAccount);
+
+/* ================= сетевая игра ================= */
+function waitOnline() {
+  if (OD() && OD().ready) return Promise.resolve(true);
+  if (OD() && OD().initError) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const done = () => { clearTimeout(t); resolve(!!(OD() && OD().ready)); };
+    window.addEventListener('od-ready', done, { once: true });
+    const t = setTimeout(() => { window.removeEventListener('od-ready', done); resolve(!!(OD() && OD().ready)); }, 6000);
+  });
+}
+function showView(v) { show('v-config', v === 'config'); show('v-wait', v === 'wait'); show('v-invite', v === 'invite'); }
+function onlineError(action, err) {
+  console.error(action, err);
+  showBanner(`<span style="color:#A23B33">Не удалось ${action}: ${(err && (err.code || err.message)) || 'ошибка сети'}</span>`);
+}
+function leaveOnline() {
+  if (!online) return;
+  if (online.unsub) { try { online.unsub(); } catch (e) {} }
+  if (online.poll) clearInterval(online.poll);
+  online = null;
+}
+async function createOnline() {
+  show('err', false);
+  if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу сетевой игры. Проверьте интернет.');
+  const [minutes, inc] = PRESETS[settings.preset];
+  const hostColor = settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
+  const u = OD().currentUser;
+  try {
+    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null });
+    leaveOnline();
+    online = { id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc } };
+    online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
+    $('link-box').value = location.origin + location.pathname + '?game=' + id; showView('wait');
+  } catch (e) { console.error(e); menuError('Не удалось создать игру. Попробуйте ещё раз.'); }
+}
+$('copy-btn').onclick = () => {
+  const box = $('link-box'); box.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(box.value) : Promise.reject()).then(() => { $('copy-btn').textContent = 'Скопировано!'; setTimeout(() => { $('copy-btn').textContent = 'Копировать'; }, 1500); }).catch(() => { try { document.execCommand('copy'); } catch (e) {} });
+};
+$('wait-cancel').onclick = () => { leaveOnline(); showView('config'); };
+
+let pendingJoin = null;
+async function prepareJoin(id) {
+  if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу. Проверьте интернет.');
+  let data; try { data = await OD().peekGame(id); } catch (e) { console.error(e); return menuError('Не удалось проверить игру.'); }
+  if (!data) return menuError('Игра с таким кодом не найдена.');
+  if (data.status !== 'waiting') return menuError('Эта игра уже началась или завершилась.');
+  pendingJoin = id; const tc = data.timeControl || { minutes: 10, inc: 0 };
+  $('inv-text').textContent = `${data.hostName || 'Игрок'} приглашает вас на партию (${tc.minutes ? tc.minutes + '+' + tc.inc : 'без часов'}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+  $('inv-nick').value = $('nick').value; showView('invite');
+}
+$('join-btn').onclick = () => {
+  show('err', false); const raw = $('join-code').value.trim(); if (!raw) return;
+  let id = raw; try { if (raw.includes('?') || raw.includes('://')) id = new URL(raw, location.href).searchParams.get('game') || raw; } catch (e) {}
+  prepareJoin(id);
+};
+$('inv-no').onclick = () => { pendingJoin = null; showView('config'); history.replaceState(null, '', location.pathname); };
+$('inv-ok').onclick = async () => {
+  if (!pendingJoin) return;
+  const name = $('inv-nick').value.trim() || 'Игрок'; $('nick').value = name; try { localStorage.setItem('draughtsNickname', name); } catch (e) {}
+  const u = OD().currentUser; const id = pendingJoin;
+  let res; try { res = await OD().joinGame(id, name, u ? u.uid : null); } catch (e) { console.error(e); return menuError('Не удалось присоединиться.'); }
+  if (!res.ok) { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
+  leaveOnline();
+  online = { id, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl };
+  online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
+  beginMatch(res.data);
+};
+async function checkInvite() {
+  const id = new URLSearchParams(location.search).get('game'); if (!id) return;
+  uiMode = 'online'; paintMenu(); await prepareJoin(id);
+}
+
+// Единственная подписка на всю партию: до старта ловит присоединение, потом — игровые события.
+function onSnap(data) {
+  if (!online || !data) return;
+  if (!online.started) { if (data.status === 'active' && online.host) beginMatch(data); return; }
+  handleRemote(data);
+}
+function beginMatch(data) {
+  online.started = true; online.oppName = online.host ? data.guestName : data.hostName;
+  const tc = data.timeControl || online.tc || { minutes: 10, inc: 0 };
+  history.replaceState(null, '', location.pathname);
+  startGame({ mode: 'online', color: online.myColor, minutes: tc.minutes, inc: tc.inc, data });
+  if (online.poll) clearInterval(online.poll);
+  // страховка: раз в 3 секунды сверяем состояние (повторные данные безопасны — применяются только недостающие ходы)
+  online.poll = setInterval(() => { if (online && online.started) OD().peekGame(online.id).then((d) => d && handleRemote(d)).catch(() => {}); }, 3000);
+  handleRemote(data);
+}
+function sendOnlineMove() {
+  OD().sendMove(online.id, { moves: hubMoves.slice(), whiteTimeMs: Math.round(timers.w * 1000), blackTimeMs: Math.round(timers.b * 1000) })
+    .catch((e) => onlineError('отправить ваш ход', e));
+}
+async function syncMoves(data) {
+  if (online.syncing) { online.pending = data; return; }
+  online.syncing = true;
+  try {
+    for (;;) {
+      const arr = data.moves || [], have = hubMoves.length; if (arr.length <= have || gameOver) break;
+      const mv = findMoveForNotation(getLegalMoves(lastBoard(), turn), arr[have]);
+      if (!mv) { console.error('Не удалось применить ход', arr[have]); break; }
+      const last = have === arr.length - 1;
+      await playMove(mv, false, { instant: !last, remoteTimes: last && typeof data.whiteTimeMs === 'number' ? { w: data.whiteTimeMs / 1000, b: data.blackTimeMs / 1000 } : null });
+    }
+  } finally {
+    online.syncing = false;
+    if (online.pending) { const d = online.pending; online.pending = null; syncMoves(d); }
+  }
+}
+function handleRemote(data) {
+  if (!online || !online.started) return;
+  syncMoves(data);
+  if (data.status === 'finished' && data.result && !gameOver) {
+    const draw = data.result.winner === 'draw', iWon = data.result.winner === userColor;
+    online.suppress = true; endGame(draw ? 'draw' : (iWon ? 'win' : 'loss'), data.result.reason || 'resign');
+  }
+  if (gameOver) return;
+  if (data.drawOfferBy && data.drawOfferBy !== userColor) {
+    showBanner('<span>Соперник предлагает ничью</span><span><button class="ok" id="b-ok">Принять</button> <button class="no" id="b-no">Отклонить</button></span>',
+      () => OD().sendResult(online.id, { winner: 'draw', reason: 'draw-agree' }).catch((e) => onlineError('принять ничью', e)),
+      () => { OD().clearDrawOffer(online.id).catch(() => {}); show('banner', false); });
+  } else if (data.drawOfferBy === userColor) showBanner('Предложение ничьи отправлено…');
+  else if (!($('banner').textContent || '').startsWith('Не удалось')) show('banner', false);
+}
+
+/* ================= PWA / старт ================= */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
+}
+window.__draughts = { get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+checkInvite();
+})();
+
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, query, orderBy, limit, getDocs
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY",
+  authDomain: "pep-chess-2026.firebaseapp.com",
+  projectId: "pep-chess-2026",
+  storageBucket: "pep-chess-2026.firebasestorage.app",
+  messagingSenderId: "170856560854",
+  appId: "1:170856560854:web:d9b6b766cbd56780ecf177"
+};
+
+const GAMES = 'draughtsGames';          // живые партии
+const PLAYER = 'playerDraughts';        // личная история: playerDraughts/{uid}/games/{gameId}
+
+function randomId(len = 8) {
+  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(len); crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+}
+
+let db, auth;
+const OD = {
+  ready: false, currentUser: null,
+
+  async createGame({ minutes, inc, hostColor, hostName, hostUid }) {
+    const id = randomId();
+    await setDoc(doc(db, GAMES, id), {
+      createdAt: serverTimestamp(), status: 'waiting', hostColor, hostName: hostName || 'Хост', hostUid: hostUid || null,
+      guestName: null, guestUid: null, timeControl: { minutes, inc }, moves: [],
+      whiteTimeMs: minutes * 60000, blackTimeMs: minutes * 60000, lastMoveAt: null, drawOfferBy: null, result: null
+    });
+    return id;
+  },
+  async peekGame(id) { const s = await getDoc(doc(db, GAMES, id)); return s.exists() ? s.data() : null; },
+  async joinGame(id, guestName, guestUid) {
+    const ref = doc(db, GAMES, id); const s = await getDoc(ref);
+    if (!s.exists()) return { ok: false, reason: 'not_found' };
+    const data = s.data(); if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
+    await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, startedAt: serverTimestamp() });
+    return { ok: true, data };
+  },
+  listenGame(id, cb, onErr) {
+    return onSnapshot(doc(db, GAMES, id), (s) => cb(s.exists() ? s.data() : null), (e) => { console.error(e); if (onErr) onErr(e); });
+  },
+  async sendMove(id, { moves, whiteTimeMs, blackTimeMs }) {
+    await updateDoc(doc(db, GAMES, id), { moves, whiteTimeMs, blackTimeMs, lastMoveAt: serverTimestamp(), drawOfferBy: null });
+  },
+  async sendDrawOffer(id, by) { await updateDoc(doc(db, GAMES, id), { drawOfferBy: by }); },
+  async clearDrawOffer(id) { await updateDoc(doc(db, GAMES, id), { drawOfferBy: null }); },
+  async sendResult(id, result) { await updateDoc(doc(db, GAMES, id), { status: 'finished', result, drawOfferBy: null }); },
+
+  async signIn() { return (await signInWithPopup(auth, new GoogleAuthProvider())).user; },
+  async signOutUser() { await fbSignOut(auth); },
+
+  async saveMyGame(uid, id, record) {
+    if (!uid) return;
+    await setDoc(doc(db, PLAYER, uid, 'games', id), { ...record, finishedAt: serverTimestamp() });
+  },
+  async listMyGames(uid, max) {
+    if (!uid) return [];
+    const q = query(collection(db, PLAYER, uid, 'games'), orderBy('finishedAt', 'desc'), limit(max || 50));
+    const s = await getDocs(q); const out = []; s.forEach((d) => out.push({ id: d.id, ...d.data() })); return out;
+  }
+};
+
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app); auth = getAuth(app);
+  onAuthStateChanged(auth, (u) => {
+    OD.currentUser = u ? { uid: u.uid, displayName: u.displayName, photoURL: u.photoURL } : null;
+    window.dispatchEvent(new Event('od-auth'));
+  });
+  OD.ready = true;
+} catch (e) { console.error('Firebase не запустился:', e); OD.initError = e; }
+window.OnlineDraughts = OD;
+window.dispatchEvent(new Event('od-ready'));
+
+</script>
+</body>
+</html>
