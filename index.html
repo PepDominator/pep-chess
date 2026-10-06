@@ -18,13 +18,13 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
   function apply() {
     const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
     r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
   }
-  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); return v; }
+  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); window.dispatchEvent(new Event('pgs-change')); return v; }
   window.PGS = { get, set, apply, THEMES };
   // Звук: одно место, через которое проходят все звуки приложения.
   const origPlay = HTMLMediaElement.prototype.play;
@@ -66,6 +66,7 @@
       ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
+        <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
         ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
         <div class="pg-title2">Оформление доски</div>
         <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
@@ -93,6 +94,7 @@
     get visible() { return !!bar && bar.style.display !== 'none'; }
   };
 })();
+
 
 </script>
 <link rel="manifest" href="manifest.json">
@@ -304,7 +306,7 @@ footer b { color:var(--text); font-weight:600; }
   <footer>
     <div><b>Один аккаунт на обе игры.</b> Войдите через Google — и онлайн-партии сохранятся в вашей истории.</div>
     <div>Совет: установите страницу как приложение — тогда обе игры доступны с экрана телефона.</div>
-    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.06-6</div>
+    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.06-7</div>
   </footer>
 </div>
 

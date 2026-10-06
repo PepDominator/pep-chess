@@ -33,13 +33,13 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
   function apply() {
     const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
     r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
   }
-  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); return v; }
+  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); window.dispatchEvent(new Event('pgs-change')); return v; }
   window.PGS = { get, set, apply, THEMES };
   // Звук: одно место, через которое проходят все звуки приложения.
   const origPlay = HTMLMediaElement.prototype.play;
@@ -81,6 +81,7 @@
       ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
+        <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
         ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
         <div class="pg-title2">Оформление доски</div>
         <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
@@ -108,6 +109,87 @@
     get visible() { return !!bar && bar.style.display !== 'none'; }
   };
 })();
+
+// ============ чат в онлайн-партии: быстрые реплики и короткие сообщения ============
+// Встраивается в боковую панель партии: над списком ходов появляется строка «💬 Чат», а при открытии чат занимает место списка ходов.
+(function () {
+  if (window.PGChat) return;
+  const QUICK = ['Удачи!', 'Хорошая игра', 'Спасибо', 'Ничья?', 'Ой, зевнул', '👍'];
+  let cfg = null, unsub = null, msgs = [], open = false, unread = 0, lastSent = 0, first = true, bar = null, panel = null, styled = false;
+  const css = `
+#pgc-bar { display:flex; justify-content:flex-end; padding:5px 12px; background:#F3F2EA; border-top:1px solid #E6E8DA; border-bottom:1px solid #E6E8DA; flex-shrink:0; }
+#pgc-toggle { position:relative; background:#FDFDFA; border:1px solid #D9DBCC; padding:5px 12px; font:600 13px 'Noto Sans',system-ui,sans-serif; color:#2A2E24; cursor:pointer; } #pgc-toggle:hover { background:#EAEADF; }
+#pgc-toggle.on { background:#3B5D4A; color:#fff; border-color:#3B5D4A; }
+#pgc-badge { display:none; margin-left:6px; min-width:18px; padding:0 5px; background:#A23B33; color:#fff; font:700 11px/18px 'Noto Sans',sans-serif; text-align:center; }
+#pgc-panel { display:none; flex:1 1 auto; min-height:150px; flex-direction:column; background:#FDFDFA; font-family:'Noto Sans',system-ui,sans-serif; color:#2A2E24; overflow:hidden; }
+#pgc-list { flex:1 1 auto; min-height:60px; padding:10px 12px; overflow-y:auto; display:flex; flex-direction:column; gap:7px; background:#F8F7F1; }
+.pgc-empty { margin:auto; color:#8B8E7F; font-size:12.5px; text-align:center; line-height:1.5; }
+.pgc-m { max-width:86%; padding:6px 10px; font-size:14px; line-height:1.4; word-break:break-word; background:#fff; border:1px solid #E1E3D3; align-self:flex-start; }
+.pgc-m.me { align-self:flex-end; background:#E4ECE3; border-color:#CBD8C9; } .pgc-m small { display:block; font-size:11px; color:#8B8E7F; margin-bottom:1px; }
+#pgc-quick { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 2px; flex-shrink:0; }
+#pgc-quick button { background:#F3F2EA; border:1px solid #D9DBCC; padding:5px 9px; font:600 12.5px 'Noto Sans',sans-serif; color:#2A2E24; cursor:pointer; } #pgc-quick button:hover { background:#EAEADF; }
+#pgc-form { display:flex; gap:6px; padding:8px 12px 10px; flex-shrink:0; } #pgc-in { flex:1; min-width:0; background:#F3F2EA; border:1px solid #D9DBCC; padding:8px 10px; font:14px 'Noto Sans',sans-serif; color:#2A2E24; }
+#pgc-in:focus { outline:none; border-color:#3B5D4A; } #pgc-send { background:#3B5D4A; color:#fff; border:none; padding:0 14px; font:700 13px 'Noto Sans',sans-serif; cursor:pointer; }
+#pgc-err { padding:0 12px 6px; font-size:12px; color:#A23B33; display:none; flex-shrink:0; }`;
+  const $id = (id) => document.getElementById(id);
+  const enabled = () => !window.PGS || window.PGS.get().chat !== false;
+  function build() {
+    if (!styled) { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); styled = true; }
+    const list = cfg.listEl(); if (!list || !list.parentNode) return false;
+    bar = document.createElement('div'); bar.id = 'pgc-bar'; bar.innerHTML = '<button id="pgc-toggle" type="button" title="Чат с соперником">💬 Чат<span id="pgc-badge"></span></button>';
+    panel = document.createElement('div'); panel.id = 'pgc-panel';
+    panel.innerHTML = '<div id="pgc-list"></div><div id="pgc-quick"></div><div id="pgc-err"></div><form id="pgc-form" onsubmit="return false"><input id="pgc-in" maxlength="200" placeholder="Сообщение…" autocomplete="off"><button id="pgc-send" type="button">→</button></form>';
+    list.parentNode.insertBefore(bar, list); list.parentNode.insertBefore(panel, list.nextSibling);
+    $id('pgc-toggle').onclick = () => toggle(!open); $id('pgc-send').onclick = () => send($id('pgc-in').value);
+    $id('pgc-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send($id('pgc-in').value); } });
+    QUICK.forEach((q) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = q; b.onclick = () => send(q); $id('pgc-quick').appendChild(b); });
+    return true;
+  }
+  function destroy() { const l = cfg && cfg.listEl && cfg.listEl(); if (l) l.style.display = ''; if (bar) bar.remove(); if (panel) panel.remove(); bar = panel = null; }
+  function toggle(v) {
+    open = !!v && enabled(); if (!panel) return; const l = cfg.listEl();
+    panel.style.display = open ? 'flex' : 'none'; if (l) l.style.display = open ? 'none' : ''; $id('pgc-toggle').classList.toggle('on', open);
+    if (open) { unread = 0; render(); $id('pgc-in').focus(); } badge();
+  }
+  function badge() { const b = $id('pgc-badge'); if (!b) return; b.style.display = unread > 0 ? 'inline-block' : 'none'; b.textContent = unread > 9 ? '9+' : String(unread); }
+  function showBar() { if (!bar) return; const on = !!cfg && enabled(); bar.style.display = on ? 'flex' : 'none'; if (!on && open) toggle(false); }
+  function render() {
+    const list = $id('pgc-list'); if (!list) return; list.innerHTML = '';
+    if (!msgs.length) { const e = document.createElement('div'); e.className = 'pgc-empty'; e.textContent = 'Сообщений пока нет. Поздоровайтесь или выберите быструю реплику.'; list.appendChild(e); return; }
+    const me = cfg && cfg.myUid();
+    msgs.forEach((m) => {
+      const d = document.createElement('div'); d.className = 'pgc-m' + (m.uid === me ? ' me' : '');
+      if (m.uid !== me) { const s = document.createElement('small'); s.textContent = m.name || 'Соперник'; d.appendChild(s); }
+      d.appendChild(document.createTextNode(m.text)); list.appendChild(d);
+    });
+    list.scrollTop = list.scrollHeight;
+  }
+  function showErr(t) { const e = $id('pgc-err'); if (!e) return; e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; if (t) setTimeout(() => showErr(''), 3500); }
+  async function send(raw) {
+    const text = String(raw || '').trim().slice(0, 200); if (!text || !cfg) return;
+    const now = Date.now(); if (now - lastSent < 1200) { showErr('Слишком быстро — подождите секунду.'); return; }
+    lastSent = now; $id('pgc-in').value = '';
+    try { await cfg.api.sendChat(cfg.id, { text, name: cfg.myName() }); } catch (e) { console.error(e); showErr('Не отправлено: ' + (e.code || e.message || 'ошибка')); }
+  }
+  function onMessages(list) {
+    const me = cfg && cfg.myUid(), known = new Set(msgs.map((m) => m.id));
+    const fresh = first ? [] : list.filter((m) => !known.has(m.id) && m.uid !== me); first = false; msgs = list;
+    if (!enabled()) return;
+    if (!open) { unread += fresh.length; badge(); } else render();
+  }
+  window.PGChat = {
+    // cfg: { id, api: {watchChat, sendChat}, myUid(), myName(), listEl() — элемент со списком ходов, рядом с которым встраивается чат }
+    attach(c) {
+      this.detach(); if (!c.api || !c.api.watchChat || !c.listEl) return; cfg = c; msgs = []; unread = 0; first = true; open = false;
+      if (!build()) { cfg = null; return; } render(); badge(); showBar(); unsub = c.api.watchChat(c.id, onMessages);
+    },
+    detach() { if (unsub) { try { unsub(); } catch (e) {} unsub = null; } destroy(); cfg = null; msgs = []; unread = 0; open = false; },
+    get messages() { return msgs; }, get unread() { return unread; }
+  };
+  window.addEventListener('pgs-change', showBar); window.addEventListener('storage', (e) => { if (e.key === 'pgSettings') showBar(); });
+})();
+
+
 
 </script>
 <link rel="manifest" href="manifest.json">
@@ -709,7 +791,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2026.10.06-6';
+const BUILD = '2026.10.06-7';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -1324,6 +1406,7 @@ function startGame(cfg = { mode: 'bot' }) {
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
   turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
   posCounts = {}; posCounts[posKey(positions[0], 'w')] = 1; egKind = null; egPlies = 0;
+  if (cfg.mode === 'bot' && window.PGChat) PGChat.detach();
   clearPending(); resetSel(); premove = null; pmSel = null; lastTick = null; dropAna(); if (window.__lobby) window.__lobby.stop();
   show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
   $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
@@ -1337,6 +1420,7 @@ function startGame(cfg = { mode: 'bot' }) {
   if (mode === 'bot' && turn !== userColor) botMove();
 }
 function toMenu() {
+  if (window.PGChat) PGChat.detach();
   stopClock(); gameOver = true; leaveOnline(); dropAna(); stopSearch();
   ['game', 'history'].forEach((id) => show(id, false)); show('setup', true); showView('config'); paintMenu();
 }
@@ -1405,7 +1489,7 @@ async function openMyGames() {
   catch (e) { console.error(e); $('hist-list').innerHTML = '<div class="h-empty">Не удалось загрузить историю. Проверьте интернет.</div>'; }
 }
 function viewRecord(rec, opts = {}) {
-  dropAna(); replayFrom = opts.from || null; show('setup', false); show('share', true); $('sh-msg').textContent = '';
+  if (window.PGChat) PGChat.detach(); dropAna(); replayFrom = opts.from || null; show('setup', false); show('share', true); $('sh-msg').textContent = '';
   userColor = rec.userColor; mode = 'bot'; replayMode = true; gameOver = true; stopClock(); timed = false;
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = []; let t = 'w';
   for (const h of rec.hub) {
@@ -1586,6 +1670,7 @@ function beginMatch(data) {
   // присутствие: раз в 15 секунд отмечаемся на сервере — по этим отметкам видно, что соперник отключился
   const beat = () => { if (online && online.started && !gameOver) OD().touch(online.id, online.role).catch(() => {}); };
   beat(); online.beat = setInterval(beat, CFG.beat); saveActive();
+  if (window.PGChat) PGChat.attach({ id: online.id, api: OD(), myUid: () => (OD() && OD().authUid) || null, myName: () => myNick(), listEl: () => $('moves') });
   handleRemote(data);
 }
 function sendOnlineMove() {
@@ -1756,7 +1841,7 @@ checkResume();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp,
-  collection, query, orderBy, limit, getDocs, runTransaction, where
+  collection, query, orderBy, limit, getDocs, runTransaction, where, addDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, signInAnonymously
@@ -1872,6 +1957,14 @@ const OD = {
     try { return await authInflight; } finally { authInflight = null; }
   },
   // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
+  // ---- чат партии: коллекция draughtsGames/{id}/chat ----
+  watchChat(id, cb) {
+    const q = query(collection(db, GAMES, id, 'chat'), orderBy('at'), limit(100));
+    return onSnapshot(q, (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => console.warn('Чат:', e));
+  },
+  async sendChat(id, m) {
+    await addDoc(collection(db, GAMES, id, 'chat'), { uid: auth.currentUser.uid, name: String(m.name || 'Игрок').slice(0, 30), text: String(m.text).slice(0, 200), at: serverTimestamp() });
+  },
   // ---- лобби: открытые игры, ожидающие соперника ----
   watchOpenGames(cb) {
     const q = query(collection(db, GAMES), where('status', '==', 'waiting'), where('open', '==', true), limit(30));
