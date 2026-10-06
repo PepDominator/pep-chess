@@ -22,6 +22,94 @@
 .boot-replay #boot-loader::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid #D9DBCC; border-top-color:#3B5D4A; animation:bootspin .8s linear infinite; }
 @keyframes bootspin { to { transform:rotate(360deg); } }
 </style>
+    <script>
+// ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
+(function () {
+  if (window.PGS) return;
+  const KEY = 'pgSettings';
+  const THEMES = {
+    classic: { n: 'Классика', l: '#F6F4EB', d: '#C7CAB4' },
+    green: { n: 'Зелёная', l: '#EEEED2', d: '#769656' },
+    blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
+    wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
+  };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true };
+  function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
+  function apply() {
+    const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
+    r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
+  }
+  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); return v; }
+  window.PGS = { get, set, apply, THEMES };
+  // Звук: одно место, через которое проходят все звуки приложения.
+  const origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () { if (!get().sound) return Promise.resolve(); return origPlay.apply(this, arguments); };
+  apply(); window.addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+
+  const css = `
+.pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:#8B8E7F; cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
+.pg-gear:hover { color:#2A2E24; background:#EAEADF; } .pg-gear.static { position:static; }
+.pg-ov { position:fixed; inset:0; z-index:400; background:rgba(42,46,36,.38); display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Noto Sans',system-ui,sans-serif; }
+.pg-panel { background:#FDFDFA; border:1px solid #D9DBCC; width:100%; max-width:420px; max-height:calc(100dvh - 32px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:#2A2E24; }
+.pg-panel h3 { margin:0; padding:22px 24px 6px; font:italic 400 24px Georgia,'Times New Roman',serif; }
+.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 24px; border-bottom:1px solid #E6E8DA; }
+.pg-row b { display:block; font-size:14px; font-weight:600; } .pg-row span.d { display:block; font-size:12px; color:#6E7568; margin-top:2px; line-height:1.4; }
+.pg-sw { position:relative; width:44px; height:24px; flex-shrink:0; background:#C9CCBB; border:none; cursor:pointer; transition:background .15s; padding:0; }
+.pg-sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; transition:transform .15s; }
+.pg-sw.on { background:#3B5D4A; } .pg-sw.on::after { transform:translateX(20px); }
+.pg-themes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:6px 24px 16px; }
+.pg-th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font:inherit; font-size:11.5px; color:#6E7568; text-align:center; }
+.pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
+.pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
+.pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
+.pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
+#pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
+#pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
+#pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:#EAEADF; color:#2A2E24; }
+.pg-pending { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38) !important; }
+.no-nums .sq .num { display:none !important; }`;
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+
+  // ---- панель «Настройки» ----
+  window.openPgSettings = function () {
+    if (document.getElementById('pg-ov')) return;
+    const ov = document.createElement('div'); ov.className = 'pg-ov'; ov.id = 'pg-ov';
+    const isDr = !!window.PG_DRAUGHTS;
+    function paint() {
+      const s = get();
+      const sw = (k) => `<button class="pg-sw ${s[k] ? 'on' : ''}" data-k="${k}" role="switch" aria-checked="${s[k]}"></button>`;
+      ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
+        <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
+        <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
+        ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-title2">Оформление доски</div>
+        <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
+        <button class="pg-close">Готово</button></div>`;
+      ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
+      ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
+      ov.querySelector('.pg-close').onclick = close;
+    }
+    function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey);
+    paint(); document.body.appendChild(ov);
+  };
+
+  // ---- плашка «Подтвердить ход» ----
+  let bar = null;
+  window.pgConfirm = {
+    show(text, ok, cancel) {
+      if (!bar) { bar = document.createElement('div'); bar.id = 'pg-confirm'; document.body.appendChild(bar); }
+      bar.innerHTML = '<span></span><button class="ok">✓ Подтвердить</button><button class="no">✕</button>';
+      bar.firstChild.textContent = text; bar.style.display = 'flex';
+      bar.querySelector('.ok').onclick = () => { ok(); }; bar.querySelector('.no').onclick = () => { cancel(); };
+    },
+    hide() { if (bar) bar.style.display = 'none'; },
+    get visible() { return !!bar && bar.style.display !== 'none'; }
+  };
+})();
+
+    </script>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon-512.png">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -2340,6 +2428,7 @@ if (typeof define !== 'undefined')
     <!-- НАСТРОЙКИ -->
     <div id="setup" class="modal">
         <a class="back-hub" href="../">← Все игры</a>
+        <button class="pg-gear" onclick="openPgSettings()" title="Настройки" aria-label="Настройки">⚙</button>
         <div id="account-bar" class="account-bar">
             <button class="account-signin-btn" id="account-signin-btn" onclick="handleSignIn()">
                 <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
@@ -4340,7 +4429,7 @@ function createLobby(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2026.10.06-5';
+        const BUILD = '2026.10.06-6';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
@@ -4992,7 +5081,26 @@ function createLobby(cfg) {
             }
         }
 
-        function attemptMove(pos) {
+        // ---------- подтверждение хода (настройка) ----------
+        let chessPending = null;
+        function clearChessPending() {
+            if (chessPending) document.querySelectorAll('.pg-pending').forEach((el) => el.classList.remove('pg-pending'));
+            chessPending = null; window.pgConfirm.hide();
+        }
+        function askChessConfirm(from, to) {
+            clearChessPending(); chessPending = { from, to };
+            if (piecesBySquare[from]) positionPieceEl(piecesBySquare[from].el, from, true);        // фигура остаётся на месте, пока ход не подтверждён
+            [from, to].forEach((sq) => { const el = document.querySelector(`[data-pos="${sq}"]`); if (el) el.classList.add('pg-pending'); });
+            window.pgConfirm.show(`Ход ${from} → ${to}`, () => {
+                const p = chessPending; clearChessPending(); if (!p) return;
+                const legal = !gameOver && game.turn() === userCol && game.moves({ square: p.from, verbose: true }).some((m) => m.to === resolveCastleTarget(game, p.from, p.to));
+                if (!legal) { draggedPos = null; render(); return; }      // за время ожидания позиция изменилась (например, соперник уже сходил)
+                draggedPos = p.from; attemptMove(p.to, true);
+            }, () => { clearChessPending(); draggedPos = null; render(); });
+        }
+
+        function attemptMove(pos, confirmed) {
+            if (!confirmed && !analysisFreePlay && draggedPos && PGS.get().confirm) { askChessConfirm(draggedPos, pos); return; }
             // Если мы сделали ход, находясь в просмотре истории (viewIndex !== -1), —
             // обрезаем историю до этой точки и продолжаем партию новой веткой (как анализ на Lichess).
             if (viewIndex !== -1) {

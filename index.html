@@ -7,6 +7,94 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Pep Games — шахматы и шашки</title>
+<script>
+// ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
+(function () {
+  if (window.PGS) return;
+  const KEY = 'pgSettings';
+  const THEMES = {
+    classic: { n: 'Классика', l: '#F6F4EB', d: '#C7CAB4' },
+    green: { n: 'Зелёная', l: '#EEEED2', d: '#769656' },
+    blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
+    wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
+  };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true };
+  function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
+  function apply() {
+    const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
+    r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
+  }
+  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); return v; }
+  window.PGS = { get, set, apply, THEMES };
+  // Звук: одно место, через которое проходят все звуки приложения.
+  const origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () { if (!get().sound) return Promise.resolve(); return origPlay.apply(this, arguments); };
+  apply(); window.addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+
+  const css = `
+.pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:#8B8E7F; cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
+.pg-gear:hover { color:#2A2E24; background:#EAEADF; } .pg-gear.static { position:static; }
+.pg-ov { position:fixed; inset:0; z-index:400; background:rgba(42,46,36,.38); display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Noto Sans',system-ui,sans-serif; }
+.pg-panel { background:#FDFDFA; border:1px solid #D9DBCC; width:100%; max-width:420px; max-height:calc(100dvh - 32px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:#2A2E24; }
+.pg-panel h3 { margin:0; padding:22px 24px 6px; font:italic 400 24px Georgia,'Times New Roman',serif; }
+.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 24px; border-bottom:1px solid #E6E8DA; }
+.pg-row b { display:block; font-size:14px; font-weight:600; } .pg-row span.d { display:block; font-size:12px; color:#6E7568; margin-top:2px; line-height:1.4; }
+.pg-sw { position:relative; width:44px; height:24px; flex-shrink:0; background:#C9CCBB; border:none; cursor:pointer; transition:background .15s; padding:0; }
+.pg-sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; transition:transform .15s; }
+.pg-sw.on { background:#3B5D4A; } .pg-sw.on::after { transform:translateX(20px); }
+.pg-themes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:6px 24px 16px; }
+.pg-th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font:inherit; font-size:11.5px; color:#6E7568; text-align:center; }
+.pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
+.pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
+.pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
+.pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
+#pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
+#pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
+#pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:#EAEADF; color:#2A2E24; }
+.pg-pending { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38) !important; }
+.no-nums .sq .num { display:none !important; }`;
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+
+  // ---- панель «Настройки» ----
+  window.openPgSettings = function () {
+    if (document.getElementById('pg-ov')) return;
+    const ov = document.createElement('div'); ov.className = 'pg-ov'; ov.id = 'pg-ov';
+    const isDr = !!window.PG_DRAUGHTS;
+    function paint() {
+      const s = get();
+      const sw = (k) => `<button class="pg-sw ${s[k] ? 'on' : ''}" data-k="${k}" role="switch" aria-checked="${s[k]}"></button>`;
+      ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
+        <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
+        <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
+        ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-title2">Оформление доски</div>
+        <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
+        <button class="pg-close">Готово</button></div>`;
+      ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
+      ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
+      ov.querySelector('.pg-close').onclick = close;
+    }
+    function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey);
+    paint(); document.body.appendChild(ov);
+  };
+
+  // ---- плашка «Подтвердить ход» ----
+  let bar = null;
+  window.pgConfirm = {
+    show(text, ok, cancel) {
+      if (!bar) { bar = document.createElement('div'); bar.id = 'pg-confirm'; document.body.appendChild(bar); }
+      bar.innerHTML = '<span></span><button class="ok">✓ Подтвердить</button><button class="no">✕</button>';
+      bar.firstChild.textContent = text; bar.style.display = 'flex';
+      bar.querySelector('.ok').onclick = () => { ok(); }; bar.querySelector('.no').onclick = () => { cancel(); };
+    },
+    hide() { if (bar) bar.style.display = 'none'; },
+    get visible() { return !!bar && bar.style.display !== 'none'; }
+  };
+})();
+
+</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -33,7 +121,7 @@ body {
 
 /* ---------- каркас ---------- */
 .wrap { position:relative; z-index:1; max-width:980px; margin:0 auto; }
-.top { display:flex; justify-content:flex-end; min-height:34px; }
+.top { display:flex; justify-content:flex-end; align-items:center; min-height:34px; }
 .acc-in { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--border); padding:7px 14px; font-size:13px; color:var(--text); cursor:pointer; font-family:inherit; transition:background .15s, border-color .15s; }
 .acc-in:hover { background:#F3F2EA; border-color:#B7BAA5; }
 .acc-user { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
@@ -171,6 +259,7 @@ footer b { color:var(--text); font-weight:600; }
 
 <div class="wrap">
   <div class="top">
+    <button class="pg-gear static" onclick="openPgSettings()" title="Настройки" aria-label="Настройки" style="margin-right:auto">⚙ Настройки</button>
     <button class="acc-in hidden" id="acc-in"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>Войти через Google</button>
     <div class="acc-user hidden" id="acc-user"><button class="acc-btn" id="acc-btn" title="Мой профиль: статистика, рейтинг, партии"><img id="acc-img" alt=""><span id="acc-name"></span><span class="acc-rate" id="acc-rate"></span><span class="chev" aria-hidden="true">›</span></button><button class="acc-out" id="acc-out">Выйти</button></div>
   </div>
@@ -215,7 +304,7 @@ footer b { color:var(--text); font-weight:600; }
   <footer>
     <div><b>Один аккаунт на обе игры.</b> Войдите через Google — и онлайн-партии сохранятся в вашей истории.</div>
     <div>Совет: установите страницу как приложение — тогда обе игры доступны с экрана телефона.</div>
-    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.06-5</div>
+    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.06-6</div>
   </footer>
 </div>
 

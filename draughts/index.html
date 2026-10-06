@@ -21,6 +21,95 @@
 .boot-replay #boot-loader::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid #D9DBCC; border-top-color:#3B5D4A; animation:bootspin .8s linear infinite; }
 @keyframes bootspin { to { transform:rotate(360deg); } }
 </style>
+<script>window.PG_DRAUGHTS = true;</script>
+<script>
+// ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
+(function () {
+  if (window.PGS) return;
+  const KEY = 'pgSettings';
+  const THEMES = {
+    classic: { n: 'Классика', l: '#F6F4EB', d: '#C7CAB4' },
+    green: { n: 'Зелёная', l: '#EEEED2', d: '#769656' },
+    blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
+    wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
+  };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true };
+  function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
+  function apply() {
+    const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
+    r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
+  }
+  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); return v; }
+  window.PGS = { get, set, apply, THEMES };
+  // Звук: одно место, через которое проходят все звуки приложения.
+  const origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () { if (!get().sound) return Promise.resolve(); return origPlay.apply(this, arguments); };
+  apply(); window.addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+
+  const css = `
+.pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:#8B8E7F; cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
+.pg-gear:hover { color:#2A2E24; background:#EAEADF; } .pg-gear.static { position:static; }
+.pg-ov { position:fixed; inset:0; z-index:400; background:rgba(42,46,36,.38); display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Noto Sans',system-ui,sans-serif; }
+.pg-panel { background:#FDFDFA; border:1px solid #D9DBCC; width:100%; max-width:420px; max-height:calc(100dvh - 32px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:#2A2E24; }
+.pg-panel h3 { margin:0; padding:22px 24px 6px; font:italic 400 24px Georgia,'Times New Roman',serif; }
+.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 24px; border-bottom:1px solid #E6E8DA; }
+.pg-row b { display:block; font-size:14px; font-weight:600; } .pg-row span.d { display:block; font-size:12px; color:#6E7568; margin-top:2px; line-height:1.4; }
+.pg-sw { position:relative; width:44px; height:24px; flex-shrink:0; background:#C9CCBB; border:none; cursor:pointer; transition:background .15s; padding:0; }
+.pg-sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; transition:transform .15s; }
+.pg-sw.on { background:#3B5D4A; } .pg-sw.on::after { transform:translateX(20px); }
+.pg-themes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:6px 24px 16px; }
+.pg-th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font:inherit; font-size:11.5px; color:#6E7568; text-align:center; }
+.pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
+.pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
+.pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
+.pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
+#pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
+#pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
+#pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:#EAEADF; color:#2A2E24; }
+.pg-pending { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38) !important; }
+.no-nums .sq .num { display:none !important; }`;
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+
+  // ---- панель «Настройки» ----
+  window.openPgSettings = function () {
+    if (document.getElementById('pg-ov')) return;
+    const ov = document.createElement('div'); ov.className = 'pg-ov'; ov.id = 'pg-ov';
+    const isDr = !!window.PG_DRAUGHTS;
+    function paint() {
+      const s = get();
+      const sw = (k) => `<button class="pg-sw ${s[k] ? 'on' : ''}" data-k="${k}" role="switch" aria-checked="${s[k]}"></button>`;
+      ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
+        <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
+        <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
+        ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-title2">Оформление доски</div>
+        <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
+        <button class="pg-close">Готово</button></div>`;
+      ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
+      ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
+      ov.querySelector('.pg-close').onclick = close;
+    }
+    function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey);
+    paint(); document.body.appendChild(ov);
+  };
+
+  // ---- плашка «Подтвердить ход» ----
+  let bar = null;
+  window.pgConfirm = {
+    show(text, ok, cancel) {
+      if (!bar) { bar = document.createElement('div'); bar.id = 'pg-confirm'; document.body.appendChild(bar); }
+      bar.innerHTML = '<span></span><button class="ok">✓ Подтвердить</button><button class="no">✕</button>';
+      bar.firstChild.textContent = text; bar.style.display = 'flex';
+      bar.querySelector('.ok').onclick = () => { ok(); }; bar.querySelector('.no').onclick = () => { cancel(); };
+    },
+    hide() { if (bar) bar.style.display = 'none'; },
+    get visible() { return !!bar && bar.style.display !== 'none'; }
+  };
+})();
+
+</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -193,6 +282,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 <div id="boot-loader">Загрузка партии…</div>
 <div id="setup" class="modal">
   <a class="back-hub" href="../">← Все игры</a>
+  <button class="pg-gear" onclick="openPgSettings()" title="Настройки" aria-label="Настройки">⚙</button>
   <div class="acc-bar">
     <button class="acc-in" id="acc-in"><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.7 0-14.4 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5l-6.5-5.5C29.6 35.3 26.9 36 24 36c-5.4 0-9.9-3.1-11.3-7.9l-6.6 5C8.9 39.6 15.9 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 1.9-2 3.6-3.6 4.8l6.5 5.5C40 36.3 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>Войти через Google</button>
     <div class="acc-user hidden" id="acc-user"><img id="acc-img" class="acc-img" alt=""><span id="acc-name"></span><button class="acc-out" id="acc-out">Выйти</button></div>
@@ -619,7 +709,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2026.10.06-5';
+const BUILD = '2026.10.06-6';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -713,9 +803,10 @@ function renderPieces() {
 }
 const pieceElAt = (r, c) => $('pieces').querySelector(`.piece[data-r="${r}"][data-c="${c}"]`);
 function paintMarks() {
-  document.querySelectorAll('#board .sq').forEach((s) => s.classList.remove('sel', 'target', 'cap', 'path', 'last', 'movable', 'pre', 'best', 'bestto'));
+  document.querySelectorAll('#board .sq').forEach((s) => s.classList.remove('sel', 'target', 'cap', 'path', 'last', 'movable', 'pre', 'best', 'bestto', 'pg-pending'));
   const live = viewIndex < 0, idx = live ? positions.length - 1 : viewIndex;
   if (idx > 0 && lastMoveSq[idx - 1]) lastMoveSq[idx - 1].forEach(([r, c]) => sqEl(r, c).classList.add('last'));
+  if (pendingMove) { sqEl(pendingMove.fromRow, pendingMove.fromCol).classList.add('pg-pending'); sqEl(pendingMove.finalRow, pendingMove.finalCol).classList.add('pg-pending'); }
   if (replayMode) markBest(idx);
   if (!live || gameOver || replayMode) return;
   if (turn !== userColor) {
@@ -741,7 +832,17 @@ function paintMarks() {
 function resetSel() { sel = null; candidates = []; stepIdx = 1; chosen = []; }
 function flashStatus(t) { setStatus(t, '#e0a800'); setTimeout(updateStatus, 1800); }
 
+// ----- подтверждение хода (настройка): ход не делается сразу, а ждёт кнопки «Подтвердить» -----
+let pendingMove = null;
+function clearPending() { pendingMove = null; if (window.pgConfirm) window.pgConfirm.hide(); }
+function userMove(mv, opts) {
+  if (!PGS.get().confirm) return playMove(mv, true, opts);
+  pendingMove = mv; resetSel();
+  window.pgConfirm.show('Ход ' + displayNotation(mv), () => { const m = pendingMove; clearPending(); if (m && !gameOver && turn === userColor && !busy) playMove(m, true); else paintMarks(); }, () => { clearPending(); renderPieces(); paintMarks(); });
+  renderPieces(); paintMarks();
+}
 function onSquare(r, c) {
+  if (pendingMove) { clearPending(); paintMarks(); }
   if (gameOver || replayMode || viewIndex >= 0) return;
   if (turn !== userColor) return premoveClick(r, c);
   if (busy) return;
@@ -750,9 +851,9 @@ function onSquare(r, c) {
     const hit = candidates.filter((m) => m.path[stepIdx].row === r && m.path[stepIdx].col === c);
     if (hit.length) {
       chosen.push([r, c]);
-      if (hit.length === 1 && hit[0].path.length === stepIdx + 1) { const mv = hit[0]; resetSel(); playMove(mv, true); return; }
+      if (hit.length === 1 && hit[0].path.length === stepIdx + 1) { const mv = hit[0]; resetSel(); userMove(mv); return; }
       candidates = hit; stepIdx++;
-      if (hit.every((m) => m.path.length === stepIdx)) { const mv = hit[0]; resetSel(); playMove(mv, true); return; }
+      if (hit.every((m) => m.path.length === stepIdx)) { const mv = hit[0]; resetSel(); userMove(mv); return; }
       paintMarks(); return;
     }
   }
@@ -815,7 +916,7 @@ $('board-wrap').addEventListener('pointerup', async (e) => {
   const restore = () => { renderPieces(); paintMarks(); };
   if (!rc) return restore();
   const finals = candidates.filter((m) => m.finalRow === rc[0] && m.finalCol === rc[1]);
-  if (finals.length === 1) { const mv = finals[0]; resetSel(); return playMove(mv, true, { instant: true }); }
+  if (finals.length === 1) { const mv = finals[0]; resetSel(); return userMove(mv, { instant: true }); }
   restore();
   if (candidates.some((m) => m.path[stepIdx].row === rc[0] && m.path[stepIdx].col === rc[1])) onSquare(rc[0], rc[1]);
 });
@@ -836,7 +937,7 @@ const displayNotation = (m) => `${sqNum(m.fromRow, m.fromCol)}${m.captures.lengt
 function playSnd(n) { try { const a = sounds[n]; if (a) { a.currentTime = 0; a.play().catch(() => {}); } } catch (e) {} }
 
 async function playMove(move, byUser, opts = {}) {
-  busy = true; paintMarks();
+  clearPending(); busy = true; paintMarks();
   const before = lastBoard(), mover = turn;
   if (!opts.instant) await animateMove(move);
   const after = applyMove(before, move).board;
@@ -893,7 +994,7 @@ function endgameKind(board) {
   return null;
 }
 function endGame(code, reason) {
-  if (gameOver) return;
+  if (gameOver) return; clearPending();
   gameOver = true; stopClock(); resetSel(); premove = null; pmSel = null; drag = null;
   const text = resultText(code, reason);
   playSnd('end'); setStatus(text, '#a23b33'); show('banner', false); show('actions', false);
@@ -1223,7 +1324,7 @@ function startGame(cfg = { mode: 'bot' }) {
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
   turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
   posCounts = {}; posCounts[posKey(positions[0], 'w')] = 1; egKind = null; egPlies = 0;
-  resetSel(); premove = null; pmSel = null; lastTick = null; dropAna(); if (window.__lobby) window.__lobby.stop();
+  clearPending(); resetSel(); premove = null; pmSel = null; lastTick = null; dropAna(); if (window.__lobby) window.__lobby.stop();
   show('setup', false); show('history', false); show('game', true); show('post', false); show('banner', false); show('actions', true);
   $('name-bottom').textContent = (mode === 'online' ? myNick() : ($('nick').value.trim() || 'Вы')) + (userColor === 'w' ? ' · белые' : ' · чёрные');
   { const orat = mode === 'online' ? oppRating() : null, mine = mode === 'online' && online ? online.myRating : null;
@@ -1596,7 +1697,7 @@ async function checkResume() {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
 }
-window.__draughts = { explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+window.__draughts = { get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
 checkInvite();
 
 // ----- экспорт партии и ссылка «посмотреть без входа» -----
