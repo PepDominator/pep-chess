@@ -11,7 +11,7 @@
     <script>
     // Заставка вместо меню, пока открывается партия по ссылке или идёт возврат в незавершённую партию — чтобы меню не мелькало.
     (function () { var d = document.documentElement, q = location.search;
-      if (/[?&](replay|view)=/.test(q)) return d.classList.add('boot-replay');
+      if (/[?&](replay|view|pub|watch)=/.test(q)) return d.classList.add('boot-replay');
       try { var a = JSON.parse(localStorage.getItem('pgActive') || 'null'); if (a && a.game === 'chess' && Date.now() - a.t < 43200000 && !/[?&]game=/.test(q)) d.classList.add('boot-replay'); } catch (e) {} })();
     </script>
     <style>
@@ -33,7 +33,7 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
   function apply() {
     const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
@@ -62,6 +62,7 @@
 .pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
 .pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
 .pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
+.pg-small { background:#F3F2EA; border:1px solid #D9DBCC; padding:7px 12px; font:700 12.5px 'Noto Sans',sans-serif; color:#2A2E24; cursor:pointer; flex-shrink:0; } .pg-small:hover { background:#EAEADF; }
 .pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
 #pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
 #pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
@@ -82,12 +83,15 @@
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
         <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
-        ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-row"><div><b>Показывать мои партии другим</b><span class="d">Ваши онлайн-партии (когда оба игрока вошли через Google и согласны) видны в профиле и в списке «Идущие партии». Действует на новые партии</span></div>${sw('showGames')}</div>
+                ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-row" id="pg-hide-row" style="display:none"><div><b>Скрыть прошлые партии</b><span class="d">Удалить публичные копии ваших прошлых партий (в профиле и по ссылкам)</span></div><button class="pg-small" id="pg-hide-btn">Скрыть</button></div>
         <div class="pg-title2">Оформление доски</div>
         <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
         <button class="pg-close">Готово</button></div>`;
       ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
       ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
+      const hideRow = ov.querySelector('#pg-hide-row'); if (hideRow && typeof window.pgHideMine === 'function') { hideRow.style.display = 'flex'; ov.querySelector('#pg-hide-btn').onclick = async (e) => { const b = e.target; b.disabled = true; b.textContent = '…'; try { const n = await window.pgHideMine(); b.textContent = n ? 'Скрыто: ' + n : 'Нечего скрывать'; } catch (err) { console.error(err); b.textContent = 'Не удалось'; } }; }
       ov.querySelector('.pg-close').onclick = close;
     }
     function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
@@ -188,6 +192,7 @@
   };
   window.addEventListener('pgs-change', showBar); window.addEventListener('storage', (e) => { if (e.key === 'pgSettings') showBar(); });
 })();
+
 
 
 
@@ -2612,6 +2617,8 @@ if (typeof define !== 'undefined')
                     <button class="start-btn quick-btn" id="quick-btn" onclick="quickOnlineMatch()"><span>Найти соперника</span></button>
                     <div class="online-divider"><span>открытые игры</span></div>
                     <div id="lobby-list"></div>
+                    <div class="online-divider"><span>идущие партии</span></div>
+                    <div id="live-list"></div>
                 </div>
                 <div id="online-join-row" style="display:none;">
                     <div class="online-divider"><span>или</span></div>
@@ -2765,7 +2772,7 @@ if (typeof define !== 'undefined')
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
             getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, deleteField,
-            collection, query, orderBy, limit, getDocs, runTransaction, where, addDoc
+            collection, query, orderBy, limit, getDocs, runTransaction, where, addDoc, deleteDoc
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import {
             getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, signInAnonymously
@@ -2807,7 +2814,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             ready: false,
             initError: null,
 
-            async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid, open }) {
+            async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid, open, hostPublic }) {
                 const gameId = randomGameId();
                 await setDoc(doc(db, 'games', gameId), {
                     createdAt: serverTimestamp(),
@@ -2817,7 +2824,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                     hostUid: hostUid || null,
                     hostRating: hostRating != null ? hostRating : null,
                     guestRating: null,
-                    hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, open: !!open,
+                    hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, open: !!open, hostPublic: !!hostPublic, guestPublic: false,
                     guestName: null,
                     guestUid: null,
                     timeControl: { minutes, inc },
@@ -2840,13 +2847,13 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                 return snap.exists() ? snap.data() : null;
             },
 
-            async joinGame(gameId, guestName, guestUid, guestRating, guestAuthUid) {
+            async joinGame(gameId, guestName, guestUid, guestRating, guestAuthUid, guestPublic) {
                 const ref = doc(db, 'games', gameId);
                 const snap = await getDoc(ref);
                 if (!snap.exists()) return { ok: false, reason: 'not_found' };
                 const data = snap.data();
                 if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, guestAuthUid: guestAuthUid || null, guestSeen: serverTimestamp(), startedAt: serverTimestamp() });
+                await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, guestAuthUid: guestAuthUid || null, guestSeen: serverTimestamp(), guestPublic: !!guestPublic, startedAt: serverTimestamp() });
                 return { ok: true, data };
             },
 
@@ -2931,6 +2938,17 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
               try { return await authInflight; } finally { authInflight = null; }
             },
             // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
+            // ---- публичные партии: «Идущие партии» и копии завершённых партий ----
+            watchLiveGames(cb) {
+              const q = query(collection(db, 'games'), where('status', '==', 'active'), where('hostPublic', '==', true), limit(30));
+              return onSnapshot(q, (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => console.warn('Идущие партии:', e));
+            },
+            async publishGame(id, d) { await setDoc(doc(db, 'publicGames', id), { ...d, date: serverTimestamp() }); },
+            async getPublic(id) { const s = await getDoc(doc(db, 'publicGames', id)); return s.exists() ? s.data() : null; },
+            async hideMyPublicGames(uid) {
+              const s = await getDocs(query(collection(db, 'publicGames'), where('uids', 'array-contains', uid), limit(200))); let n = 0;
+              for (const d of s.docs) { try { await deleteDoc(d.ref); n++; } catch (e) { console.warn(e); } } return n;
+            },
             // ---- чат партии: коллекция games/{id}/chat ----
             watchChat(gameId, cb) {
                 const q = query(collection(db, 'games', gameId, 'chat'), orderBy('at'), limit(100));
@@ -3008,6 +3026,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
         }
 
         window.OnlineChess = OnlineChess;
+        window.pgHideMine = async () => { const u = auth && auth.currentUser; return u && !u.isAnonymous ? await OnlineChess.hideMyPublicGames(u.uid) : 0; };
         window.dispatchEvent(new Event('onlinechess-ready'));
     </script>
 
@@ -3117,7 +3136,7 @@ function createLobby(cfg) {
     if (unsub) return; const OD = cfg.OD(); if (!OD || !OD.ready || !OD.watchOpenGames) return;
     unsub = OD.watchOpenGames((list) => { items = list; render(); if (cfg.onChange) cfg.onChange(); });
     tickT = setInterval(render, 8000); render();
-    if (!skewDone) { skewDone = true; try { await OD.ensureAuth(); skew = (await OD.serverSkew()) || 0; render(); } catch (e) {} }
+    if (!skewDone) { skewDone = true; try { await OD.ensureAuth(); skew = (await OD.serverSkew()) || 0; window.__pgSkew = skew; render(); } catch (e) {} }
   }
   function stop() { if (unsub) { unsub(); unsub = null; } if (tickT) { clearInterval(tickT); tickT = null; } }
   // Ищем подходящую открытую игру с тем же контролем времени. beforeId — брать только игры «старше» нашей (чтобы две одновременные
@@ -3129,8 +3148,43 @@ function createLobby(cfg) {
   }
   return { start, stop, findMatch, rows, render };
 }
+// ---------- «Идущие партии»: онлайн-партии, которые можно смотреть ----------
+function createLive(cfg) {
+  let unsub = null, items = [], tickT = null;
+  const tms = (t) => (t == null ? null : (typeof t.toMillis === 'function' ? t.toMillis() : Number(t)));
+  const STALE = (window.__lobbyCfg && window.__lobbyCfg.stale) || 75000;
+  const fresh = (g) => { const now = Date.now() + (window.__pgSkew || 0), a = tms(g.hostSeen), b = tms(g.guestSeen); return (a == null || now - a < STALE) && (b == null || now - b < STALE); };
+  const rows = () => { const me = cfg.myAuth();
+    return items.filter((g) => g.status === 'active' && g.hostPublic === true && g.guestPublic === true && g.timeControl && fresh(g) && !(me && (g.hostAuthUid === me || g.guestAuthUid === me)))
+      .sort((a, b) => (b.moves || []).length - (a.moves || []).length); };
+  function render() {
+    const box = cfg.listEl; if (!box) return; const list = rows(); box.innerHTML = '';
+    if (!list.length) { const e = document.createElement('div'); e.className = 'lobby-empty'; e.textContent = 'Сейчас нет партий, которые можно смотреть.'; box.appendChild(e); return; }
+    list.forEach((g) => {
+      const wHost = g.hostColor === 'w', w = wHost ? g : { hostName: g.guestName, hostRating: g.guestRating }, b = wHost ? { hostName: g.guestName, hostRating: g.guestRating } : g;
+      const nm = (p) => (p.hostName || 'Игрок') + (p.hostRating != null ? ' (' + p.hostRating + ')' : '');
+      const row = document.createElement('div'); row.className = 'lobby-row'; const info = document.createElement('div');
+      const t = document.createElement('div'); t.className = 'lobby-t'; t.textContent = nm(w) + ' — ' + nm(b);
+      const m = document.createElement('div'); m.className = 'lobby-m'; const cn = cfg.catName(g.timeControl), n = (g.moves || []).length;
+      m.textContent = `${g.timeControl.minutes}+${g.timeControl.inc}${cn ? ' · ' + cn : ''} · ${Math.ceil(n / 2)} ход.`; info.appendChild(t); info.appendChild(m);
+      const bt = document.createElement('button'); bt.textContent = 'Смотреть'; bt.onclick = () => cfg.onWatch(g.id, g); row.appendChild(info); row.appendChild(bt); box.appendChild(row);
+    });
+  }
+  function start() {
+    if (unsub) return; const OD = cfg.OD(); if (!OD || !OD.ready || !OD.watchLiveGames) return;
+    unsub = OD.watchLiveGames((list) => { items = list; render(); }); tickT = setInterval(render, 8000); render();
+  }
+  function stop() { if (unsub) { unsub(); unsub = null; } if (tickT) { clearInterval(tickT); tickT = null; } }
+  return { start, stop, rows, render };
+}
 
-        let chessLobby = null, onlineQuick = false, waitBeatTimer = null;
+
+        let chessLobby = null, chessLive = null, onlineQuick = false, waitBeatTimer = null;
+        function ensureChessLive() {
+            if (!chessLive) chessLive = createLive({ OD: () => window.OnlineChess, listEl: document.getElementById('live-list'), myAuth: () => (window.OnlineChess && window.OnlineChess.authUid) || null,
+                catName: (tc) => { const c = timeCategory(tc.minutes, tc.inc); return c ? CAT_NAME[c] : ''; }, onWatch: (id) => watchChessGame(id) });
+            return chessLive;
+        }
         function ensureChessLobby() {
             if (!chessLobby) chessLobby = createLobby({ OD: () => window.OnlineChess, listEl: document.getElementById('lobby-list'), myAuth: () => (window.OnlineChess && window.OnlineChess.authUid) || null,
                 catName: (tc) => { const c = timeCategory(tc.minutes, tc.inc); return c ? CAT_NAME[c] : ''; }, onPick: (id) => pickChessLobby(id), onChange: () => quickCheckChess() });
@@ -4045,7 +4099,7 @@ function createLobby(cfg) {
             document.getElementById('online-join-error').style.display = 'none';
             uiGameMode = mode;
             document.getElementById('online-extra').style.display = mode === 'online' ? '' : 'none';
-            if (mode === 'online') ensureChessLobby().start(); else if (chessLobby) chessLobby.stop();
+            if (mode === 'online') { ensureChessLobby().start(); ensureChessLive().start(); } else { if (chessLobby) chessLobby.stop(); if (chessLive) chessLive.stop(); }
         }
         let uiGameMode = 'bot'; // режим, выбранный переключателем в меню (ещё до старта партии)
 
@@ -4088,7 +4142,7 @@ function createLobby(cfg) {
                 const hostKey = ratingKeyFor('chess', minutes, incSec);
                 const hostRating = hostUid && hostKey ? await window.OnlineChess.getRating(hostUid, hostKey).catch(() => null) : null;
                 myRatingSnap = hostRating;
-                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid, hostRating, hostAuthUid: onlineAuthUid, open: !!open });
+                const gameId = await window.OnlineChess.createGame({ minutes, inc: incSec, hostColor, hostName, hostUid, hostRating, hostAuthUid: onlineAuthUid, open: !!open, hostPublic: !!(window.OnlineChess.currentUser && PGS.get().showGames !== false) });
                 const link = location.origin + location.pathname + '?game=' + gameId;
                 document.getElementById('online-link-box').value = link;
                 document.getElementById('setup-view-config').style.display = 'none';
@@ -4226,7 +4280,7 @@ function createLobby(cfg) {
             const guestRating = guestUid && gkey ? await window.OnlineChess.getRating(guestUid, gkey).catch(() => null) : null;
             myRatingSnap = guestRating;
             onlineAuthUid = await window.OnlineChess.ensureAuth(); onlineRole = 'guest';
-            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid, guestRating, onlineAuthUid);
+            const result = await window.OnlineChess.joinGame(gameId, nickname, guestUid, guestRating, onlineAuthUid, !!(guestUid && PGS.get().showGames !== false));
             if (!result.ok) {
                 document.getElementById('setup-view-join-prompt').style.display = 'none';
                 document.getElementById('setup-view-config').style.display = '';
@@ -4247,7 +4301,7 @@ function createLobby(cfg) {
             // как раз ЕГО и сохранить (не пересоздавать). Поэтому прячем ссылку на время сброса.
             onlineUnsub = null;
             resetGameState();
-            stopWaitBeat(); if (chessLobby) chessLobby.stop();
+            stopWaitBeat(); if (chessLobby) chessLobby.stop(); if (chessLive) chessLive.stop();
             gameMode = 'online';
             onlineLastData = data;
             userCol = myColor;
@@ -4509,7 +4563,7 @@ function createLobby(cfg) {
                 if (onlineGap > CFG.claim) {
                     banner.innerHTML = `<span>Соперник не в сети больше полутора минут</span><span><button class="online-banner-btn online-banner-accept" onclick="claimOnlineWin()">Засчитать победу</button></span>`;
                 } else banner.innerHTML = `<span>Соперник не в сети… ждём</span>`;
-            } else {
+            } else if (!(banner.textContent || '').trim().startsWith('Не удалось')) {   // сообщение об ошибке отправки остаётся, пока не появится другое
                 banner.style.display = 'none';
                 banner.innerHTML = '';
             }
@@ -4521,7 +4575,7 @@ function createLobby(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2026.10.06-7';
+        const BUILD = '2026.10.07-4';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
@@ -4648,6 +4702,40 @@ function createLobby(cfg) {
 
         checkUrlForOnlineInvite();
 
+        // ---------- публичные партии и наблюдение за идущей партией ----------
+        const PUB_REASON = { resign: 'сдача', timeout: 'время', checkmate: 'мат', abandon: 'соперник ушёл', 'draw-agree': 'по соглашению', draw: 'ничья' };
+        function pubTextC(r) { const w = r && r.winner === 'w' ? 'Победили белые' : r && r.winner === 'b' ? 'Победили чёрные' : 'Ничья'; return w + (r && PUB_REASON[r.reason] && r.winner !== 'draw' ? ' (' + PUB_REASON[r.reason] + ')' : ''); }
+        const rtC = (n) => (n != null ? ' · ' + n : '');
+        function setSpectatorLabels(names, ratings, times) {
+            const top = document.getElementById('top-name'), topR = document.getElementById('top-rating'), bot = document.getElementById('bottom-name'), botR = document.getElementById('bottom-rating');
+            if (top) top.innerText = (names.b || 'Чёрные') + ' · чёрные'; if (topR) topR.innerText = ratings.b != null ? String(ratings.b) : '';
+            if (bot) bot.innerText = (names.w || 'Белые') + ' · белые'; if (botR) botR.innerText = ratings.w != null ? String(ratings.w) : '';
+            if (times) { document.getElementById('t-top').innerText = times.b; document.getElementById('t-bottom').innerText = times.w; }
+        }
+        function openPublicChess(p) {
+            viewGameRecord({ date: p.date && p.date.toDate ? p.date.toDate().toISOString() : new Date().toISOString(), userColor: 'w', level: null, opponent: null, result: 'draw', resultText: pubTextC(p.result), moves: p.moves || [] });
+            setSpectatorLabels(p.names || {}, p.ratings || {}, null);
+            const sb = document.querySelector('.status-bar'); if (sb) sb.innerHTML = `<span style="color:#8a8782">Партия: ${escapeHtml((p.names && p.names.w) || 'Белые')} — ${escapeHtml((p.names && p.names.b) || 'Чёрные')}</span>`;
+        }
+        let watchUnsubC = null;
+        async function watchChessGame(id) {
+            if (!(await waitForOnlineChess())) { alert('Не удалось подключиться к серверу.'); return; }
+            if (watchUnsubC) { watchUnsubC(); watchUnsubC = null; }
+            let first = true;
+            watchUnsubC = window.OnlineChess.listenGame(id, (data) => {
+                if (!data) { if (first) alert('Партия не найдена.'); return; }
+                const prevIdx = viewIndex, wasLive = viewIndex === -1, wHost = data.hostColor === 'w', fin = data.status === 'finished' && data.result;
+                const names = { w: wHost ? data.hostName : data.guestName, b: wHost ? data.guestName : data.hostName }, ratings = { w: wHost ? data.hostRating : data.guestRating, b: wHost ? data.guestRating : data.hostRating };
+                viewGameRecord({ date: new Date().toISOString(), userColor: 'w', level: null, opponent: null, result: 'draw', resultText: fin ? pubTextC(data.result) : 'Идёт партия', moves: (data.moves || []).slice() });
+                if (!first && !wasLive && prevIdx >= 0 && prevIdx < historyFens.length - 1) { viewIndex = prevIdx; render(); updateHistory(); }   // не сбрасываем позицию, которую смотрит зритель
+                const fmt = (ms) => formatTimer((ms || 0) / 1000, false), noClock = !(data.timeControl && data.timeControl.minutes);
+                setSpectatorLabels(names, ratings, { w: noClock ? '∞' : fmt(data.whiteTimeMs), b: noClock ? '∞' : fmt(data.blackTimeMs) });
+                const sb = document.querySelector('.status-bar'); if (sb) sb.innerHTML = `<span style="color:${fin ? '#a23b33' : '#3B5D4A'}">${fin ? 'Партия окончена: ' + escapeHtml(pubTextC(data.result)) : 'Наблюдение за партией (идёт игра)'}</span>`;
+                const sh = document.getElementById('analysis-share'); if (sh) sh.style.display = 'none';
+                first = false;
+            }, () => {});
+        }
+
         // ---------- экспорт партии и ссылка «посмотреть без входа» ----------
         function currentRecordForShare() {
             if (analysisCameFromHistory && currentViewRecord) return currentViewRecord;
@@ -4679,6 +4767,15 @@ function createLobby(cfg) {
         // Ссылка из личного профиля в общем меню: ?replay=local:N (локальная история) или ?replay=cloud:ID (облачная).
         async function checkReplayParam() {
             const params = new URLSearchParams(location.search), param = params.get('replay');
+            if (params.get('watch') || params.get('pub')) {
+                const wid = params.get('watch'), pid = params.get('pub'); history.replaceState(null, '', location.pathname);
+                try {
+                    if (!(await waitForOnlineChess())) { alert('Не удалось загрузить партию: нет связи с сервером.'); return; }
+                    if (wid) await watchChessGame(wid); else { const p = await window.OnlineChess.getPublic(pid); if (p) openPublicChess(p); else alert('Партия не найдена.'); }
+                } catch (e) { console.error(e); alert('Не удалось загрузить партию.'); }
+                finally { document.documentElement.classList.remove('boot-replay'); }
+                return;
+            }
             if (params.get('view')) {                                  // публичная ссылка на партию: вход не нужен
                 const id = params.get('view'); history.replaceState(null, '', location.pathname);
                 try {
@@ -4963,6 +5060,9 @@ function createLobby(cfg) {
                 function onEnd(ev) {
                     document.removeEventListener('touchmove', onMove);
                     document.removeEventListener('touchend', onEnd);
+                    // Без этого браузер после касания «досылает» эмулированные mousedown/mouseup, и мышиный обработчик фигуры
+                    // тут же снимал выбор, сделанный касанием, — тап по клетке-цели после тапа по фигуре ничего не делал.
+                    if (ev.cancelable) ev.preventDefault();
                     const last = ev.changedTouches[0];
                     if (dragging) {
                         el.classList.remove('dragging');
@@ -4974,7 +5074,8 @@ function createLobby(cfg) {
                     }
                 }
                 document.addEventListener('touchmove', onMove, { passive: false });
-                document.addEventListener('touchend', onEnd);
+                document.addEventListener('touchend', onEnd, { passive: false });
+                document.addEventListener('touchcancel', () => { document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onEnd); if (dragging) { el.classList.remove('dragging'); positionPieceEl(el, fromSq, true); } }, { once: true });
             });
         }
 
@@ -5497,7 +5598,7 @@ function createLobby(cfg) {
             }
             if (gameMode === 'online') {
                 saveOnlineGameToMyHistory(message, resultCode);
-                applyOnlineRating(resultCode);
+                applyOnlineRating(resultCode); publishPublicChess(resultCode, message);
                 clearActiveGame(); if (onlineBeat) { clearInterval(onlineBeat); onlineBeat = null; }
             }
             suppressOnlineReport = false;
@@ -5509,6 +5610,19 @@ function createLobby(cfg) {
             const d = onlineLastData; if (!d) return '';
             const r = onlineMyColor === d.hostColor ? d.guestRating : d.hostRating;
             return r != null ? ' · ' + r : '';
+        }
+
+        // Публичная копия завершённой партии: только если оба игрока вошли через Google и разрешили показ (флаги записаны в самой партии).
+        function publishPublicChess(resultCode, message) {
+            try {
+                const d = onlineLastData, u = window.OnlineChess && window.OnlineChess.currentUser;
+                if (!d || !u || !d.hostPublic || !d.guestPublic || !d.hostUid || !d.guestUid || !d.hostAuthUid || !d.guestAuthUid || historySAN.length < 4) return;
+                const wHost = d.hostColor === 'w', winner = resultCode === 'draw' ? 'draw' : (resultCode === 'win' ? onlineMyColor : (onlineMyColor === 'w' ? 'b' : 'w'));
+                const rw = wHost ? d.hostRating : d.guestRating, rb = wHost ? d.guestRating : d.hostRating;
+                window.OnlineChess.publishGame(onlineGameId, { game: 'chess', uids: [wHost ? d.hostUid : d.guestUid, wHost ? d.guestUid : d.hostUid], authUids: [d.hostAuthUid, d.guestAuthUid],
+                    names: { w: (wHost ? d.hostName : d.guestName) || 'Игрок', b: (wHost ? d.guestName : d.hostName) || 'Игрок' }, ratings: { w: rw != null ? rw : null, b: rb != null ? rb : null },
+                    result: { winner, reason: onlineReasonCode(message) }, tc: d.timeControl, moves: historySAN.slice() }).catch(() => {});   // вторая запись того же игрока-соперника будет отклонена правилами — это нормально
+            } catch (e) { console.warn(e); }
         }
 
         // Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, сыграно не меньше 3 ходов каждым.

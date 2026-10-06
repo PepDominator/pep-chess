@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#EEF0E7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Pep Games — шахматы и шашки</title>
+<title>Pep Games — шахматы, шашки, судоку и кроссворды</title>
 <script>
 // ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
 (function () {
@@ -18,7 +18,7 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
   function apply() {
     const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
@@ -47,6 +47,7 @@
 .pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
 .pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
 .pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
+.pg-small { background:#F3F2EA; border:1px solid #D9DBCC; padding:7px 12px; font:700 12.5px 'Noto Sans',sans-serif; color:#2A2E24; cursor:pointer; flex-shrink:0; } .pg-small:hover { background:#EAEADF; }
 .pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
 #pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
 #pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
@@ -67,12 +68,15 @@
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
         <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
-        ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-row"><div><b>Показывать мои партии другим</b><span class="d">Ваши онлайн-партии (когда оба игрока вошли через Google и согласны) видны в профиле и в списке «Идущие партии». Действует на новые партии</span></div>${sw('showGames')}</div>
+                ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-row" id="pg-hide-row" style="display:none"><div><b>Скрыть прошлые партии</b><span class="d">Удалить публичные копии ваших прошлых партий (в профиле и по ссылкам)</span></div><button class="pg-small" id="pg-hide-btn">Скрыть</button></div>
         <div class="pg-title2">Оформление доски</div>
         <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
         <button class="pg-close">Готово</button></div>`;
       ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
       ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
+      const hideRow = ov.querySelector('#pg-hide-row'); if (hideRow && typeof window.pgHideMine === 'function') { hideRow.style.display = 'flex'; ov.querySelector('#pg-hide-btn').onclick = async (e) => { const b = e.target; b.disabled = true; b.textContent = '…'; try { const n = await window.pgHideMine(); b.textContent = n ? 'Скрыто: ' + n : 'Нечего скрывать'; } catch (err) { console.error(err); b.textContent = 'Не удалось'; } }; }
       ov.querySelector('.pg-close').onclick = close;
     }
     function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
@@ -94,6 +98,7 @@
     get visible() { return !!bar && bar.style.display !== 'none'; }
   };
 })();
+
 
 
 </script>
@@ -122,7 +127,7 @@ body {
 @keyframes drift { 0%,100% { transform:translate(0,0) rotate(0); } 50% { transform:translate(16px,-22px) rotate(5deg); } }
 
 /* ---------- каркас ---------- */
-.wrap { position:relative; z-index:1; max-width:980px; margin:0 auto; }
+.wrap { position:relative; z-index:1; max-width:1060px; margin:0 auto; }
 .top { display:flex; justify-content:flex-end; align-items:center; min-height:34px; }
 .acc-in { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--border); padding:7px 14px; font-size:13px; color:var(--text); cursor:pointer; font-family:inherit; transition:background .15s, border-color .15s; }
 .acc-in:hover { background:#F3F2EA; border-color:#B7BAA5; }
@@ -138,14 +143,18 @@ h1 { font-weight:400; font-style:italic; font-size:clamp(34px, 6vw, 56px); line-
 .lead { color:var(--muted); font-size:clamp(14px, 2vw, 16px); max-width:520px; margin:0 auto; line-height:1.6; }
 
 /* ---------- карточки ---------- */
-.cards { display:grid; grid-template-columns:1fr 1fr; gap:clamp(16px, 3vw, 32px); }
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap:clamp(16px, 2.4vw, 28px); }
 .card {
   display:flex; flex-direction:column; text-decoration:none; color:inherit; background:var(--panel); border:1px solid var(--border);
   box-shadow:0 14px 40px rgba(42,46,36,.08), 0 2px 6px rgba(42,46,36,.05); position:relative; overflow:hidden;
   transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .25s;
   animation:rise .7s var(--ease) both;
 }
-.card:nth-child(2) { animation-delay:.12s; }
+.card:nth-child(2) { animation-delay:.12s; } .card:nth-child(3) { animation-delay:.24s; } .card:nth-child(4) { animation-delay:.36s; }
+.cwm { display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); box-shadow:none !important; background:none !important; }
+.cwm b { background:transparent; display:flex; align-items:center; justify-content:center; font:700 clamp(9px,1.6vw,17px) Georgia,serif; color:#2F3A56; } .cwm b.w { background:#F6F4EB; box-shadow:0 0 0 1.3px #2A2E24 inset; } .cwm b.n { color:#3B5D4A; } .cwm b.n i { font-style:normal; opacity:0; transition:opacity .5s; } .card:hover .cwm b.n i, .card:focus-visible .cwm b.n i { opacity:1; }
+.sdk { background:#FDFDFA; display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); }
+.sdk b { display:flex; align-items:center; justify-content:center; font:600 clamp(9px,1.5vw,16px) Georgia,serif; color:#2A2E24; border:.5px solid #D2D4C4; } .sdk b.r3 { border-right:1.5px solid #2A2E24; } .sdk b.b3 { border-bottom:1.5px solid #2A2E24; } .sdk b.n { color:#3B5D4A; opacity:0; transition:opacity .5s; } .card:hover .sdk b.n, .card:focus-visible .sdk b.n { opacity:1; }
 .card::before { content:''; position:absolute; left:0; right:0; top:0; height:2px; background:var(--green); transform:scaleX(0); transform-origin:left; transition:transform .45s var(--ease); z-index:2; }
 .card:hover, .card:focus-visible { transform:translateY(-6px); box-shadow:0 26px 60px rgba(42,46,36,.14), 0 4px 10px rgba(42,46,36,.06); border-color:#B7BAA5; outline:none; }
 .card:hover::before, .card:focus-visible::before { transform:scaleX(1); }
@@ -183,6 +192,7 @@ footer b { color:var(--text); font-weight:600; }
 .seg button { border:none; background:none; padding:8px 18px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; font-family:inherit; }
 .seg button.on { background:var(--green); color:#fff; }
 .seg-wrap { display:flex; flex-wrap:wrap; gap:8px; } #seg-cat button { padding:8px 12px; }
+.pub-note { font-size:12.5px; color:var(--muted); padding:6px 0 2px; }
 .pg-sub { font-size:12px; color:var(--muted); letter-spacing:0; text-transform:none; font-weight:600; margin-left:6px; } .seg button:hover:not(.on) { background:#EAEADF; }
 .lb { border-top:1px solid var(--border); }
 .lb-row { display:grid; grid-template-columns:34px 38px 1fr auto; align-items:center; gap:12px; width:100%; padding:11px clamp(18px,3vw,30px); border:none; border-bottom:1px solid var(--border); background:none; text-align:left; cursor:pointer; font-family:inherit; color:inherit; transition:background .15s; }
@@ -269,7 +279,7 @@ footer b { color:var(--text); font-weight:600; }
   <header>
     <div class="brand">Pep Games</div>
     <h1 class="serif">Во что сыграем?</h1>
-    <p class="lead">Шахматы и международные шашки против сильных движков или с друзьями по ссылке. Всё работает офлайн и ставится как приложение.</p>
+    <p class="lead">Шахматы и шашки против сильных движков или с друзьями по ссылке, а ещё судоку и кроссворды. Всё работает офлайн и ставится как приложение.</p>
   </header>
 
   <main class="cards">
@@ -292,6 +302,26 @@ footer b { color:var(--text); font-weight:600; }
         <div class="foot"><span class="count" id="cnt-draughts"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
+
+    <a class="card" href="sudoku/" id="card-sudoku" aria-label="Играть в судоку">
+      <div class="art"><div class="mini sdk" id="mini-sudoku" style="background-image:none"></div></div>
+      <div class="info">
+        <h2 class="serif">Судоку</h2>
+        <p>Четыре уровня сложности, заметки, подсказки и «судоку дня» — одна головоломка для всех. Генерируется прямо на вашем устройстве.</p>
+        <div class="chips"><b>4 уровня</b><b>Заметки</b><b>Судоку дня</b><b>Офлайн</b></div>
+        <div class="foot"><span class="count" id="cnt-sudoku"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+      </div>
+    </a>
+
+    <a class="card" href="crossword/" id="card-crossword" aria-label="Разгадывать кроссворды">
+      <div class="art"><div class="mini cwm" id="mini-crossword" style="background-image:none"></div></div>
+      <div class="info">
+        <h2 class="serif">Кроссворды</h2>
+        <p>Классические кроссворды на русском языке: 21 тем, три размера, подсказки и «кроссворд дня». Более 3000 слов с вопросами.</p>
+        <div class="chips"><b>21 тем</b><b>3 размера</b><b>Кроссворд дня</b><b>Офлайн</b></div>
+        <div class="foot"><span class="count" id="cnt-crossword"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+      </div>
+    </a>
   </main>
 
   <section class="rank" id="rank">
@@ -306,7 +336,7 @@ footer b { color:var(--text); font-weight:600; }
   <footer>
     <div><b>Один аккаунт на обе игры.</b> Войдите через Google — и онлайн-партии сохранятся в вашей истории.</div>
     <div>Совет: установите страницу как приложение — тогда обе игры доступны с экрана телефона.</div>
-    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.06-7</div>
+    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.07-4</div>
   </footer>
 </div>
 
@@ -340,10 +370,27 @@ paintMini('mini-draughts', DRAUGHTS, [
   ['w', 2, 5, 'mv', 4, 3]            // белая шашка берёт при наведении: 2,5 → 4,3 через 3,4
 ]);
 
+// мини-поле судоку: настоящая головоломка, недостающие цифры появляются при наведении
+(function () {
+  const puz = '530070000600195000098000060800060003400803001700020006060000280000419005000080079', sol = '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
+  const box = document.getElementById('mini-sudoku'), reveal = new Set([2, 6, 7, 21, 28, 40, 52, 65]);
+  for (let i = 0; i < 81; i++) { const b = document.createElement('b'), r = (i / 9) | 0, c = i % 9; if (c % 3 === 2 && c < 8) b.className += ' r3'; if (r % 3 === 2 && r < 8) b.className += ' b3';
+    if (puz[i] !== '0') b.textContent = puz[i]; else if (reveal.has(i)) { b.textContent = sol[i]; b.className += ' n'; } box.appendChild(b); }
+})();
+// мини-кроссворд: слова пересекаются по буквам, часть букв появляется при наведении
+(function () {
+  const box = document.getElementById('mini-crossword'), g = Array.from({ length: 9 }, () => Array(9).fill(''));
+  const put = (word, r, c, dr, dc) => { [...word].forEach((ch, k) => { g[r + dr * k][c + dc * k] = ch; }); };
+  put('КРОССВОРД', 4, 0, 0, 1); put('ГОРА', 2, 1, 1, 0); put('ЛЕС', 2, 3, 1, 0); put('ВОДА', 4, 5, 1, 0); put('ДОМ', 4, 8, 1, 0);
+  const hide = new Set(['4,3', '3,3', '3,1', '5,5', '6,5', '5,8']);
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) { const b = document.createElement('b'), ch = g[r][c]; if (ch) { b.className = 'w'; if (hide.has(r + ',' + c)) { b.className = 'w n'; b.innerHTML = '<i>' + ch + '</i>'; } else b.textContent = ch; } box.appendChild(b); }
+})();
 // счётчики сыгранных партий из localStorage браузера
 function count(key) { try { const n = JSON.parse(localStorage.getItem(key) || '[]').length; return n ? `Сыграно партий: ${n}` : 'Новая игра'; } catch (e) { return ''; } }
 document.getElementById('cnt-chess').textContent = count('chessGameHistory');
 document.getElementById('cnt-draughts').textContent = count('draughtsHistory');
+try { const st = JSON.parse(localStorage.getItem('crosswordStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-crossword').textContent = n ? `Разгадано: ${n}` : 'Новая игра'; } catch (e) { document.getElementById('cnt-crossword').textContent = ''; }
+try { const st = JSON.parse(localStorage.getItem('sudokuStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-sudoku').textContent = n ? `Решено: ${n}` : 'Новая игра'; } catch (e) { document.getElementById('cnt-sudoku').textContent = ''; }
 
 
 // ---------- таблица лидеров и профили (данные приходят из модуля ниже через window.PGData) ----------
@@ -417,8 +464,29 @@ async function openProfile(uid, pre) {
   ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
   let p = pre; try { p = (await window.PGData.profile(uid)) || pre; } catch (e) { console.error(e); }
   if (!p) { body.innerHTML = '<div class="lb-empty">Профиль не найден.</div>'; return; }
-  body.innerHTML = `<div class="ph">${avatar(p)}<h3 class="serif">${esc(p.displayName || 'Игрок')}</h3></div>` + profileBlocks(p, null);
+  body.innerHTML = `<div class="ph">${avatar(p)}<h3 class="serif">${esc(p.displayName || 'Игрок')}</h3></div>` + profileBlocks(p, null) + pubBlock();
+  loadPublicGames(uid, document.getElementById('pub-host'));
 }
+// ---------- последние публичные партии игрока ----------
+const PUB_REASON = { resign: 'сдача', timeout: 'время', nomoves: 'нет ходов', checkmate: 'мат', abandon: 'соперник ушёл', 'draw-agree': 'по соглашению', draw: 'ничья', 'draw-rule': 'правило дамок', 'draw-rep': 'повторение', 'draw-16': '16 ходов', 'draw-5': '5 ходов' };
+async function loadPublicGames(uid, host) {
+  host.innerHTML = '<div class="pub-note">Загрузка…</div>';
+  const D = window.PGData; if (!D || !D.publicGames) { host.innerHTML = ''; return; }
+  let list; try { list = await D.publicGames(uid); } catch (e) { console.error(e); host.innerHTML = '<div class="pub-note">Не удалось загрузить партии.</div>'; return; }
+  if (!list.length) { host.innerHTML = '<div class="pub-note">Публичных партий пока нет. Партия становится публичной, если оба игрока вошли через Google и разрешили показ в настройках.</div>'; return; }
+  host.innerHTML = '<div class="glist" style="padding:0"></div>'; const box = host.firstChild;
+  list.slice(0, 15).forEach((g) => {
+    const idx = (g.uids || []).indexOf(uid), me = idx === 0 ? 'w' : 'b', opp = me === 'w' ? 'b' : 'w', w = g.result && g.result.winner;
+    const res = w === 'draw' ? 'draw' : (w === me ? 'win' : 'loss'), txt = res === 'win' ? 'Победа' : res === 'loss' ? 'Поражение' : 'Ничья';
+    const dt = g.date && g.date.toDate ? g.date.toDate().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    const oppName = (g.names && g.names[opp]) || 'Соперник', oppR = g.ratings && g.ratings[opp] != null ? ' (' + g.ratings[opp] + ')' : '';
+    const why = g.result && PUB_REASON[g.result.reason] && w !== 'draw' ? ', ' + PUB_REASON[g.result.reason] : '';
+    const a = document.createElement('a'); a.className = 'gi'; a.href = `${g.game}/?pub=${encodeURIComponent(g.id)}`;
+    a.innerHTML = `<span class="gi-dot ${res}"></span><span class="gi-g">${GAME_ICON[g.game] || ''}</span><span><div class="gi-t">${txt}${esc(why)} · ${esc(oppName)}${esc(oppR)}</div><div class="gi-m">${dt} · ${g.tc ? g.tc.minutes + '+' + g.tc.inc : ''} · ${me === 'w' ? 'белыми' : 'чёрными'} · ${(g.moves || []).length} полуходов</div></span><span class="gi-open">Смотреть →</span>`;
+    box.appendChild(a);
+  });
+}
+const pubBlock = () => '<div class="pg"><div class="pg-top"><span class="pg-title">Последние публичные партии</span></div><div id="pub-host"></div></div>';
 const closeProfile = () => document.getElementById('ov').classList.add('hidden');
 
 // ---------- личный профиль: статистика, рейтинг, партии ----------
@@ -472,7 +540,7 @@ function renderMy() {
   if (mp.tab === 'ov') {
     const bots = local.chess.concat(local.draughts).filter((r) => !r.opponent).length;
     html += `<div class="chips2"><span>Рейтинговых партий: <b>${rated}</b></span><span>Против бота: <b>${bots}</b></span><span>Всего в истории: <b>${items.length}</b></span></div>`;
-    html += profileBlocks(p, (game) => botStats(game, local[game]));
+    html += profileBlocks(p, (game) => botStats(game, local[game])) + pubBlock();
   } else {
     const list = items.filter((r) => (mp.fg === 'all' || r.game === mp.fg) && (mp.fs === 'all' || (mp.fs === 'online') === r.online));
     const seg = (name, opts) => `<div class="seg" data-f="${name}">${opts.map(([v, l]) => `<button data-v="${v}" class="${mp[name] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -489,6 +557,7 @@ function renderMy() {
     }
   }
   body.innerHTML = html;
+  if (mp.tab === 'ov' && document.getElementById('pub-host')) loadPublicGames(window.PGData.me, document.getElementById('pub-host'));
   body.querySelectorAll('.gi').forEach((a) => a.addEventListener('click', rememberProfile));
   body.querySelectorAll('.ptabs button').forEach((b) => { b.onclick = () => { mp.tab = b.dataset.t; renderMy(); }; });
   body.querySelectorAll('.filters .seg').forEach((s) => s.querySelectorAll('button').forEach((b) => { b.onclick = () => { mp[s.dataset.f] = b.dataset.v; mp.shown = 25; renderMy(); }; }));
@@ -528,7 +597,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 // Вход через Google + публичные профили/рейтинг (общие для обеих игр: один origin и один проект Firebase).
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc, serverTimestamp, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 const app = initializeApp({
   apiKey: "AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY", authDomain: "pep-chess-2026.firebaseapp.com", projectId: "pep-chess-2026",
   storageBucket: "pep-chess-2026.firebasestorage.app", messagingSenderId: "170856560854", appId: "1:170856560854:web:d9b6b766cbd56780ecf177"
@@ -542,6 +611,11 @@ window.PGData = {
     return s.docs.map((d) => ({ uid: d.id, ...d.data() }));
   },
   async profile(uid) { const s = await getDoc(doc(db, 'profiles', uid)); return s.exists() ? { uid, ...s.data() } : null; },
+  // публичные копии завершённых партий игрока (виден любому), новые сверху
+  async publicGames(uid) {
+    const s = await getDocs(query(collection(db, 'publicGames'), where('uids', 'array-contains', uid), limit(100)));
+    return s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.date && b.date.toMillis ? b.date.toMillis() : 0) - (a.date && a.date.toMillis ? a.date.toMillis() : 0));
+  },
   get me() { return auth.currentUser ? auth.currentUser.uid : null; },
   get user() { const u = auth.currentUser; return u ? { uid: u.uid, displayName: u.displayName, photoURL: u.photoURL, since: u.metadata && u.metadata.creationTime } : null; },
   async myGames(key) {
@@ -551,6 +625,7 @@ window.PGData = {
     return s.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 };
+window.pgHideMine = async () => { const u = auth.currentUser; if (!u || u.isAnonymous) return 0; const s = await getDocs(query(collection(db, 'publicGames'), where('uids', 'array-contains', u.uid), limit(200))); let n = 0; for (const d of s.docs) { try { await deleteDoc(d.ref); n++; } catch (e) { console.warn(e); } } return n; };
 window.dispatchEvent(new Event('pg-ready'));
 
 $('acc-in').onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { if (e.code !== 'auth/popup-closed-by-user') alert('Не удалось войти через Google. Попробуйте ещё раз.'); } };

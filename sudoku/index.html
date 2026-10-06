@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF0E7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Pep Sudoku</title>
+<script>
+// ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
+(function () {
+  if (window.PGS) return;
+  const KEY = 'pgSettings';
+  const THEMES = {
+    classic: { n: 'Классика', l: '#F6F4EB', d: '#C7CAB4' },
+    green: { n: 'Зелёная', l: '#EEEED2', d: '#769656' },
+    blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
+    wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
+  };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true };
+  function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
+  function apply() {
+    const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
+    r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
+  }
+  function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); window.dispatchEvent(new Event('pgs-change')); return v; }
+  window.PGS = { get, set, apply, THEMES };
+  // Звук: одно место, через которое проходят все звуки приложения.
+  const origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () { if (!get().sound) return Promise.resolve(); return origPlay.apply(this, arguments); };
+  apply(); window.addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+
+  const css = `
+.pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:#8B8E7F; cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
+.pg-gear:hover { color:#2A2E24; background:#EAEADF; } .pg-gear.static { position:static; }
+.pg-ov { position:fixed; inset:0; z-index:400; background:rgba(42,46,36,.38); display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Noto Sans',system-ui,sans-serif; }
+.pg-panel { background:#FDFDFA; border:1px solid #D9DBCC; width:100%; max-width:420px; max-height:calc(100dvh - 32px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:#2A2E24; }
+.pg-panel h3 { margin:0; padding:22px 24px 6px; font:italic 400 24px Georgia,'Times New Roman',serif; }
+.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 24px; border-bottom:1px solid #E6E8DA; }
+.pg-row b { display:block; font-size:14px; font-weight:600; } .pg-row span.d { display:block; font-size:12px; color:#6E7568; margin-top:2px; line-height:1.4; }
+.pg-sw { position:relative; width:44px; height:24px; flex-shrink:0; background:#C9CCBB; border:none; cursor:pointer; transition:background .15s; padding:0; }
+.pg-sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; transition:transform .15s; }
+.pg-sw.on { background:#3B5D4A; } .pg-sw.on::after { transform:translateX(20px); }
+.pg-themes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:6px 24px 16px; }
+.pg-th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font:inherit; font-size:11.5px; color:#6E7568; text-align:center; }
+.pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
+.pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
+.pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
+.pg-small { background:#F3F2EA; border:1px solid #D9DBCC; padding:7px 12px; font:700 12.5px 'Noto Sans',sans-serif; color:#2A2E24; cursor:pointer; flex-shrink:0; } .pg-small:hover { background:#EAEADF; }
+.pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
+#pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
+#pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
+#pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:#EAEADF; color:#2A2E24; }
+.pg-pending { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38) !important; }
+.no-nums .sq .num { display:none !important; }`;
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+
+  // ---- панель «Настройки» ----
+  window.openPgSettings = function () {
+    if (document.getElementById('pg-ov')) return;
+    const ov = document.createElement('div'); ov.className = 'pg-ov'; ov.id = 'pg-ov';
+    const isDr = !!window.PG_DRAUGHTS;
+    function paint() {
+      const s = get();
+      const sw = (k) => `<button class="pg-sw ${s[k] ? 'on' : ''}" data-k="${k}" role="switch" aria-checked="${s[k]}"></button>`;
+      ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
+        <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
+        <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
+        <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
+        <div class="pg-row"><div><b>Показывать мои партии другим</b><span class="d">Ваши онлайн-партии (когда оба игрока вошли через Google и согласны) видны в профиле и в списке «Идущие партии». Действует на новые партии</span></div>${sw('showGames')}</div>
+                ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
+        <div class="pg-row" id="pg-hide-row" style="display:none"><div><b>Скрыть прошлые партии</b><span class="d">Удалить публичные копии ваших прошлых партий (в профиле и по ссылкам)</span></div><button class="pg-small" id="pg-hide-btn">Скрыть</button></div>
+        <div class="pg-title2">Оформление доски</div>
+        <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
+        <button class="pg-close">Готово</button></div>`;
+      ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
+      ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
+      const hideRow = ov.querySelector('#pg-hide-row'); if (hideRow && typeof window.pgHideMine === 'function') { hideRow.style.display = 'flex'; ov.querySelector('#pg-hide-btn').onclick = async (e) => { const b = e.target; b.disabled = true; b.textContent = '…'; try { const n = await window.pgHideMine(); b.textContent = n ? 'Скрыто: ' + n : 'Нечего скрывать'; } catch (err) { console.error(err); b.textContent = 'Не удалось'; } }; }
+      ov.querySelector('.pg-close').onclick = close;
+    }
+    function close() { ov.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey);
+    paint(); document.body.appendChild(ov);
+  };
+
+  // ---- плашка «Подтвердить ход» ----
+  let bar = null;
+  window.pgConfirm = {
+    show(text, ok, cancel) {
+      if (!bar) { bar = document.createElement('div'); bar.id = 'pg-confirm'; document.body.appendChild(bar); }
+      bar.innerHTML = '<span></span><button class="ok">✓ Подтвердить</button><button class="no">✕</button>';
+      bar.firstChild.textContent = text; bar.style.display = 'flex';
+      bar.querySelector('.ok').onclick = () => { ok(); }; bar.querySelector('.no').onclick = () => { cancel(); };
+    },
+    hide() { if (bar) bar.style.display = 'none'; },
+    get visible() { return !!bar && bar.style.display !== 'none'; }
+  };
+})();
+
+</script>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<style>
+:root { --bg:#EEF0E7; --panel:#FBFBF8; --green:#3B5D4A; --navy:#2F3A56; --text:#2A2E24; --muted:#6E7568; --border:#D9DBCC; --sq-light:#F6F4EB; --sq-dark:#C7CAB4; --cell:52px; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { margin:0; }
+body { font-family:'Noto Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; min-height:100dvh; display:flex; justify-content:center; align-items:center; padding:12px; }
+.serif { font-family:Georgia,'Iowan Old Style','Palatino Linotype','Times New Roman',serif; }
+.hidden { display:none !important; }
+button { font-family:inherit; }
+
+/* ---------- меню ---------- */
+.modal { position:relative; background:#FDFDFA; width:560px; max-width:calc(100vw - 24px); border:1px solid var(--border); box-shadow:0 18px 50px rgba(42,46,36,.10),0 2px 8px rgba(42,46,36,.06); padding-bottom:22px; }
+.back-hub { position:absolute; top:14px; left:16px; font-size:12px; color:var(--muted); text-decoration:none; } .back-hub:hover { color:var(--text); }
+.gear { position:absolute; top:10px; right:12px; background:none; border:none; font-size:20px; color:#8B8E7F; cursor:pointer; padding:4px 8px; } .gear:hover { color:var(--text); background:#EAEADF; }
+.brand { text-align:center; font-size:13px; font-weight:600; letter-spacing:3px; text-transform:uppercase; color:var(--green); padding-top:30px; display:flex; align-items:center; justify-content:center; gap:10px; }
+.brand::before,.brand::after { content:''; width:24px; height:1px; background:var(--border); }
+h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0 20px; text-align:center; }
+.content { padding:0 28px; }
+.title { font-size:13px; color:var(--muted); margin:18px 0 8px; text-align:center; }
+.big { display:block; width:100%; padding:15px; border:none; font-size:16px; font-weight:700; cursor:pointer; background:var(--green); color:#fff; box-shadow:0 6px 16px rgba(59,93,74,.25); } .big:hover { filter:brightness(1.08); }
+.big.alt { background:var(--navy); box-shadow:0 6px 16px rgba(47,58,86,.22); margin-top:10px; }
+.big.light { background:#F3F2EA; color:var(--text); box-shadow:none; border:1px solid var(--border); margin-top:10px; font-size:14px; padding:12px; }
+.levels { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border); background:#F3F2EA; }
+.levels button { border:none; border-right:1px solid var(--border); background:none; padding:11px 0; font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; } .levels button:last-child { border-right:none; }
+.levels button.on { background:var(--green); color:#fff; } .levels button:hover:not(.on) { background:#EAEADF; }
+.card { display:flex; align-items:center; justify-content:space-between; gap:12px; border:1px solid var(--border); background:#F8F7F1; padding:12px 14px; margin-bottom:10px; }
+.card b { font-size:15px; } .card small { display:block; color:var(--muted); font-size:12.5px; margin-top:2px; }
+.card button { background:var(--navy); color:#fff; border:none; padding:9px 16px; font-weight:700; font-size:13px; cursor:pointer; flex-shrink:0; } .card button:hover { filter:brightness(1.12); }
+.stats { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:4px; } .stats th { text-align:left; color:var(--muted); font-weight:600; font-size:12px; padding:4px 6px; } .stats td { padding:6px; border-top:1px solid var(--border); } .stats td:not(:first-child), .stats th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
+.ver { font-size:11px; color:#9A9D8E; text-align:center; margin-top:14px; }
+
+/* ---------- игра ---------- */
+#game { display:flex; gap:22px; align-items:flex-start; justify-content:center; width:100%; }
+#left { display:flex; flex-direction:column; align-items:stretch; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 2px 10px; }
+.topbar .lv { font-weight:700; font-size:14px; } .topbar .lv small { color:var(--muted); font-weight:400; margin-left:6px; }
+.tb { background:none; border:1px solid var(--border); background:#FDFDFA; color:var(--text); padding:6px 11px; font-size:13px; font-weight:600; cursor:pointer; } .tb:hover { background:#EAEADF; }
+#timer { font-family:'Roboto Mono',ui-monospace,Menlo,monospace; font-size:20px; letter-spacing:1px; min-width:64px; text-align:center; }
+#board-wrap { position:relative; width:calc(var(--cell)*9 + 4px); height:calc(var(--cell)*9 + 4px); border:2px solid #2A2E24; background:#2A2E24; box-shadow:0 2px 14px rgba(42,46,36,.14); }
+#sboard { display:grid; grid-template-columns:repeat(9,var(--cell)); grid-template-rows:repeat(9,var(--cell)); gap:0; user-select:none; touch-action:manipulation; }
+.cell { position:relative; width:var(--cell); height:var(--cell); background:var(--sq-light); border-right:1px solid #BFC2AE; border-bottom:1px solid #BFC2AE; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.cell.alt { background:color-mix(in srgb, var(--sq-dark) 40%, var(--sq-light)); }
+.cell.br { border-right:2px solid #2A2E24; } .cell.bb { border-bottom:2px solid #2A2E24; } .cell:nth-child(9n) { border-right:none; } .cell:nth-child(n+73) { border-bottom:none; }
+.cell .v { font-size:calc(var(--cell)*.58); line-height:1; font-weight:500; color:var(--navy); pointer-events:none; }
+.cell.given .v { color:#2A2E24; font-weight:700; }
+.cell.peer { background:color-mix(in srgb, #3B5D4A 14%, var(--sq-light)); } .cell.alt.peer { background:color-mix(in srgb, #3B5D4A 14%, color-mix(in srgb, var(--sq-dark) 40%, var(--sq-light))); }
+.cell.same { background:color-mix(in srgb, #2F3A56 24%, var(--sq-light)) !important; }
+.cell.sel { background:color-mix(in srgb, #C49A36 58%, var(--sq-light)) !important; }
+.cell.wrong { background:color-mix(in srgb, #A23B33 24%, var(--sq-light)) !important; } .cell.wrong .v { color:#A23B33; }
+.cell.hinted .v { color:var(--green); }
+.cell .notes { position:absolute; inset:2px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); pointer-events:none; }
+.cell .notes i { font-style:normal; font-size:calc(var(--cell)*.22); line-height:1; color:#6E7568; display:flex; align-items:center; justify-content:center; }
+.cell.flash { animation:flash .6s; } @keyframes flash { 0%,100% { filter:none; } 50% { filter:brightness(1.18); } }
+#pause-ov { position:absolute; inset:0; background:rgba(253,253,250,.97); display:none; align-items:center; justify-content:center; flex-direction:column; gap:8px; cursor:pointer; font-size:18px; z-index:5; }
+#pause-ov small { color:var(--muted); font-size:13px; }
+#right { width:320px; display:flex; flex-direction:column; gap:12px; }
+.stat-row { display:flex; justify-content:space-between; gap:8px; font-size:13px; color:var(--muted); } .stat-row b { color:var(--text); }
+.tools { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.tool { background:#FDFDFA; border:1px solid var(--border); padding:8px 0 6px; cursor:pointer; font-size:11.5px; color:var(--text); display:flex; flex-direction:column; align-items:center; gap:3px; position:relative; }
+.tool span.i { font-size:19px; line-height:1; } .tool:hover { background:#EAEADF; } .tool.on { background:var(--green); color:#fff; border-color:var(--green); } .tool:disabled { opacity:.35; cursor:default; }
+.tool .bd { position:absolute; top:2px; right:4px; font-size:10.5px; font-weight:700; color:var(--muted); } .tool.on .bd { color:#fff; }
+#pad { display:grid; grid-template-columns:repeat(9,1fr); gap:5px; }
+#pad button { position:relative; background:#FDFDFA; border:1px solid var(--border); font-size:calc(var(--cell)*.5); font-weight:500; color:var(--navy); padding:0; height:calc(var(--cell)*1.05); cursor:pointer; touch-action:manipulation; }
+#pad button:hover { background:#EAEADF; } #pad button:disabled { opacity:.25; cursor:default; }
+#pad button small { position:absolute; bottom:1px; right:3px; font-size:10px; color:var(--muted); font-weight:600; }
+#toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#2F3A56; color:#fff; padding:10px 18px; font-size:14px; font-weight:600; box-shadow:0 10px 30px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:opacity .25s; z-index:300; } #toast.on { opacity:1; }
+.ov { position:fixed; inset:0; z-index:200; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:16px; }
+.win { background:#FDFDFA; border:1px solid var(--border); width:100%; max-width:380px; text-align:center; padding:28px 26px 24px; box-shadow:0 30px 80px rgba(42,46,36,.3); animation:pop .35s cubic-bezier(.3,1.4,.5,1) both; } @keyframes pop { from { transform:scale(.85); opacity:0; } }
+.win h3 { margin:0 0 4px; font:italic 400 30px Georgia,serif; } .win .big-t { font-family:'Roboto Mono',monospace; font-size:38px; font-weight:700; margin:10px 0 4px; }
+.win .sub { color:var(--muted); font-size:13.5px; line-height:1.6; margin-bottom:16px; }
+.panel { background:#FDFDFA; border:1px solid var(--border); width:100%; max-width:400px; box-shadow:0 30px 80px rgba(42,46,36,.3); }
+.panel h3 { margin:0; padding:20px 24px 6px; font:italic 400 24px Georgia,serif; }
+.srow { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 24px; border-bottom:1px solid #E6E8DA; } .srow b { font-size:14px; font-weight:600; display:block; } .srow span.d { font-size:12px; color:var(--muted); display:block; margin-top:2px; }
+.sw { width:44px; height:24px; flex-shrink:0; background:#C9CCBB; border:none; position:relative; cursor:pointer; padding:0; } .sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; transition:transform .15s; } .sw.on { background:var(--green); } .sw.on::after { transform:translateX(20px); }
+.themes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:8px 24px 14px; } .th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font-size:11.5px; color:var(--muted); } .th.on { border-color:var(--green); color:var(--text); font-weight:700; } .th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
+.loading { position:fixed; inset:0; z-index:250; background:rgba(238,240,231,.9); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; font-size:15px; color:var(--muted); }
+.loading::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid #D9DBCC; border-top-color:#3B5D4A; animation:spin .8s linear infinite; } @keyframes spin { to { transform:rotate(360deg); } }
+
+@media (max-width:820px) {
+  body { align-items:flex-start; padding:8px; }
+  #game { flex-direction:column; align-items:center; gap:10px; }
+  #right { width:max(calc(var(--cell)*9 + 4px), min(calc(100vw - 16px), 380px)); }
+  #pad { gap:3px; } #pad button { height:max(calc(var(--cell)*1.05), 46px); }
+  .content { padding:0 16px; }
+}
+</style>
+</head>
+<body>
+
+<div id="menu" class="modal">
+  <a class="back-hub" href="../">← Все игры</a>
+  <button class="gear" id="open-prefs" title="Настройки" aria-label="Настройки">⚙</button>
+  <div class="brand">Pep Sudoku</div>
+  <h2 class="serif">Судоку</h2>
+  <div class="content">
+    <div id="resume-card" class="card hidden"><div><b>Продолжить партию</b><small id="resume-info"></small></div><button id="resume-btn">Играть</button></div>
+    <div id="daily-card" class="card"><div><b>Судоку дня</b><small id="daily-info"></small></div><button id="daily-btn">Играть</button></div>
+    <div class="title">Новая игра — сложность</div>
+    <div class="levels" id="levels"><button data-d="easy">Легко</button><button data-d="medium" class="on">Средне</button><button data-d="hard">Сложно</button><button data-d="expert">Эксперт</button></div>
+    <div class="title" id="level-hint" style="margin-top:8px;font-size:12.5px"></div>
+    <button class="big" id="new-btn" style="margin-top:6px">Новая игра</button>
+    <div class="title">Ваша статистика</div>
+    <table class="stats" id="stats"></table>
+    <div class="ver" id="ver"></div>
+  </div>
+</div>
+
+<div id="game" class="hidden">
+  <div id="left">
+    <div class="topbar">
+      <button class="tb" id="menu-btn">← Меню</button>
+      <div class="lv" id="lv"></div>
+      <div style="display:flex;gap:8px;align-items:center"><div id="timer">0:00</div><button class="tb" id="pause-btn" title="Пауза">Пауза</button></div>
+    </div>
+    <div id="board-wrap"><div id="sboard"></div><div id="pause-ov"><span style="font-size:34px">⏸</span>Пауза<small>нажмите, чтобы продолжить</small></div></div>
+  </div>
+  <div id="right">
+    <div class="stat-row"><span>Ошибки: <b id="mist">0</b></span><span>Подсказки: <b id="hints">0</b></span><span>Осталось: <b id="left-n">0</b></span></div>
+    <div class="tools">
+      <button class="tool" id="t-undo"><span class="i">↶</span>Отмена</button>
+      <button class="tool" id="t-redo"><span class="i">↷</span>Вернуть</button>
+      <button class="tool" id="t-erase"><span class="i">⌫</span>Стереть</button>
+      <button class="tool" id="t-notes"><span class="i">✎</span>Заметки<span class="bd" id="notes-state">выкл</span></button>
+      <button class="tool" id="t-hint"><span class="i">💡</span>Подсказка</button>
+    </div>
+    <div class="tools" style="grid-template-columns:repeat(2,1fr)">
+      <button class="tool" id="t-auto" style="flex-direction:row;justify-content:center;gap:8px;padding:9px 0"><span class="i" style="font-size:16px">✨</span>Все заметки</button>
+      <button class="tool" id="t-check" style="flex-direction:row;justify-content:center;gap:8px;padding:9px 0"><span class="i" style="font-size:16px">✔</span>Проверить</button>
+    </div>
+    <div id="pad"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="text/plain" id="sdk-engine">
+// ============ Судоку: движок (генерация, решатель, оценка сложности) ============
+// Сложность определяется тем, какие приёмы нужны человеку:
+//  1 «Легко»   — только одиночки (в клетке один кандидат)
+//  2 «Средне»  — нужны скрытые одиночки (цифра возможна только в одной клетке ряда/столбца/блока)
+//  3 «Сложно»  — нужны пары, «указующие» пары/тройки и взаимодействие блока и линии
+//  4 «Эксперт» — перечисленных приёмов недостаточно (нужны более сложные)
+var SDK = (function () {
+  const ROW = new Int8Array(81), COL = new Int8Array(81), BOX = new Int8Array(81);
+  for (let i = 0; i < 81; i++) { ROW[i] = (i / 9) | 0; COL[i] = i % 9; BOX[i] = ((((i / 27) | 0) * 3) + (((i % 9) / 3) | 0)); }
+  const UNITS = [];
+  for (let r = 0; r < 9; r++) UNITS.push(Array.from({ length: 9 }, (_, c) => r * 9 + c));
+  for (let c = 0; c < 9; c++) UNITS.push(Array.from({ length: 9 }, (_, r) => r * 9 + c));
+  for (let b = 0; b < 9; b++) UNITS.push(Array.from({ length: 9 }, (_, k) => (((b / 3) | 0) * 3 + ((k / 3) | 0)) * 9 + (b % 3) * 3 + (k % 3)));
+  const PEERS = Array.from({ length: 81 }, (_, i) => { const s = new Set(); for (const u of UNITS) if (u.includes(i)) u.forEach((j) => j !== i && s.add(j)); return Array.from(s); });
+  const POP = new Int8Array(512); for (let m = 1; m < 512; m++) POP[m] = POP[m >> 1] + (m & 1);
+
+  function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function shuffle(arr, rnd) { for (let i = arr.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; const t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; }
+
+  // Считает решения (до limit). rnd — случайный порядок перебора цифр (для генерации полного поля).
+  function solveCount(grid, limit, rnd) {
+    const rows = new Int16Array(9), cols = new Int16Array(9), boxes = new Int16Array(9), cells = Array.from(grid);
+    for (let i = 0; i < 81; i++) { const v = cells[i]; if (v) { const b = 1 << (v - 1); if ((rows[ROW[i]] | 0) & b || (cols[COL[i]] | 0) & b || (boxes[BOX[i]] | 0) & b) return { count: 0, solution: null }; rows[ROW[i]] |= b; cols[COL[i]] |= b; boxes[BOX[i]] |= b; } }
+    let count = 0, first = null;
+    function rec() {
+      let best = -1, bestMask = 0, bestN = 10;
+      for (let i = 0; i < 81; i++) if (!cells[i]) { const m = ~(rows[ROW[i]] | cols[COL[i]] | boxes[BOX[i]]) & 511, n = POP[m]; if (n < bestN) { bestN = n; best = i; bestMask = m; if (n <= 1) break; } }
+      if (best < 0) { count++; if (!first) first = cells.slice(); return count >= limit; }
+      if (bestN === 0) return false;
+      const digits = []; for (let d = 0; d < 9; d++) if ((bestMask >> d) & 1) digits.push(d + 1);
+      if (rnd) shuffle(digits, rnd);
+      for (const d of digits) {
+        const b = 1 << (d - 1); cells[best] = d; rows[ROW[best]] |= b; cols[COL[best]] |= b; boxes[BOX[best]] |= b;
+        if (rec()) return true;
+        cells[best] = 0; rows[ROW[best]] &= ~b; cols[COL[best]] &= ~b; boxes[BOX[best]] &= ~b;
+      }
+      return false;
+    }
+    rec(); return { count, solution: first };
+  }
+
+  // Кандидаты каждой клетки (битовые маски) для текущего поля
+  function candidates(grid) {
+    const cand = new Array(81).fill(0);
+    for (let i = 0; i < 81; i++) if (!grid[i]) { let m = 511; for (const p of PEERS[i]) if (grid[p]) m &= ~(1 << (grid[p] - 1)); cand[i] = m; }
+    return cand;
+  }
+  const digitOf = (m) => 32 - Math.clz32(m);          // единственный бит маски -> цифра
+
+  // «Человеческий» решатель: возвращает { solved, level } — какой самый сложный приём понадобился
+  function logic(grid) {
+    const g = Array.from(grid), cand = candidates(g); let level = 1;
+    const place = (i, d) => { g[i] = d; cand[i] = 0; const b = ~(1 << (d - 1)); for (const p of PEERS[i]) cand[p] &= b; };
+    const remove = (i, mask) => { const had = cand[i] & mask; if (had) cand[i] &= ~mask; return !!had; };
+    for (;;) {
+      let progress = false;
+      for (let i = 0; i < 81; i++) { if (!g[i]) { if (cand[i] === 0) return { solved: false, level: 9 }; if (POP[cand[i]] === 1) { place(i, digitOf(cand[i])); progress = true; } } }
+      if (progress) continue;
+      for (const u of UNITS) for (let d = 1; d <= 9; d++) {
+        const bit = 1 << (d - 1); let where = -1, n = 0;
+        for (const i of u) if (!g[i] && (cand[i] & bit)) { n++; where = i; }
+        if (n === 1) { place(where, d); level = Math.max(level, 2); progress = true; }
+      }
+      if (progress) continue;
+      // уровень 3: пары, указующие пары, блок-линия
+      let did = false;
+      for (const u of UNITS) {
+        const two = u.filter((i) => !g[i] && POP[cand[i]] === 2);
+        for (let a = 0; a < two.length; a++) for (let b = a + 1; b < two.length; b++) if (cand[two[a]] === cand[two[b]]) {
+          for (const i of u) if (!g[i] && i !== two[a] && i !== two[b] && remove(i, cand[two[a]])) did = true;
+        }
+      }
+      for (let b = 0; b < 9; b++) for (let d = 1; d <= 9; d++) {                  // «указующие»: цифра блока лежит на одной линии
+        const bit = 1 << (d - 1), cells = UNITS[18 + b].filter((i) => !g[i] && (cand[i] & bit)); if (cells.length < 2) continue;
+        if (cells.every((i) => ROW[i] === ROW[cells[0]])) { for (const i of UNITS[ROW[cells[0]]]) if (BOX[i] !== b && !g[i] && remove(i, bit)) did = true; }
+        if (cells.every((i) => COL[i] === COL[cells[0]])) { for (const i of UNITS[9 + COL[cells[0]]]) if (BOX[i] !== b && !g[i] && remove(i, bit)) did = true; }
+      }
+      for (let l = 0; l < 18; l++) for (let d = 1; d <= 9; d++) {                 // блок-линия: цифра линии лежит в одном блоке
+        const bit = 1 << (d - 1), cells = UNITS[l].filter((i) => !g[i] && (cand[i] & bit)); if (cells.length < 2) continue;
+        if (cells.every((i) => BOX[i] === BOX[cells[0]])) { for (const i of UNITS[18 + BOX[cells[0]]]) if (!UNITS[l].includes(i) && !g[i] && remove(i, bit)) did = true; }
+      }
+      if (did) { level = Math.max(level, 3); continue; }
+      break;
+    }
+    const solved = g.every((v) => v);
+    return { solved, level: solved ? level : 4 };
+  }
+
+  const TARGET = { easy: { lvl: 1, floor: 38 }, medium: { lvl: 2, floor: 32 }, hard: { lvl: 3, floor: 28 }, expert: { lvl: 4, floor: 22 } };
+  // Генерирует головоломку нужной сложности. rnd — генератор случайных чисел (для «судоку дня» — по дате).
+  function makePuzzle(difficulty, rnd, maxAttempts) {
+    const T = TARGET[difficulty] || TARGET.medium; let best = null;
+    for (let attempt = 0; attempt < (maxAttempts || 40); attempt++) {
+      const full = solveCount(new Array(81).fill(0), 1, rnd).solution, grid = full.slice(), order = shuffle(Array.from({ length: 81 }, (_, i) => i), rnd); let clues = 81;
+      const floor = T.floor + (T.lvl < 4 ? ((rnd() * 3) | 0) - 1 : 0);        // небольшой разброс числа подсказок
+      for (const i of order) {
+        if (clues <= floor) break;
+        const v = grid[i]; grid[i] = 0;
+        if (solveCount(grid, 2).count !== 1) { grid[i] = v; continue; }
+        if (T.lvl < 4) { const r = logic(grid); if (!r.solved || r.level > T.lvl) { grid[i] = v; continue; } }
+        clues--;
+      }
+      const r = logic(grid), level = r.solved ? r.level : 4, res = { puzzle: grid.join(''), solution: full.join(''), clues, level, difficulty, attempts: attempt + 1 };
+      if (level === T.lvl) return res;
+      if (!best || Math.abs(level - T.lvl) < Math.abs(best.level - T.lvl)) best = res;
+    }
+    best.approx = true; return best;
+  }
+
+  // Следующий логический шаг для подсказки: { i, d, kind } или null
+  function nextStep(grid) {
+    const cand = candidates(grid);
+    for (let i = 0; i < 81; i++) if (!grid[i] && POP[cand[i]] === 1) return { i, d: digitOf(cand[i]), kind: 'single' };
+    for (const u of UNITS) for (let d = 1; d <= 9; d++) { const bit = 1 << (d - 1); let where = -1, n = 0; for (const i of u) if (!grid[i] && (cand[i] & bit)) { n++; where = i; } if (n === 1) return { i: where, d, kind: 'hidden' }; }
+    return null;
+  }
+
+  return { ROW, COL, BOX, UNITS, PEERS, POP, mulberry32, shuffle, solveCount, candidates, logic, makePuzzle, nextStep, TARGET };
+})();
+if (typeof module !== 'undefined') module.exports = SDK;
+
+</script>
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const SDK = new Function($('sdk-engine').textContent + '\nreturn SDK;')();
+const BUILD = '2026.10.07-4';
+const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
+const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
+const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let prefs = Object.assign({ autoCheck: true, hlSame: true, hlPeers: true, autoNotes: true }, load(LS.prefs, {}));
+let stats = load(LS.stats, {}); stats.solved = Object.assign({ easy: 0, medium: 0, hard: 0, expert: 0 }, stats.solved); stats.best = stats.best || {}; stats.daily = Object.assign({ last: null, streak: 0, results: {} }, stats.daily);
+let S = null, level = 'medium', lastTick = 0;
+$('ver').textContent = 'Версия ' + BUILD;
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const keyOf = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const todayKey = () => keyOf(new Date());
+const dayBefore = (key) => { const [y, m, d] = key.split('-').map(Number); return keyOf(new Date(y, m - 1, d - 1)); };
+const fmt = (ms) => { const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return (h ? h + ':' + pad2(m) : m) + ':' + pad2(s % 60); };
+let toastT = null; function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 1800); }
+
+/* ---------- размеры ---------- */
+function resize() {
+  const stacked = innerWidth <= 820, availW = stacked ? innerWidth - 20 : innerWidth - 24 - 340, availH = stacked ? innerHeight - 20 - 52 - 250 : innerHeight - 24 - 52;
+  const cell = Math.max(30, Math.floor(Math.min((stacked ? innerWidth - 24 : availW - 6) / 9, availH / 9, 62)));
+  document.documentElement.style.setProperty('--cell', cell + 'px');
+}
+addEventListener('resize', resize); resize();
+
+/* ---------- построение поля ---------- */
+const cells = [];
+(function build() {
+  const b = $('sboard');
+  for (let i = 0; i < 81; i++) {
+    const r = SDK.ROW[i], c = SDK.COL[i], d = document.createElement('div');
+    d.className = 'cell' + ((((r / 3) | 0) + ((c / 3) | 0)) % 2 ? ' alt' : '') + (c % 3 === 2 && c < 8 ? ' br' : '') + (r % 3 === 2 && r < 8 ? ' bb' : '');
+    d.innerHTML = '<span class="v"></span><div class="notes">' + '<i></i>'.repeat(9) + '</div>';
+    d.onclick = () => select(i); b.appendChild(d); cells.push(d);
+  }
+  const pad = $('pad');
+  for (let n = 1; n <= 9; n++) { const bt = document.createElement('button'); bt.dataset.n = n; bt.innerHTML = n + '<small></small>'; bt.onclick = () => setDigit(n); pad.appendChild(bt); }
+})();
+
+/* ---------- генерация (в фоне, чтобы страница не «подвисала») ---------- */
+function generate(diff, seed) {
+  return new Promise((resolve) => {
+    const fallback = () => resolve(SDK.makePuzzle(diff, SDK.mulberry32(seed)));
+    try {
+      const src = $('sdk-engine').textContent + '\nonmessage = (e) => { postMessage(SDK.makePuzzle(e.data.diff, SDK.mulberry32(e.data.seed))); };';
+      const url = URL.createObjectURL(new Blob([src], { type: 'application/javascript' })), w = new Worker(url);
+      w.onmessage = (e) => { w.terminate(); URL.revokeObjectURL(url); resolve(e.data); }; w.onerror = () => { w.terminate(); fallback(); };
+      w.postMessage({ diff, seed });
+    } catch (e) { fallback(); }
+  });
+}
+function showLoading(on) { let el = $('loading'); if (on && !el) { el = document.createElement('div'); el.id = 'loading'; el.className = 'loading'; el.textContent = 'Готовим головоломку…'; document.body.appendChild(el); } else if (!on && el) el.remove(); }
+
+async function startNew(diff, daily) {
+  showLoading(true); const dateKey = daily ? todayKey() : null;
+  const seed = daily ? (Number(dateKey.replace(/-/g, '')) ^ 0x5bd1e995) >>> 0 : (Math.random() * 4294967296) >>> 0;
+  const p = await generate(daily ? 'medium' : diff, seed); showLoading(false);
+  const puz = Array.from(p.puzzle, Number), sol = Array.from(p.solution, Number);
+  S = { diff: daily ? 'medium' : diff, daily: !!daily, dateKey, puz, sol, val: puz.slice(), notes: new Array(81).fill(0), hinted: new Array(81).fill(false), sel: -1, notesMode: false, time: 0, mistakes: 0, hints: 0, hist: [], redo: [], paused: false, done: false, checked: false };
+  openGame(); persist();
+}
+
+/* ---------- сохранение ---------- */
+function persist() { if (!S || S.done) return; store(LS.save, { v: 1, diff: S.diff, daily: S.daily, dateKey: S.dateKey, puz: S.puz, sol: S.sol, val: S.val, notes: S.notes, hinted: S.hinted, time: S.time, mistakes: S.mistakes, hints: S.hints }); }
+function resume() {
+  const d = load(LS.save, null); if (!d || !d.puz) return false;
+  S = Object.assign({ sel: -1, notesMode: false, hist: [], redo: [], paused: false, done: false, checked: false }, d); openGame(); return true;
+}
+
+/* ---------- ход ---------- */
+function select(i) { if (!S || S.paused) return; S.sel = i; render(); }
+function apply(changes, mist) {
+  for (const c of changes) { S.val[c.i] = c.v1; S.notes[c.i] = c.n1; }
+  S.hist.push({ changes, mist: mist || 0 }); if (S.hist.length > 500) S.hist.shift(); S.redo = []; S.checked = false; after();
+}
+function after() { render(); persist(); if (S.val.every((v, i) => v === S.sol[i])) win(); }
+function setDigit(d) {
+  if (!S || S.done || S.paused || S.sel < 0) return; const i = S.sel; if (S.puz[i]) return;
+  if (S.notesMode) { if (S.val[i]) return; apply([{ i, v0: 0, n0: S.notes[i], v1: 0, n1: S.notes[i] ^ (1 << (d - 1)) }]); return; }
+  if (S.val[i] === d) { erase(); return; }
+  const ch = [{ i, v0: S.val[i], n0: S.notes[i], v1: d, n1: 0 }], bit = 1 << (d - 1);
+  if (prefs.autoNotes) for (const p of SDK.PEERS[i]) if (S.notes[p] & bit) ch.push({ i: p, v0: S.val[p], n0: S.notes[p], v1: S.val[p], n1: S.notes[p] & ~bit });
+  const wrong = d !== S.sol[i]; if (wrong) S.mistakes++;
+  apply(ch, wrong ? 1 : 0);
+}
+function erase() { if (!S || S.done || S.paused || S.sel < 0) return; const i = S.sel; if (S.puz[i] || (!S.val[i] && !S.notes[i])) return; apply([{ i, v0: S.val[i], n0: S.notes[i], v1: 0, n1: 0 }]); }
+function undo() { if (!S || S.done || S.paused || !S.hist.length) return; const h = S.hist.pop(); for (const c of h.changes) { S.val[c.i] = c.v0; S.notes[c.i] = c.n0; } S.redo.push(h); S.checked = false; render(); persist(); }
+function redo() { if (!S || S.done || S.paused || !S.redo.length) return; const h = S.redo.pop(); for (const c of h.changes) { S.val[c.i] = c.v1; S.notes[c.i] = c.n1; } S.hist.push(h); render(); persist(); if (S.val.every((v, i) => v === S.sol[i])) win(); }
+function toggleNotes() { if (!S) return; S.notesMode = !S.notesMode; render(); }
+function hint() {
+  if (!S || S.done || S.paused) return; let i = S.sel, d;
+  if (i >= 0 && !S.puz[i] && S.val[i] !== S.sol[i]) d = S.sol[i];
+  else {
+    const st = SDK.nextStep(S.val.map((v, k) => (v === S.sol[k] ? v : 0)));
+    if (st) { i = st.i; d = st.d; } else { i = S.val.findIndex((v, k) => v !== S.sol[k]); if (i < 0) return; d = S.sol[i]; }
+  }
+  S.sel = i; S.hints++; S.hinted[i] = true; const ch = [{ i, v0: S.val[i], n0: S.notes[i], v1: d, n1: 0 }], bit = 1 << (d - 1);
+  if (prefs.autoNotes) for (const p of SDK.PEERS[i]) if (S.notes[p] & bit) ch.push({ i: p, v0: S.val[p], n0: S.notes[p], v1: S.val[p], n1: S.notes[p] & ~bit });
+  apply(ch, 0); const el = cells[i]; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+function fillNotes() {
+  if (!S || S.done || S.paused) return; const grid = S.val.map((v, k) => (v === S.sol[k] ? v : 0)), cand = SDK.candidates(grid), ch = [];
+  for (let i = 0; i < 81; i++) if (!S.val[i] && S.notes[i] !== cand[i]) ch.push({ i, v0: 0, n0: S.notes[i], v1: 0, n1: cand[i] });
+  if (ch.length) apply(ch, 0); else toast('Заметки уже заполнены');
+}
+function check() { if (!S || S.done || S.paused) return; S.checked = true; render(); const n = S.val.filter((v, i) => v && v !== S.sol[i]).length; toast(n ? 'Неверных цифр: ' + n : 'Ошибок нет — всё верно'); }
+
+/* ---------- победа ---------- */
+function win() {
+  S.done = true; localStorage.removeItem(LS.save); const t = S.time; render();
+  stats.solved[S.diff] = (stats.solved[S.diff] || 0) + 1; const noAid = S.hints === 0;
+  if (!stats.best[S.diff] || t < stats.best[S.diff]) stats.best[S.diff] = t;
+  let extra = '';
+  if (S.daily) {
+    const d = stats.daily; if (!d.results[S.dateKey]) { d.streak = d.last === dayBefore(S.dateKey) ? d.streak + 1 : 1; d.last = S.dateKey; d.results[S.dateKey] = t; }
+    extra = `<br>Серия дней подряд: <b>${d.streak}</b>`;
+  }
+  store(LS.stats, stats);
+  const ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'win-ov';
+  ov.innerHTML = `<div class="win"><h3>Готово!</h3><div class="big-t">${fmt(t)}</div><div class="sub">${S.daily ? 'Судоку дня' : DIFF[S.diff]} решено${stats.best[S.diff] === t ? ' — <b>новый рекорд!</b>' : ''}<br>Ошибок: <b>${S.mistakes}</b> · Подсказок: <b>${S.hints}</b>${extra}</div>
+    <button class="big" id="w-again">${S.daily ? 'Новая игра' : 'Ещё одну (' + DIFF[S.diff] + ')'}</button><button class="big light" id="w-menu">В меню</button></div>`;
+  document.body.appendChild(ov);
+  $('w-again').onclick = () => { ov.remove(); startNew(S.daily ? level : S.diff, false); }; $('w-menu').onclick = () => { ov.remove(); showMenu(); };
+}
+
+/* ---------- отрисовка ---------- */
+function render() {
+  if (!S) return; const sel = S.sel, sv = sel >= 0 ? S.val[sel] : 0, peers = sel >= 0 ? new Set(SDK.PEERS[sel]) : null;
+  const showWrong = prefs.autoCheck || S.checked, cnt = new Array(10).fill(0), cntOk = new Array(10).fill(0); let left = 0;
+  for (let i = 0; i < 81; i++) {
+    const el = cells[i], v = S.val[i]; if (v) { cnt[v]++; if (v === S.sol[i]) cntOk[v]++; } else left++;
+    el.className = el.className.replace(/ (given|sel|peer|same|wrong|hinted)\b/g, '');
+    let cls = ''; if (S.puz[i]) cls += ' given'; if (S.hinted[i]) cls += ' hinted';
+    if (i === sel) cls += ' sel'; else if (prefs.hlSame && sv && v === sv) cls += ' same'; else if (prefs.hlPeers && peers && (peers.has(i))) cls += ' peer';
+    if (v && v !== S.sol[i] && showWrong) cls += ' wrong';
+    el.className += cls; el.firstChild.textContent = v || '';
+    const nodes = el.lastChild.children, m = v ? 0 : S.notes[i]; for (let k = 0; k < 9; k++) nodes[k].textContent = (m >> k) & 1 ? k + 1 : '';
+  }
+  $('mist').textContent = S.mistakes; $('hints').textContent = S.hints; $('left-n').textContent = left;
+  $('lv').innerHTML = (S.daily ? 'Судоку дня' : DIFF[S.diff]) + (S.daily ? '<small>' + S.dateKey + '</small>' : '');
+  $('t-notes').classList.toggle('on', S.notesMode); $('notes-state').textContent = S.notesMode ? 'вкл' : 'выкл';
+  $('t-undo').disabled = !S.hist.length; $('t-redo').disabled = !S.redo.length;
+  document.querySelectorAll('#pad button').forEach((b) => { const n = +b.dataset.n; b.disabled = cntOk[n] >= 9; b.lastChild.textContent = 9 - cnt[n] > 0 ? 9 - cnt[n] : ''; });
+  $('timer').textContent = fmt(S.time);
+}
+
+/* ---------- таймер и пауза ---------- */
+setInterval(() => { const now = performance.now(); if (S && !S.paused && !S.done && !$('game').classList.contains('hidden')) { S.time += now - lastTick; $('timer').textContent = fmt(S.time); } lastTick = now; }, 250);
+setInterval(() => { if (S && !S.done && !$('game').classList.contains('hidden')) persist(); }, 5000);
+function setPause(p) { if (!S || S.done) return; S.paused = p; $('pause-ov').style.display = p ? 'flex' : 'none'; $('pause-btn').textContent = p ? 'Играть' : 'Пауза'; if (!p) lastTick = performance.now(); persist(); }
+$('pause-btn').onclick = () => setPause(!S.paused); $('pause-ov').onclick = () => setPause(false);
+document.addEventListener('visibilitychange', () => { if (document.hidden && S && !S.done && !$('game').classList.contains('hidden')) setPause(true); });
+
+/* ---------- клавиатура ---------- */
+document.addEventListener('keydown', (e) => {
+  if (!S || $('game').classList.contains('hidden') || document.querySelector('.ov')) return;
+  if (S.paused) { if (e.key === ' ' || e.key === 'Enter') setPause(false); return; }
+  if (e.ctrlKey || e.metaKey) { if (e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); } else if (e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); } return; }
+  if (/^[1-9]$/.test(e.key)) { setDigit(+e.key); return; }
+  const mv = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -9, ArrowDown: 9 }[e.key];
+  if (mv !== undefined) { e.preventDefault(); let i = S.sel < 0 ? 40 : S.sel; const r = SDK.ROW[i], c = SDK.COL[i]; if ((mv === -1 && c === 0) || (mv === 1 && c === 8) || (mv === -9 && r === 0) || (mv === 9 && r === 8)) return; select(i + mv); return; }
+  if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { erase(); return; }
+  const k = e.key.toLowerCase(); if (k === 'n' || k === 'т') toggleNotes(); else if (k === 'h' || k === 'р') hint(); else if (k === ' ') { e.preventDefault(); setPause(true); }
+});
+$('t-undo').onclick = undo; $('t-redo').onclick = redo; $('t-erase').onclick = erase; $('t-notes').onclick = toggleNotes; $('t-hint').onclick = hint; $('t-auto').onclick = fillNotes; $('t-check').onclick = check;
+
+/* ---------- меню ---------- */
+function openGame() { $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('pause-ov').style.display = S.paused ? 'flex' : 'none'; $('pause-btn').textContent = S.paused ? 'Играть' : 'Пауза'; lastTick = performance.now(); resize(); render(); }
+function showMenu() { if (S && !S.done) { persist(); } $('game').classList.add('hidden'); $('menu').classList.remove('hidden'); renderMenu(); }
+$('menu-btn').onclick = showMenu;
+function renderMenu() {
+  const sv = load(LS.save, null), rc = $('resume-card');
+  rc.classList.toggle('hidden', !sv);
+  if (sv) { const filled = sv.val.filter(Boolean).length; $('resume-info').textContent = `${sv.daily ? 'Судоку дня' : DIFF[sv.diff]} · ${fmt(sv.time)} · заполнено ${filled} из 81`; }
+  const tk = todayKey(), d = stats.daily;
+  $('daily-info').innerHTML = d.results[tk] != null ? `Решено сегодня за ${fmt(d.results[tk])} ✓ · серия: ${d.streak}` : (d.streak && d.last === dayBefore(tk) ? `Не прерывайте серию: ${d.streak} дн. подряд` : 'Одна и та же головоломка для всех, каждый день новая');
+  $('daily-btn').textContent = d.results[tk] != null ? 'Ещё раз' : 'Играть';
+  $('level-hint').textContent = HINTS[level];
+  document.querySelectorAll('#levels button').forEach((b) => b.classList.toggle('on', b.dataset.d === level));
+  $('stats').innerHTML = '<tr><th>Сложность</th><th>Решено</th><th>Лучшее время</th></tr>' + Object.keys(DIFF).map((k) => `<tr><td>${DIFF[k]}</td><td>${stats.solved[k] || 0}</td><td>${stats.best[k] != null ? fmt(stats.best[k]) : '—'}</td></tr>`).join('');
+}
+document.querySelectorAll('#levels button').forEach((b) => { b.onclick = () => { level = b.dataset.d; try { localStorage.setItem('sudokuLevel', level); } catch (e) {} renderMenu(); }; });
+$('new-btn').onclick = () => startNew(level, false);
+$('daily-btn').onclick = () => startNew('medium', true);
+$('resume-btn').onclick = () => { if (!resume()) renderMenu(); };
+try { const l = localStorage.getItem('sudokuLevel'); if (DIFF[l]) level = l; } catch (e) {}
+
+/* ---------- настройки ---------- */
+$('open-prefs').onclick = () => {
+  if ($('prefs-ov')) return; const ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'prefs-ov';
+  const rows = [['autoCheck', 'Показывать ошибки сразу', 'Неверная цифра подсвечивается красным, как только вы её поставили'], ['hlSame', 'Подсвечивать одинаковые цифры', 'Выберите клетку с цифрой — такие же цифры на поле выделятся'], ['hlPeers', 'Подсвечивать ряд, столбец и блок', 'Помогает не пропустить конфликт'], ['autoNotes', 'Убирать заметки автоматически', 'Когда вы ставите цифру, она пропадает из заметок соседних клеток']];
+  function paint() {
+    const th = window.PGS ? PGS.THEMES : {}, cur = window.PGS ? PGS.get().board : 'classic';
+    ov.innerHTML = `<div class="panel"><h3>Настройки</h3>${rows.map(([k, t, d]) => `<div class="srow"><div><b>${t}</b><span class="d">${d}</span></div><button class="sw ${prefs[k] ? 'on' : ''}" data-k="${k}"></button></div>`).join('')}
+      <div style="padding:14px 24px 0;font-size:14px;font-weight:600">Оформление</div><div class="themes">${Object.entries(th).map(([k, t]) => `<button class="th ${cur === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
+      <button class="big" id="prefs-close" style="width:calc(100% - 48px);margin:6px 24px 22px;box-shadow:none">Готово</button></div>`;
+    ov.querySelectorAll('.sw').forEach((b) => { b.onclick = () => { prefs[b.dataset.k] = !prefs[b.dataset.k]; store(LS.prefs, prefs); paint(); render(); }; });
+    ov.querySelectorAll('.th').forEach((b) => { b.onclick = () => { PGS.set({ board: b.dataset.b }); paint(); }; });
+    $('prefs-close').onclick = () => ov.remove();
+  }
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); }); paint(); document.body.appendChild(ov);
+};
+
+/* ---------- PWA и тестовые хуки ---------- */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('service-worker.js').catch(() => {});
+window.__sdk = { get S() { return S; }, SDK, startNew, select, setDigit, erase, undo, redo, hint, check, fillNotes, toggleNotes, get prefs() { return prefs; }, get stats() { return stats; }, todayKey, showMenu, setPause };
+renderMenu();
+})();
+</script>
+</body>
+</html>
