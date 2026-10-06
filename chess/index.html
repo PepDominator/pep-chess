@@ -4340,7 +4340,7 @@ function createLobby(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2026.10.06-4';
+        const BUILD = '2026.10.06-5';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
@@ -4352,6 +4352,16 @@ function createLobby(cfg) {
             const detail = (err && (err.code || err.message)) ? String(err.code || err.message) : 'неизвестная ошибка';
             banner.style.display = 'flex';
             banner.innerHTML = `<span style="color:#A23B33">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}</span>`;
+            // Диагностика отказа базы: кто мы, кто хозяин/гость партии и кто должен ходить по правилам.
+            if (err && err.code === 'permission-denied') explainOnlineDenied().then((x) => { if (x) banner.innerHTML = `<span style="color:#A23B33">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}${escapeHtml(x)}</span>`; });
+        }
+        async function explainOnlineDenied() {
+            try {
+                const d = await window.OnlineChess.peekGame(onlineGameId); if (!d) return '';
+                const sh = (s) => (s ? String(s).slice(0, 6) : '—'), n = (d.moves || []).length;
+                const mover = ((n % 2 === 0) === (d.hostColor === 'w')) ? 'хост' : 'гость';
+                return ` [диагностика: вы ${sh(window.OnlineChess.authUid)} (${onlineRole}); в партии хост ${sh(d.hostAuthUid)}, гость ${sh(d.guestAuthUid)}; статус ${d.status}; ходов в базе ${n}; по правилам ходит ${mover}]`;
+            } catch (e) { return ' [диагностика недоступна: ' + (e.code || e.message) + ']'; }
         }
 
         function claimOnlineWin() {

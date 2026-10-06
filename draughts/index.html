@@ -619,7 +619,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2026.10.06-4';
+const BUILD = '2026.10.06-5';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -1353,10 +1353,21 @@ function showView(v) { show('v-config', v === 'config'); show('v-wait', v === 'w
 // Если личность игрока в базе (кто создал/занял партию) не совпадает с текущим входом — правила отклонят любую запись, и это нужно сказать прямо.
 function identityChanged() { const o = OD(); return !!(online && online.started && online.authUid && o && o.authUid && o.authUid !== online.authUid); }
 window.addEventListener('od-auth', () => { if (identityChanged() && !gameOver) showBanner('<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'); });
+// Диагностика отказа базы: показываем, кто мы, кто хозяин/гость партии и кто должен ходить по правилам.
+async function explainDenied() {
+  try {
+    const d = await OD().peekGame(online.id); if (!d) return '';
+    const sh = (s) => (s ? String(s).slice(0, 6) : '—'), n = (d.moves || []).length;
+    const mover = ((n % 2 === 0) === (d.hostColor === 'w')) ? 'хост' : 'гость';
+    return ` [диагностика: вы ${sh(OD().authUid)} (${online.role}); в партии хост ${sh(d.hostAuthUid)}, гость ${sh(d.guestAuthUid)}; статус ${d.status}; ходов в базе ${n}; по правилам ходит ${mover}]`;
+  } catch (e) { return ' [диагностика недоступна: ' + (e.code || e.message) + ']'; }
+}
 function onlineError(action, err) {
   console.error(action, err);
   if (identityChanged()) { showBanner('<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'); return; }
-  showBanner(`<span style="color:#A23B33">Не удалось ${action}: ${(err && (err.code || err.message)) || 'ошибка сети'}</span>`);
+  const base = `Не удалось ${action}: ${(err && (err.code || err.message)) || 'ошибка сети'}`;
+  showBanner(`<span style="color:#A23B33">${base}</span>`);
+  if (err && err.code === 'permission-denied') explainDenied().then((x) => { if (x) showBanner(`<span style="color:#A23B33">${base}${x}</span>`); });
 }
 function leaveOnline(o = online) {
   if (!o) return;
@@ -1585,7 +1596,7 @@ async function checkResume() {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
 }
-window.__draughts = { get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+window.__draughts = { explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
 checkInvite();
 
 // ----- экспорт партии и ссылка «посмотреть без входа» -----
