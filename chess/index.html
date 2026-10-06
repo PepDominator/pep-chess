@@ -2746,9 +2746,16 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             },
 
             // ---- анонимный вход: чтобы правила базы отличали игроков партии (Google-аккаунт для игры по-прежнему не нужен) ----
-            async ensureAuth() {
+              async ensureAuth() {
+              // ВАЖНО: сразу после загрузки страницы Firebase ещё восстанавливает сохранённый вход (Google или анонимный), и currentUser пуст.
+              // Нужно дождаться этого момента, иначе мы создадим НОВЫЙ анонимный вход поверх существующего и личность в партии сменится.
+              if (authInflight) return authInflight;
+              authInflight = (async () => {
+                await new Promise((resolve) => { const off = onAuthStateChanged(auth, () => { off(); resolve(); }); });
                 if (auth.currentUser) return auth.currentUser.uid;
                 try { return (await signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Анонимный вход недоступен:', e.code); return null; }
+              })();
+              try { return await authInflight; } finally { authInflight = null; }
             },
             // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
             // ---- лобби: открытые игры, ожидающие соперника ----
@@ -2802,7 +2809,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             }
         };
 
-        let db, auth;
+        let db, auth, authInflight = null;
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);

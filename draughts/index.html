@@ -1660,7 +1660,7 @@ function randomId(len = 8) {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
 }
 
-let db, auth;
+let db, auth, authInflight = null;
 // Эло для рейтинговых партий. Чистая функция: по текущей статистике, рейтингам на момент старта партии
 // и результату (1 — победа, 0.5 — ничья, 0 — поражение) возвращает новую статистику.
 function eloUpdate(cur, myRating, oppRating, score, oppName, now) {
@@ -1740,8 +1740,15 @@ const OD = {
 
   // ---- анонимный вход: нужен, чтобы правила базы отличали игроков партии друг от друга (Google-аккаунт для игры не требуется) ----
   async ensureAuth() {
-    if (auth.currentUser) return auth.currentUser.uid;
-    try { return (await signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Анонимный вход недоступен:', e.code); return null; }
+    // ВАЖНО: сразу после загрузки страницы Firebase ещё восстанавливает сохранённый вход (Google или анонимный), и currentUser пуст.
+    // Нужно дождаться этого момента, иначе мы создадим НОВЫЙ анонимный вход поверх существующего и личность в партии сменится.
+    if (authInflight) return authInflight;
+    authInflight = (async () => {
+      await new Promise((resolve) => { const off = onAuthStateChanged(auth, () => { off(); resolve(); }); });
+      if (auth.currentUser) return auth.currentUser.uid;
+      try { return (await signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Анонимный вход недоступен:', e.code); return null; }
+    })();
+    try { return await authInflight; } finally { authInflight = null; }
   },
   // ---- присутствие, реванш, ссылки на партии, журнал ошибок ----
   // ---- лобби: открытые игры, ожидающие соперника ----
