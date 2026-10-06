@@ -186,6 +186,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 .lobby-t { font-weight:700; font-size:14px; } .lobby-m { font-size:12px; color:var(--muted); margin-top:2px; }
 .lobby-row button { background:var(--green); color:#fff; border:none; padding:8px 18px; font-weight:700; cursor:pointer; font-family:inherit; } .lobby-row button:hover { filter:brightness(1.1); }
 .lobby-empty { font-size:13px; color:var(--muted); text-align:center; padding:10px 6px 4px; line-height:1.5; }
+.ver { font-size:11px; color:#9A9D8E; text-align:center; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -225,6 +226,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
       <div class="err hidden" id="err"></div>
       <button class="link" id="hist-btn">История партий</button>
       <button class="link hidden" id="my-btn">Мои онлайн-партии</button>
+      <div class="ver" id="ver"></div>
     </div>
 
     <div id="v-wait" class="hidden center">
@@ -617,6 +619,8 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
+const BUILD = '2026.10.06-4';
+$('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
 // ---------- лобби: список открытых игр, ожидающих соперника ----------
@@ -1346,8 +1350,12 @@ function waitOnline() {
   });
 }
 function showView(v) { show('v-config', v === 'config'); show('v-wait', v === 'wait'); show('v-invite', v === 'invite'); }
+// Если личность игрока в базе (кто создал/занял партию) не совпадает с текущим входом — правила отклонят любую запись, и это нужно сказать прямо.
+function identityChanged() { const o = OD(); return !!(online && online.started && online.authUid && o && o.authUid && o.authUid !== online.authUid); }
+window.addEventListener('od-auth', () => { if (identityChanged() && !gameOver) showBanner('<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'); });
 function onlineError(action, err) {
   console.error(action, err);
+  if (identityChanged()) { showBanner('<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'); return; }
   showBanner(`<span style="color:#A23B33">Не удалось ${action}: ${(err && (err.code || err.message)) || 'ошибка сети'}</span>`);
 }
 function leaveOnline(o = online) {
@@ -1456,7 +1464,7 @@ function onSnap(data) {
 function beginMatch(data) {
   if (online.prev) { leaveOnline(online.prev); online.prev = null; }
   if (online.waitBeat) { clearInterval(online.waitBeat); online.waitBeat = null; }
-  online.last = data; online.started = true; online.oppName = online.host ? data.guestName : data.hostName;
+  online.last = data; online.started = true; if (!online.authUid && OD()) online.authUid = OD().authUid || null; online.oppName = online.host ? data.guestName : data.hostName;
   const tc = data.timeControl || online.tc || { minutes: 10, inc: 0 };
   history.replaceState(null, '', location.pathname);
   startGame({ mode: 'online', color: online.myColor, minutes: tc.minutes, inc: tc.inc, data });
@@ -1498,6 +1506,7 @@ function handleRemote(data) {
   }
   if (data.rematch && data.rematch.id && data.rematch.by !== userColor && gameOver && online.rematchSeen !== data.rematch.id) { online.rematchSeen = data.rematch.id; showRematchInvite(data.rematch.id); }
   if (gameOver) return;
+  if (identityChanged()) { showBanner('<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'); return; }
   if (data.drawOfferBy && data.drawOfferBy !== userColor) {
     showBanner('<span>Соперник предлагает ничью</span><span><button class="ok" id="b-ok">Принять</button> <button class="no" id="b-no">Отклонить</button></span>',
       () => OD().sendResult(online.id, { winner: 'draw', reason: 'draw-agree' }).catch((e) => onlineError('принять ничью', e)),

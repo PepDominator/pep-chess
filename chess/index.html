@@ -1885,6 +1885,7 @@ if (typeof define !== 'undefined')
         .lobby-t { font-weight:700; font-size:14px; } .lobby-m { font-size:12px; color:var(--ink-muted); margin-top:2px; }
         .lobby-row button { background:var(--green); color:#fff; border:none; padding:8px 18px; font-weight:700; cursor:pointer; font-family:inherit; } .lobby-row button:hover { filter:brightness(1.1); }
         .lobby-empty { font-size:13px; color:var(--ink-muted); text-align:center; padding:10px 6px 4px; line-height:1.5; }
+        .ver { font-size:11px; color:#9A9D8E; text-align:center; margin-top:8px; }
         .back-hub { position:absolute; top:14px; left:16px; font-size:12px; color:var(--ink-muted,#6E7568); text-decoration:none; z-index:3; }
         .back-hub:hover { color:var(--text,#2A2E24); }
         .brand-title {
@@ -2452,6 +2453,7 @@ if (typeof define !== 'undefined')
                 </div>
 
                 <button class="history-link-btn" onclick="openHistoryScreen()">История партий</button>
+                <div class="ver" id="ver"></div>
                 <button class="history-link-btn" id="my-games-link" style="display:none;" onclick="openMyGamesScreen()">Мои онлайн-партии</button>
             </div>
 
@@ -4310,6 +4312,7 @@ function createLobby(cfg) {
         function updateOnlineBanner(data) {
             const banner = document.getElementById('online-banner');
             if (!banner) return;
+            if (identityChanged() && !gameOver) { banner.style.display = 'flex'; banner.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; return; }
             if (data.drawOfferBy && data.drawOfferBy !== onlineMyColor && !gameOver) {
                 banner.style.display = 'flex';
                 banner.innerHTML = `<span>Соперник предлагает ничью</span>
@@ -4337,8 +4340,13 @@ function createLobby(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
+        const BUILD = '2026.10.06-4';
+        document.getElementById('ver').innerText = 'Версия ' + BUILD;
+        function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
+        window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
         function showOnlineSyncError(action, err) {
             console.error(action, err);
+            if (identityChanged()) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; return; }
             const banner = document.getElementById('online-banner');
             if (!banner) return;
             const detail = (err && (err.code || err.message)) ? String(err.code || err.message) : 'неизвестная ошибка';
