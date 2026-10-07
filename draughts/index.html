@@ -45,6 +45,7 @@
   const origPlay = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () { if (!get().sound) return Promise.resolve(); return origPlay.apply(this, arguments); };
   apply(); window.addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+  window.addEventListener('pgsync-applied', (e) => { if (e.detail && e.detail.key === KEY) { apply(); window.dispatchEvent(new Event('pgs-change')); } });
 
   const css = `
 .pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:#8B8E7F; cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
@@ -67,9 +68,16 @@
 #pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
 #pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
 #pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:#EAEADF; color:#2A2E24; }
+.snd-btn { background:none; border:none; font-size:15px; line-height:1; color:#6E7568; cursor:pointer; width:28px; height:28px; padding:0; border-radius:2px; } .snd-btn:hover { background:#EAEADF; color:#2A2E24; }
 .pg-pending { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38) !important; }
 .no-nums .sq .num { display:none !important; }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+
+  // ---- кнопка звука внутри партии: любая кнопка с классом snd-btn включает и выключает звук ----
+  function paintSnd() { const on = get().sound; document.querySelectorAll('.snd-btn').forEach((b) => { b.textContent = on ? '🔊' : '🔇'; b.title = on ? 'Звук включён. Нажмите, чтобы выключить' : 'Звук выключен. Нажмите, чтобы включить'; b.setAttribute('aria-pressed', String(on)); }); }
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('.snd-btn'); if (b) set({ sound: !get().sound }); });
+  window.addEventListener('pgs-change', paintSnd); window.addEventListener('storage', (e) => { if (e.key === KEY) paintSnd(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintSnd); else paintSnd();
 
   // ---- панель «Настройки» ----
   window.openPgSettings = function () {
@@ -83,12 +91,14 @@
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
         <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
+        <div id="pg-sync-row"></div>
         <div class="pg-row"><div><b>Показывать мои партии другим</b><span class="d">Ваши онлайн-партии (когда оба игрока вошли через Google и согласны) видны в профиле и в списке «Идущие партии». Действует на новые партии</span></div>${sw('showGames')}</div>
                 ${isDr ? `<div class="pg-row"><div><b>Номера клеток</b><span class="d">Стандартная нумерация 1–50 на тёмных клетках</span></div>${sw('nums')}</div>` : ''}
         <div class="pg-row" id="pg-hide-row" style="display:none"><div><b>Скрыть прошлые партии</b><span class="d">Удалить публичные копии ваших прошлых партий (в профиле и по ссылкам)</span></div><button class="pg-small" id="pg-hide-btn">Скрыть</button></div>
         <div class="pg-title2">Оформление доски</div>
         <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
         <button class="pg-close">Готово</button></div>`;
+      if (window.PGSync) window.PGSync.mountRow(ov.querySelector('#pg-sync-row'));
       ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
       ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
       const hideRow = ov.querySelector('#pg-hide-row'); if (hideRow && typeof window.pgHideMine === 'function') { hideRow.style.display = 'flex'; ov.querySelector('#pg-hide-btn').onclick = async (e) => { const b = e.target; b.disabled = true; b.textContent = '…'; try { const n = await window.pgHideMine(); b.textContent = n ? 'Скрыто: ' + n : 'Нечего скрывать'; } catch (err) { console.error(err); b.textContent = 'Не удалось'; } }; }
@@ -195,6 +205,171 @@
 
 
 
+
+
+
+
+</script>
+<script>
+// ============ Синхронизация данных между устройствами (вход через Google, хранилище — Firestore) ============
+// Принципы: данные по-прежнему лежат в браузере (всё работает офлайн), а облако — копия.
+// Настройки и незавершённые партии: побеждает более поздняя правка. Статистика и история партий сливаются без потерь.
+(function () {
+  if (window.PGSync) return;
+  const SDK = 'https://www.gstatic.com/firebasejs/10.13.0/';
+  const CFG = { apiKey: 'AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY', authDomain: 'pep-chess-2026.firebaseapp.com', projectId: 'pep-chess-2026', storageBucket: 'pep-chess-2026.firebasestorage.app', messagingSenderId: '170856560854', appId: '1:170856560854:web:d9b6b766cbd56780ecf177' };
+  // Что синхронизируем: m — способ слияния, slow — не чаще раза в 15 секунд (часто перезаписываемые сохранения)
+  const REG = {
+    pgSettings: { m: 'lww' }, draughtsSettings: { m: 'lww' }, draughtsNickname: { m: 'lww' }, chessNickname: { m: 'lww' },
+    sudokuPrefs: { m: 'lww' }, sudokuLevel: { m: 'lww' }, crosswordPrefs: { m: 'lww' },
+    sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true },
+    sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
+    chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 }
+  };
+  const META = 'pgSyncMeta', UIDK = 'pgSyncUid', DEVK = 'pgDevId';
+  const ls = window.localStorage, rawSet = Storage.prototype.setItem, rawRem = Storage.prototype.removeItem;
+  const getL = (k) => { try { return ls.getItem(k); } catch (e) { return null; } };
+  const st = { status: 'off', user: null, last: 0, error: '' };
+  let backend = null, uid = null, unsub = null, applying = false, timers = {}, started = false, firstDone = false;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms || 9000))]);
+  const emit = () => window.dispatchEvent(new CustomEvent('pgsync-state', { detail: Object.assign({}, st) }));
+  const setSt = (patch) => { Object.assign(st, patch); emit(); };
+  const devId = () => { let d = getL(DEVK); if (!d) { d = Math.random().toString(36).slice(2, 10); try { rawSet.call(ls, DEVK, d); } catch (e) {} } return d; };
+  const getMeta = () => { try { return JSON.parse(getL(META) || '{}'); } catch (e) { return {}; } };
+  const putMeta = (m) => { try { rawSet.call(ls, META, JSON.stringify(m)); } catch (e) {} };
+  const parse = (s) => { try { return s ? JSON.parse(s) : null; } catch (e) { return null; } };
+
+  // ---------- слияние ----------
+  const pad2 = (n) => String(n).padStart(2, '0'), keyOf = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  const dayBefore = (key) => { const [y, m, d] = key.split('-').map(Number); return keyOf(new Date(y, m - 1, d - 1)); };
+  function mergeHistory(a, b, limit) {
+    const map = new Map(); [].concat(parse(b) || [], parse(a) || []).forEach((r) => { if (r && r.date && !map.has(r.date)) map.set(r.date, r); });
+    return JSON.stringify(Array.from(map.values()).sort((x, y) => (y.date > x.date ? 1 : y.date < x.date ? -1 : 0)).slice(0, limit || 100));
+  }
+  function mergeStats(a, b) {
+    const A = parse(a) || {}, B = parse(b) || {}, out = JSON.parse(JSON.stringify(A));
+    out.solved = {}; for (const k of new Set(Object.keys(A.solved || {}).concat(Object.keys(B.solved || {})))) out.solved[k] = Math.max((A.solved || {})[k] || 0, (B.solved || {})[k] || 0);
+    out.best = {}; for (const k of new Set(Object.keys(A.best || {}).concat(Object.keys(B.best || {})))) { const x = (A.best || {})[k], y = (B.best || {})[k]; out.best[k] = x == null ? y : y == null ? x : Math.min(x, y); }
+    const ra = (A.daily && A.daily.results) || {}, rb = (B.daily && B.daily.results) || {}, res = {};
+    for (const k of new Set(Object.keys(ra).concat(Object.keys(rb)))) res[k] = ra[k] == null ? rb[k] : rb[k] == null ? ra[k] : Math.min(ra[k], rb[k]);
+    const last = Object.keys(res).sort().pop() || null; let streak = 0;
+    if (last) { let d = last; while (res[d] != null) { streak++; d = dayBefore(d); } }
+    out.daily = { last, streak, results: res };
+    return JSON.stringify(out);
+  }
+  // Решает, что делать с ключом при сравнении локальных данных с облачными
+  function reconcile(k, cloud) {
+    const spec = REG[k], local = getL(k), m = getMeta()[k] || {}, lt = m.t || (local != null ? 1 : 0);
+    if (!cloud) return local != null ? { push: true, val: local } : {};
+    const cv = cloud.del ? null : cloud.v, ct = cloud.t || 0;
+    if (spec.m === 'lww') {
+      if (cv === local) return { t: Math.max(ct, lt) };
+      if (ct > lt) return { apply: true, val: cv, t: ct };
+      return { push: true, val: local };
+    }
+    const merged = spec.m === 'history' ? mergeHistory(local, cv, spec.limit) : mergeStats(local, cv);
+    return { apply: merged !== local, val: merged, push: merged !== cv, t: Math.max(ct, lt) };
+  }
+  function applyLocal(k, val, t) {
+    applying = true; try { if (val == null) rawRem.call(ls, k); else rawSet.call(ls, k, val); } catch (e) {} applying = false;
+    const m = getMeta(); m[k] = { t: t || Date.now() }; putMeta(m);
+    window.dispatchEvent(new CustomEvent('pgsync-applied', { detail: { key: k } }));
+  }
+
+  // ---------- облако ----------
+  async function pushKey(k, forced) {
+    if (!backend || !uid) return; const spec = REG[k]; let val = getL(k), t = (getMeta()[k] || {}).t || Date.now();
+    try {
+      if (spec.m !== 'lww') {                                            // слияние: сначала смотрим, что в облаке
+        const cloud = await withTimeout(backend.get(uid, k)); const r = reconcile(k, cloud); if (r.apply) applyLocal(k, r.val, r.t); val = r.val != null ? r.val : val; if (cloud && !r.push) { setSt({ status: 'ok', last: Date.now() }); return; }
+      }
+      await withTimeout(backend.set(uid, k, { k, v: val == null ? '' : val, del: val == null, t, dev: devId() }));
+      const m = getMeta(); m[k] = { t }; putMeta(m); setSt({ status: 'ok', last: Date.now(), error: '' });
+    } catch (e) { setSt({ status: 'error', error: String(e && e.message || e) }); }
+  }
+  function schedule(k) {
+    if (!uid || !backend) return; clearTimeout(timers[k]); const slow = REG[k].slow && getL(k) != null;      // удаление (партию закончили) отправляем сразу
+    timers[k] = setTimeout(() => { setSt({ status: 'syncing' }); pushKey(k); }, slow ? (window.__pgSyncSlowMs || 15000) : 1200);
+  }
+  function flush() { Object.keys(timers).forEach((k) => { clearTimeout(timers[k]); delete timers[k]; if (uid && backend) pushKey(k); }); }
+  function onLocalChange(k) { const m = getMeta(); m[k] = { t: Date.now() }; putMeta(m); schedule(k); }
+
+  // Любая запись в наши ключи localStorage в этой вкладке отправляется в облако
+  Storage.prototype.setItem = function (k, v) { const prev = this === ls && REG[k] ? getL(k) : undefined; rawSet.apply(this, arguments); if (this === ls && REG[k] && !applying && prev !== String(v)) onLocalChange(k); };
+  Storage.prototype.removeItem = function (k) { const had = this === ls && REG[k] ? getL(k) !== null : false; rawRem.apply(this, arguments); if (this === ls && REG[k] && !applying && had) onLocalChange(k); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); }); window.addEventListener('pagehide', flush);
+  window.addEventListener('online', () => { if (uid) syncNow(); });
+
+  async function handleChanges(changes, isFirst) {
+    const seen = new Set();
+    for (const ch of changes) {
+      const k = ch.key; if (!REG[k]) continue; seen.add(k); const r = reconcile(k, ch.data);
+      if (r.apply) applyLocal(k, r.val, r.t); else if (r.t) { const m = getMeta(); m[k] = { t: r.t }; putMeta(m); }
+      if (r.push) pushKey(k, true);
+    }
+    if (isFirst) { for (const k of Object.keys(REG)) if (!seen.has(k) && getL(k) != null) pushKey(k, true); firstDone = true; }
+    setSt({ status: 'ok', last: Date.now(), error: '' });
+  }
+  async function connect(user) {
+    if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+    uid = user ? user.uid : null; setSt({ user: user ? { uid: user.uid, name: user.name } : null, status: user ? 'syncing' : 'off', error: '' });
+    if (!user) return;
+    const prev = getL(UIDK);
+    if (prev && prev !== user.uid) {                                   // на этом устройстве вошёл другой человек: чужие данные не смешиваем
+      applying = true; Object.keys(REG).forEach((k) => { try { rawRem.call(ls, k); } catch (e) {} }); applying = false; putMeta({});
+      Object.keys(REG).forEach((k) => window.dispatchEvent(new CustomEvent('pgsync-applied', { detail: { key: k } })));
+    }
+    try { rawSet.call(ls, UIDK, user.uid); } catch (e) {}
+    try { unsub = backend.listen(user.uid, (changes, isFirst) => handleChanges(changes, isFirst)); } catch (e) { setSt({ status: 'error', error: String(e) }); }
+  }
+  async function syncNow() {
+    if (!uid || !backend) return; setSt({ status: 'syncing' });
+    try { for (const k of Object.keys(REG)) { const cloud = await withTimeout(backend.get(uid, k)); const r = reconcile(k, cloud); if (r.apply) applyLocal(k, r.val, r.t); if (r.push) await pushKey(k, true); } setSt({ status: 'ok', last: Date.now(), error: '' }); }
+    catch (e) { setSt({ status: 'error', error: String(e && e.message || e) }); }
+  }
+
+  // ---------- подключение к Firebase ----------
+  async function firebaseBackend() {
+    const [A, Au, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')]);
+    let app = null; for (let i = 0; i < 60 && !app; i++) { const apps = A.getApps(); if (apps.length) app = apps[0]; else await sleep(50); }
+    if (!app) app = A.initializeApp(CFG);
+    const auth = Au.getAuth(app), db = F.getFirestore(app), col = (u) => F.collection(db, 'userData', u, 'docs');
+    return {
+      onUser(cb) { Au.onAuthStateChanged(auth, (u) => cb(u && !u.isAnonymous ? { uid: u.uid, name: u.displayName || u.email || 'Игрок' } : null)); },
+      async get(u, key) { const s = await F.getDoc(F.doc(db, 'userData', u, 'docs', key)); return s.exists() ? s.data() : null; },
+      async set(u, key, data) { await F.setDoc(F.doc(db, 'userData', u, 'docs', key), Object.assign({}, data, { at: F.serverTimestamp() })); },
+      listen(u, cb) { let first = true; return F.onSnapshot(col(u), (snap) => { const ch = snap.docChanges().filter((c) => c.type !== 'removed' && !c.doc.metadata.hasPendingWrites).map((c) => ({ key: c.doc.id, data: c.doc.data() })); const f = first; first = false; cb(ch, f); }, (e) => setSt({ status: 'error', error: String(e && e.code || e) })); },
+      async signIn() { await Au.signInWithPopup(auth, new Au.GoogleAuthProvider()); },
+      async signOut() { await Au.signOut(auth); }
+    };
+  }
+  async function start() {
+    if (started) return; started = true;
+    try { backend = window.__pgBackend || await firebaseBackend(); backend.onUser((u) => connect(u)); }
+    catch (e) { backend = null; setSt({ status: 'off', error: 'Нет связи с облаком' }); }
+  }
+  async function signIn() { if (!backend) await start(); if (!backend) throw new Error('Нет связи с облаком'); return backend.signIn(); }
+  async function signOutNow() { if (backend) await backend.signOut(); }
+
+  // ---------- строка «Синхронизация» для панелей настроек ----------
+  function mountRow(host, compact) {
+    if (!host) return; const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:14px;padding:' + (compact ? '12px 14px;border:1px solid #D9DBCC;background:#F8F7F1;' : '13px 24px;border-bottom:1px solid #E6E8DA;') + 'font-family:\'Noto Sans\',system-ui,sans-serif;color:#2A2E24';
+    host.innerHTML = ''; host.appendChild(wrap);
+    const btnCss = 'background:#F3F2EA;border:1px solid #D9DBCC;padding:7px 12px;font:700 12.5px \'Noto Sans\',sans-serif;color:#2A2E24;cursor:pointer;flex-shrink:0;';
+    function paint() {
+      const s = st, t = s.last ? new Date(s.last).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+      if (!s.user) wrap.innerHTML = '<div><b style="font-size:14px;font-weight:600;display:block">Синхронизация между устройствами</b><span style="font-size:12px;color:#6E7568;display:block;margin-top:2px;line-height:1.4">Войдите через Google — настройки, незавершённые партии, судоку, кроссворды и статистика будут на всех ваших устройствах.' + (s.error ? ' <span style="color:#A23B33">' + s.error + '</span>' : '') + '</span></div><button data-a="in" style="' + btnCss + '">Войти</button>';
+      else wrap.innerHTML = '<div><b style="font-size:14px;font-weight:600;display:block">☁ ' + (s.status === 'syncing' ? 'Синхронизация…' : s.status === 'error' ? 'Нет связи с облаком' : 'Синхронизировано' + (t ? ' в ' + t : '')) + '</b><span style="font-size:12px;color:#6E7568;display:block;margin-top:2px;line-height:1.4">Аккаунт: ' + String(s.user.name).replace(/[<>&]/g, '') + (s.status === 'error' ? '. Данные сохранены на этом устройстве и отправятся позже.' : '') + '</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button data-a="now" style="' + btnCss + '">Сейчас</button><button data-a="out" style="' + btnCss + '">Выйти</button></div>';
+      wrap.querySelectorAll('button').forEach((b) => { b.onclick = async () => { const a = b.dataset.a; b.disabled = true; try { if (a === 'in') await signIn(); else if (a === 'now') await syncNow(); else await signOutNow(); } catch (e) { setSt({ error: 'Не удалось: ' + (e && e.code || e.message || e) }); } b.disabled = false; }; });
+    }
+    const h = () => { if (!wrap.isConnected) { window.removeEventListener('pgsync-state', h); return; } paint(); }; window.addEventListener('pgsync-state', h); paint();
+  }
+
+  window.PGSync = { get state() { return Object.assign({}, st); }, signIn, signOut: signOutNow, syncNow, mountRow, start, REG, _merge: { history: mergeHistory, stats: mergeStats }, _reconcile: reconcile };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0)); else setTimeout(start, 0);
+})();
 
 </script>
 <link rel="manifest" href="manifest.json">
@@ -434,7 +609,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
   <div id="board-wrap"><div id="board"></div><div id="pieces"></div></div>
   <div id="side">
     <div class="player" id="name-top"></div>
-    <div class="clock" id="clock-top"><button class="x" id="exit-btn" title="В меню">✕</button><span id="t-top">10:00</span></div>
+    <div class="clock" id="clock-top"><span style="display:flex;gap:2px;align-items:center"><button class="x" id="exit-btn" title="В меню">✕</button><button class="x snd-btn" aria-label="Звук"></button></span><span id="t-top">10:00</span></div>
     <div class="status" id="status"></div>
     <div class="ana hidden" id="ana">
       <div class="ana-head"><span class="ana-title">Разбор движком</span><button id="ana-toggle">Включить</button></div>
@@ -796,7 +971,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2026.10.07-4';
+const BUILD = '2026.10.07-7';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
