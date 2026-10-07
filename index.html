@@ -127,7 +127,7 @@
   const REG = {
     pgSettings: { m: 'lww' }, draughtsSettings: { m: 'lww' }, draughtsNickname: { m: 'lww' }, chessNickname: { m: 'lww' },
     sudokuPrefs: { m: 'lww' }, sudokuLevel: { m: 'lww' }, crosswordPrefs: { m: 'lww' },
-    sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true },
+    sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true }, crosswordWeekSave: { m: 'lww', slow: true },
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 }
   };
@@ -161,6 +161,9 @@
     const last = Object.keys(res).sort().pop() || null; let streak = 0;
     if (last) { let d = last; while (res[d] != null) { streak++; d = dayBefore(d); } }
     out.daily = { last, streak, results: res };
+    const wa = (A.weekly && A.weekly.results) || {}, wb = (B.weekly && B.weekly.results) || {}, wr = {};            // суперкроссворд недели: результаты объединяются
+    for (const k of new Set(Object.keys(wa).concat(Object.keys(wb)))) wr[k] = wa[k] == null ? wb[k] : wb[k] == null ? wa[k] : Math.min(wa[k], wb[k]);
+    if (Object.keys(wr).length) out.weekly = { results: wr };
     return JSON.stringify(out);
   }
   // Решает, что делать с ключом при сравнении локальных данных с облачными
@@ -279,6 +282,7 @@
 </script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root {
   --bg:#EEF0E7; --panel:#FDFDFA; --green:#3B5D4A; --text:#2A2E24; --muted:#6E7568; --border:#D9DBCC;
@@ -492,8 +496,8 @@ footer b { color:var(--text); font-weight:600; }
       <div class="art"><div class="mini cwm" id="mini-crossword" style="background-image:none"></div></div>
       <div class="info">
         <h2 class="serif">Кроссворды</h2>
-        <p>Классические кроссворды на русском языке: 21 тема, размер от 6 до 60 слов и пять уровней сложности, подсказки и «кроссворд дня». Более 3000 слов с вопросами.</p>
-        <div class="chips"><b>21 тема</b><b>6–60 слов</b><b>5 уровней</b><b>Кроссворд дня</b></div>
+        <p>Классические кроссворды на русском языке: 24 темы, размер от 6 до 150 слов, пять уровней сложности, подсказки, «кроссворд дня» и суперкроссворд недели. Более 7500 слов с вопросами.</p>
+        <div class="chips"><b>24 темы</b><b>6–150 слов</b><b>5 уровней</b><b>Суперкроссворд</b></div>
         <div class="foot"><span class="count" id="cnt-crossword"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
@@ -511,7 +515,7 @@ footer b { color:var(--text); font-weight:600; }
   <footer>
     <div><b>Один аккаунт на обе игры.</b> Войдите через Google — и онлайн-партии сохранятся в вашей истории.</div>
     <div>Совет: установите страницу как приложение — тогда обе игры доступны с экрана телефона.</div>
-    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 2026.10.07-7</div>
+    <div style="margin-top:6px;font-size:11px;color:#9A9D8E">Версия 1.12 · 7 октября 2026</div>
   </footer>
 </div>
 

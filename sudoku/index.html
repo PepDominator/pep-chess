@@ -122,7 +122,7 @@
   const REG = {
     pgSettings: { m: 'lww' }, draughtsSettings: { m: 'lww' }, draughtsNickname: { m: 'lww' }, chessNickname: { m: 'lww' },
     sudokuPrefs: { m: 'lww' }, sudokuLevel: { m: 'lww' }, crosswordPrefs: { m: 'lww' },
-    sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true },
+    sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true }, crosswordWeekSave: { m: 'lww', slow: true },
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 }
   };
@@ -156,6 +156,9 @@
     const last = Object.keys(res).sort().pop() || null; let streak = 0;
     if (last) { let d = last; while (res[d] != null) { streak++; d = dayBefore(d); } }
     out.daily = { last, streak, results: res };
+    const wa = (A.weekly && A.weekly.results) || {}, wb = (B.weekly && B.weekly.results) || {}, wr = {};            // суперкроссворд недели: результаты объединяются
+    for (const k of new Set(Object.keys(wa).concat(Object.keys(wb)))) wr[k] = wa[k] == null ? wb[k] : wb[k] == null ? wa[k] : Math.min(wa[k], wb[k]);
+    if (Object.keys(wr).length) out.weekly = { results: wr };
     return JSON.stringify(out);
   }
   // Решает, что делать с ключом при сравнении локальных данных с облачными
@@ -274,6 +277,7 @@
 </script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root { --bg:#EEF0E7; --panel:#FBFBF8; --green:#3B5D4A; --navy:#2F3A56; --text:#2A2E24; --muted:#6E7568; --border:#D9DBCC; --sq-light:#F6F4EB; --sq-dark:#C7CAB4; --cell:52px; }
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -537,7 +541,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const SDK = new Function($('sdk-engine').textContent + '\nreturn SDK;')();
-const BUILD = '2026.10.07-7';
+const BUILD = '1.12 · 7 октября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
@@ -747,7 +751,7 @@ $('open-prefs').onclick = () => {
     ov.querySelectorAll('.th').forEach((b) => { b.onclick = () => { PGS.set({ board: b.dataset.b }); paint(); }; });
     $('prefs-close').onclick = () => ov.remove();
   }
-  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); }); paint(); document.body.appendChild(ov);
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); }); document.body.appendChild(ov); paint();      // сначала в страницу, потом рисуем: иначе $() не найдёт кнопки панели
 };
 
 /* ---------- PWA и тестовые хуки ---------- */
