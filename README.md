@@ -1,46 +1,35 @@
 # Pep Games
 
-### Browser chess and draughts
+### Classic board games and puzzles in your browser
 
-Play chess against Stockfish, challenge other players online, play draughts, track your rating, review your games and analyze chess positions directly in the browser.
+Play chess against Stockfish, challenge other players in international draughts, solve Sudoku and enjoy Russian-language crosswords.
 
-![Stockfish](https://img.shields.io/badge/Chess%20Engine-Stockfish%2019-4B7399?style=flat-square)
-![Chess](https://img.shields.io/badge/Game-Chess-success?style=flat-square)
-![Draughts](https://img.shields.io/badge/Game-Draughts-success?style=flat-square)
-![Multiplayer](https://img.shields.io/badge/Online%20Multiplayer-Ready-success?style=flat-square)
-![Profiles](https://img.shields.io/badge/User%20Profiles-Ready-success?style=flat-square)
-![Rating](https://img.shields.io/badge/Player%20Rating-Ready-success?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-Ready-success?style=flat-square)
+Pep Games works as a collection of independent browser games with a shared design, player accounts, profiles and offline support.
 
 ---
 
-## About
+## Games
 
-**Pep Games** is a lightweight browser board game application with support for chess and draughts.
+Pep Games currently includes four game modes:
 
-Chess can be played against Stockfish or another player online. The app also includes Stockfish analysis, configurable time controls, game history and board tools.
-
-Draughts, also known as checkers, has its own game mode and supports online multiplayer.
-
-Authenticated users also get a player profile with a rating and persistent game history.
-
-Local play does not require an account.
+| Game | Description |
+|---|---|
+| Chess | Play against Stockfish 19 or challenge another player online |
+| International Draughts | 10×10 draughts against Scan 3.1 or another player online |
+| Sudoku | Four difficulty levels, notes, hints and a daily puzzle |
+| Crosswords | Russian-language crosswords with thousands of words, multiple themes and difficulty levels |
 
 ---
 
-## Play
+## Chess
 
-### Chess
+Pep Chess provides a full browser chess experience.
 
-Play chess directly in your browser.
+### Play Against Stockfish
 
-- Play against Stockfish
+- Stockfish 19
 - 8 engine difficulty levels
 - Play as White, Black or a random color
-- Online multiplayer
-- Invite links
-- Game codes
-- Chess clocks
 - Preset time controls
 - Custom time controls
 - Increment support
@@ -49,280 +38,237 @@ Play chess directly in your browser.
 - Draw offers
 - Resignation
 - Rematches
-- Stockfish analysis
-- Board annotations
 
-### Draughts / Checkers
+### Online Multiplayer
 
-Pep Games also includes a separate draughts game mode.
+Chess can also be played against another person online.
 
-- Play draughts in the browser
-- Online multiplayer
-- Create games
-- Invite another player
-- Join online games
-- Synchronized moves
-- Play without installing a separate application
-
-Play draughts here:
-
-https://pepdominator.github.io/pep-chess/draughts/
-
----
-
-## Online Multiplayer
-
-Both **chess and draughts support online multiplayer**.
-
-Create a game and invite another player to join.
-
-Online play supports:
-
-- Game creation
-- Invite links
-- Game codes
-- Player synchronization
-- Synchronized moves
-- Game state synchronization
+- Create online games
+- Invite players with a link
+- Join using a game code
+- Open game lobby
+- Quick opponent search
+- Player nicknames
+- Synchronized chess clocks
+- Draw offers
 - Resignation
-- Game completion
-- Player profiles
-- Rating for authenticated users
-- Saved game history
+- Rematches
+- Game chat
 
-Online synchronization uses **Firebase Firestore**.
+### Chess Analysis
 
-An internet connection is required for multiplayer games.
+Finished chess games can be analyzed directly with Stockfish.
 
----
-
-## User Accounts and Rating
-
-Creating an account is optional, but authenticated users get additional features.
-
-### Player Rating
-
-Authenticated players have a rating connected to their profile.
-
-This makes it possible to track online performance over time rather than treating every game as an isolated match.
-
-### Player Profile
-
-The profile keeps your playing history in one place.
-
-Authenticated users can:
-
-- View their current rating
-- See previous games
-- Open games from their history
-- Review completed matches
-- Return to previous chess positions
-- Open chess games for Stockfish analysis
-
-Local games can still be played without signing in.
-
----
-
-## Game History
-
-Game history is available directly inside Pep Games.
-
-For authenticated users, previous games are also available from the player profile.
-
-You can open a completed game, replay its moves and review the result.
-
-Chess games can be opened directly in Stockfish analysis mode, making it easy to revisit mistakes, explore different moves and check alternative positions.
-
----
-
-## Chess Engine
-
-Chess mode uses **Stockfish.js 19** compiled to WebAssembly.
-
-Stockfish runs directly inside the browser and handles:
-
-- Computer moves
-- Position evaluation
-- Chess analysis
-- Principal variations
-
-Pep Games includes 8 Stockfish difficulty levels.
-
-| Level | Stockfish Skill |
-|:---:|:---:|
-| 1 | 0 |
-| 2 | 3 |
-| 3 | 6 |
-| 4 | 9 |
-| 5 | 12 |
-| 6 | 15 |
-| 7 | 18 |
-| 8 | 20 |
-
----
-
-## Chess Analysis
-
-Chess games and positions can be analyzed with Stockfish directly inside the application.
-
-You can:
-
-- See the engine evaluation
-- View multiple Stockfish lines
-- Navigate move by move
-- Explore alternative moves
-- Return to earlier positions
-- Continue analysis from any position
-- Draw arrows on the board
-- Highlight squares
-- Open completed games from your profile for analysis
-
----
-
-## Chess Time Controls
-
-Chess mode includes several ready-to-use time controls:
-
-| Time | Increment |
-|---:|---:|
-| 1 min | 0 sec |
-| 2 min | 1 sec |
-| 3 min | 0 sec |
-| 3 min | 2 sec |
-| 5 min | 0 sec |
-| 5 min | 3 sec |
-| 10 min | 0 sec |
-| 10 min | 5 sec |
-| 15 min | 10 sec |
-| 30 min | 0 sec |
-| 30 min | 20 sec |
-
-You can also create a custom time control with your own base time and increment.
-
----
-
-## Chess Board Tools
-
-Chess mode includes tools for exploring and marking positions directly on the board.
-
-- Premoves
-- Colored arrows
+- Engine evaluation
+- Multiple analysis lines
+- Move-by-move navigation
+- Alternative move exploration
+- Board arrows
 - Square highlighting
-- Last-move highlighting
-- Check indication
-- Automatic board orientation based on your side
-
-Board annotations can also be used during position analysis.
+- Analysis of games opened from your profile
 
 ---
 
-## PWA and Offline Play
+## International Draughts
 
-Pep Games can be installed as a Progressive Web App.
+Pep Draughts implements international draughts on a 10×10 board.
 
-The application uses a Service Worker to cache files required for local play.
+The game uses **Scan 3.1** as its computer opponent.
 
-After the required files have been cached, supported local features can work without an internet connection.
+### Features
+
+- International 10×10 rules
+- Flying kings
+- Majority capture rule
+- Play against Scan 3.1
+- Multiple engine difficulty levels
+- Online multiplayer
+- Invite links and game codes
+- Quick opponent search
+- Open game lobby
+- Time controls
+- Game history
+- Game review
+- Engine analysis of completed games
+
+---
+
+## Sudoku
+
+Pep Sudoku is a complete Sudoku module that generates puzzles directly on the player's device.
+
+### Difficulty Levels
+
+- Easy
+- Medium
+- Hard
+- Expert
+
+### Features
+
+- Sudoku of the Day
+- Automatically generated puzzles
+- Notes / pencil marks
+- Hints
+- Mistake counter
+- Timer
+- Pause
+- Undo and redo
+- Cell checking
+- Puzzle checking
+- Local statistics
+- Offline play
+
+The daily Sudoku gives every player a puzzle for the day while regular games can be generated at any time.
+
+---
+
+## Russian Crosswords
+
+Pep Crossword is a dedicated crossword module built around **Russian-language words and clues**.
+
+The crossword database contains more than **3,000 words with questions**.
+
+### Crossword Options
+
+- 21 themes
+- 5 difficulty levels
+- From 6 to 60 words per crossword
+- Small, medium, large, huge and super-sized puzzles
+- Crossword of the Day
+- Random crossword generation
+
+### Gameplay
+
+- Russian-language clues and answers
+- Across and down clues
+- Word navigation
+- Crossword timer
+- Pause
+- Check current word
+- Check the entire crossword
+- Reveal one letter
+- Reveal a word
+- View all clues
+- Progress tracking
+- Statistics
+
+Crosswords are generated as a full Pep Games module rather than as a separate external service.
+
+---
+
+## Daily Puzzles
+
+Pep Games includes daily puzzle modes for both Sudoku and crosswords.
+
+### Sudoku of the Day
+
+A daily Sudoku puzzle is available directly from the Sudoku menu.
+
+### Crossword of the Day
+
+A daily Russian crossword is available from the Crossword menu.
+
+This gives Pep Games both competitive multiplayer games and puzzles that can be played alone for a few minutes at any time.
+
+---
+
+## User Accounts
+
+Signing in is optional.
+
+Players can use Google authentication to create a shared Pep Games profile.
+
+Authenticated users can access:
+
+- Player profile
+- Chess rating
+- Draughts rating
+- Persistent game history
+- Previous online games
+- Game review
+- Chess analysis from history
+- Draughts game review
+
+Local play does not require an account.
+
+---
+
+## Player Rating
+
+Competitive ratings are available for **Chess and International Draughts**.
+
+Ratings use the Elo system and are calculated separately for each game.
+
+Each game also has separate ratings for:
+
+| Category | Time |
+|---|---|
+| Bullet | Up to 3 minutes |
+| Blitz | Up to 8 minutes |
+| Rapid | Up to 25 minutes |
+| Classical | Longer games |
+
+A game counts as rated when both players are signed in and the match satisfies the rating requirements.
+
+Sudoku and Crosswords use puzzle statistics instead of Elo ratings.
+
+---
+
+## Player Profile
+
+The shared Pep Games profile keeps competitive game history in one place.
+
+Players can:
+
+- View their ratings
+- View previous Chess games
+- View previous Draughts games
+- Open completed matches
+- Replay moves
+- Review results
+- Analyze completed Chess games
+- Review completed Draughts games
+
+---
+
+## Offline Play
+
+Pep Games is designed as a Progressive Web App.
+
+The games can be installed and supported local modes can continue to work after the required files have been cached.
 
 | Feature | Offline |
 |---|:---:|
 | Chess against Stockfish | ✅ |
-| Chess clocks | ✅ |
 | Chess analysis | ✅ |
+| International Draughts against Scan | ✅ |
+| Sudoku | ✅ |
+| Crosswords | ✅ |
 | Local game history | ✅ |
-| Board annotations | ✅ |
 | PWA | ✅ |
 | Chess multiplayer | ❌ |
 | Draughts multiplayer | ❌ |
 | Online rating | ❌ |
-| Profile synchronization | ❌ |
+| Cloud profile synchronization | ❌ |
 
-Online features require an internet connection.
-
----
-
-## Online Architecture
-
-Pep Games uses **Firebase Firestore** for online synchronization.
-
-The online system handles:
-
-- Game creation
-- Joining games
-- Player information
-- Move synchronization
-- Game state
-- Game completion
-- User profiles
-- Player ratings
-- Persistent online game history
-
-Both chess and draughts use the browser application for game logic and Firebase for synchronization between players.
+Online multiplayer and cloud features require an internet connection.
 
 ---
 
-## Tech Stack
+## Architecture
 
-| Component | Technology |
-|---|---|
-| Chess rules and move generation | chess.js |
-| Chess engine | Stockfish.js 19 |
-| Engine runtime | WebAssembly |
-| Draughts game | JavaScript |
-| Interface | HTML, CSS, JavaScript |
-| Online multiplayer | Firebase Firestore |
-| User profiles and rating | Firebase |
-| Offline support | Service Worker |
-| Installation | PWA |
+Pep Games acts as the main hub.
 
----
-
-## Running Locally
-
-Clone the repository:
-
-```bash
-git clone https://github.com/PepDominator/pep-chess.git
-cd pep-chess
-```
-
-Start a local HTTP server.
-
-For example, with Python:
-
-```bash
-python -m http.server 8000
-```
-
-Then open:
-
-```text
-http://localhost:8000
-```
-
-Chess:
-
-```text
-http://localhost:8000/
-```
-
-Draughts:
-
-```text
-http://localhost:8000/draughts/
-```
-
-Using a local HTTP server is recommended because Service Workers and PWA functionality are restricted when the application is opened directly through `file://`.
-
----
-
-## Project Structure
+Each game is implemented as its own module:
 
 ```text
 pep-chess/
 ├── index.html
+├── chess/
 ├── draughts/
-│   └── ...
+├── sudoku/
+├── crossword/
 ├── manifest.json
 ├── service-worker.js
 ├── icon-192.png
@@ -330,21 +276,79 @@ pep-chess/
 └── icon-maskable-512.png
 ```
 
-### `index.html`
+### Main Hub
 
-Contains the main chess application, interface, chess logic integration, Stockfish integration and chess multiplayer client.
+The root application provides:
 
-### `draughts/`
+- Game selection
+- Shared settings
+- Google authentication
+- Player profiles
+- Chess and Draughts leaderboards
+- Shared navigation
+- PWA support
 
-Contains the draughts game mode and its online multiplayer logic.
+### Chess
 
-### `manifest.json`
+Contains the chess interface, Stockfish integration, online multiplayer, rating and game analysis.
 
-Defines Pep Games as an installable Progressive Web App.
+### Draughts
 
-### `service-worker.js`
+Contains international draughts, Scan 3.1 integration, online multiplayer, rating and game review.
 
-Caches application files for offline local play.
+### Sudoku
+
+Contains puzzle generation, four difficulty levels, notes, hints, daily Sudoku and statistics.
+
+### Crossword
+
+Contains Russian crossword generation, the word and clue database, themes, difficulty settings, daily crosswords and statistics.
+
+---
+
+## Technology
+
+| Component | Technology |
+|---|---|
+| Interface | HTML, CSS, JavaScript |
+| Chess rules | chess.js |
+| Chess engine | Stockfish 19 |
+| Chess engine runtime | WebAssembly |
+| Draughts engine | Scan 3.1 |
+| Multiplayer | Firebase Firestore |
+| Authentication | Firebase Authentication |
+| Profiles and ratings | Firebase |
+| Sudoku generation | Client-side JavaScript |
+| Crossword generation | Client-side JavaScript |
+| Offline support | Service Workers |
+| Installation | PWA |
+
+---
+
+## Running Locally
+
+Clone the repository and start a local HTTP server.
+
+For example:
+
+```bash
+git clone <repository>
+cd pep-chess
+python -m http.server 8000
+```
+
+Then open the local server in your browser.
+
+Game modules are available under:
+
+```text
+/chess/
+/draughts/
+/sudoku/
+/crossword/
+```
+
+A local HTTP server is recommended because Service Workers and other PWA features are restricted when files are opened directly through `file://`.
 
 ---
 
@@ -352,19 +356,24 @@ Caches application files for offline local play.
 
 | Component | Status |
 |---|:---:|
+| Pep Games Hub | ✅ Ready |
 | Chess | ✅ Ready |
-| Draughts / Checkers | ✅ Ready |
+| International Draughts | ✅ Ready |
+| Sudoku | ✅ Ready |
+| Russian Crosswords | ✅ Ready |
 | Stockfish gameplay | ✅ Ready |
+| Scan gameplay | ✅ Ready |
 | Chess multiplayer | ✅ Ready |
 | Draughts multiplayer | ✅ Ready |
 | User accounts | ✅ Ready |
 | Player profiles | ✅ Ready |
-| Player rating | ✅ Ready |
-| Profile game history | ✅ Ready |
+| Chess rating | ✅ Ready |
+| Draughts rating | ✅ Ready |
+| Game history | ✅ Ready |
 | Chess analysis | ✅ Ready |
-| Chess clocks | ✅ Ready |
-| Premoves | ✅ Ready |
-| Board annotations | ✅ Ready |
+| Draughts review | ✅ Ready |
+| Sudoku of the Day | ✅ Ready |
+| Crossword of the Day | ✅ Ready |
 | PWA | ✅ Ready |
 | Offline play | ✅ Ready |
 
@@ -374,10 +383,11 @@ Caches application files for offline local play.
 
 Pep Games uses open-source software including:
 
-- [chess.js](https://github.com/jhlywa/chess.js)
-- [Stockfish](https://stockfishchess.org/)
-- [Stockfish.js](https://github.com/nmrugg/stockfish.js)
-- [Firebase](https://firebase.google.com/)
+- chess.js
+- Stockfish
+- Stockfish.js
+- Scan
+- Firebase
 
 Third-party components remain subject to their respective licenses.
 
@@ -393,4 +403,4 @@ Third-party components remain subject to their respective licenses.
 
 # Pep Games
 
-**Chess. Draughts. Rating. History. Analysis. Online or offline.**
+**Chess. Draughts. Sudoku. Crosswords. Play, compete and solve.**
