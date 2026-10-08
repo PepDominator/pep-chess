@@ -372,7 +372,7 @@
     };
   }
   const getBackend = async () => backend || (backend = window.__pgrBackend || await firebaseBackend());
-  async function start() { try { const b = await getBackend(); b.onUser((u) => { user = u; cache = {}; window.dispatchEvent(new Event('pgr-user')); }); } catch (e) { console.warn('Рекорды недоступны:', e); } }
+  async function start() { try { const b = await getBackend(); b.onUser((u) => { user = u; cache = {}; window.dispatchEvent(new Event('pgr-user')); setTimeout(syncPending, 800); }); } catch (e) { console.warn('Рекорды недоступны:', e); } }
 
   const css = `
 .pgr-ov { position:fixed; inset:0; z-index:420; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:14px; font-family:'Noto Sans',system-ui,sans-serif; }
@@ -389,6 +389,13 @@
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
   const ordinal = (n) => n + '-е место';
+  // Результаты, решённые без сети или без входа, уходят в таблицу сами: когда вошли в аккаунт, вернулась сеть или страницу снова открыли
+  const SENT = 'pgrSent'; let syncing = false;
+  const sentSet = () => { try { return JSON.parse(localStorage.getItem(SENT) || '{}'); } catch (e) { return {}; } };
+  async function syncPending() {
+    if (!user || syncing || !cfg.pending) return; syncing = true; const sent = sentSet();
+    try { for (const it of cfg.pending()) { if (sent[it.id + ':' + user.uid]) continue; const r = await submit(it.id, it); if (r.status === 'new' || r.status === 'kept') { sent[it.id + ':' + user.uid] = 1; try { localStorage.setItem(SENT, JSON.stringify(sent)); } catch (e) {} if (r.status === 'new' && r.rank && window.PGA) PGA.event('rank', { pos: r.rank.pos }); } else if (r.status === 'error') break; } } catch (e) {} finally { syncing = false; }
+  }
   async function top(board, n) { const k = board + ':' + n; if (cache[k]) return cache[k]; const b = await getBackend(); return (cache[k] = await b.top(board, n)); }
   async function submit(board, d) {
     if (!user) return { status: 'guest' }; const b = await getBackend();
@@ -404,7 +411,7 @@
     const signIn = () => { if (window.PGSync && PGSync.signIn) PGSync.signIn().catch(() => {}); };
     if (!user) { host.innerHTML = 'Хотите попасть в таблицу рекордов? <button type="button">Войдите через Google</button>'; host.querySelector('button').onclick = signIn; const once = async () => { window.removeEventListener('pgr-user', once); if (user) winLine(host, board, d); }; window.addEventListener('pgr-user', once); return; }
     host.textContent = 'Записываем результат…'; const r = await submit(board, d);
-    if (r.status === 'error') host.textContent = 'Не удалось записать результат в таблицу. Проверьте интернет — он сохранится, когда вы откроете «Рекорды».';
+    if (r.status === 'error') host.textContent = 'Не удалось записать результат в таблицу (нет интернета?). Он сохранён у вас и отправится сам, когда связь появится.';
     else if (r.rank && window.PGA) PGA.event('rank', { pos: r.rank.pos });
     if (r.status !== 'error') host.innerHTML = (r.status === 'kept' ? 'В таблице уже есть ваш результат: ' + fmt(r.time) : 'Результат записан в таблицу') + (r.rank ? ` · <b>${ordinal(r.rank.pos)}</b> из ${r.rank.of}` : '');
   }
@@ -431,7 +438,8 @@
     const refresh = () => { if (document.body.contains(ov)) draw(); };
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgr-user', refresh); document.body.appendChild(ov); draw();
   }
-  window.PGRec = { config(c) { cfg = Object.assign(cfg, c); }, start, submit, top, open, winLine, fmt, get user() { return user; } };
+  window.addEventListener('online', () => setTimeout(syncPending, 500)); document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(syncPending, 500); });
+  window.PGRec = { config(c) { cfg = Object.assign(cfg, c); }, syncPending, start, submit, top, open, winLine, fmt, get user() { return user; } };
   const boot = () => { start(); const b = document.getElementById('pgr-btn'); if (b) b.onclick = open; };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
@@ -1000,7 +1008,7 @@ if (typeof module !== 'undefined') module.exports = CW;
 const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 const DICT = JSON.parse($('cw-dict').textContent);
-const BUILD = '1.22 · 8 октября 2026';
+const BUILD = '1.24 · 8 октября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
@@ -1311,6 +1319,7 @@ $('open-prefs').onclick = () => {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('service-worker.js').catch(() => {});
 if (window.PGRec) PGRec.config({
   boards: () => { const tk = todayKey(), yk = dayBefore(tk), wk = weekKey(), pk = weekKey(new Date(Date.now() - 7 * 86400000)); return [{ id: 'cd_' + tk, title: 'Сегодня', sub: 'Кроссворд дня · ' + tk }, { id: 'cd_' + yk, title: 'Вчера', sub: 'Кроссворд дня · ' + yk }, { id: 'cw_' + wk, title: 'Неделя', sub: 'Суперкроссворд недели · ' + wk }, { id: 'cw_' + pk, title: 'Прошлая', sub: 'Суперкроссворд прошлой недели · ' + pk }]; },
+  pending: () => { const out = [], lim = keyOf(new Date(Date.now() - 14 * 86400000)), d = stats.daily, w = stats.weekly; for (const k of Object.keys((d && d.results) || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'cd_' + k, time: d.results[k], hints: d.hints[k] }); for (const k of Object.keys((w && w.results) || {})) if (w.hints && w.hints[k] != null) out.push({ id: 'cw_' + k, time: w.results[k], hints: w.hints[k] }); return out.slice(-30); },
   local: (id) => { const k = id.slice(3), s = id.startsWith('cw_') ? stats.weekly : stats.daily; return s && s.results && s.results[k] != null && s.hints && s.hints[k] != null ? { time: s.results[k], hints: s.hints[k] } : null; } });
 window.__cw = { get worker() { return genWorker; }, get prefs() { return prefs; }, w2t, t2w, weekKey, startWeek, nextEmpty, drawMap, syncSliders, clearWord, backspace, fitClues, get S() { return S; }, CW, DICT, startNew, typeLetter, backspace, clickCell, selectWord, revealLetter, revealWord, checkWord, checkAll, get prefs() { return prefs; }, get stats() { return stats; }, showMenu, setPause, todayKey, activeIdx };
 // Данные пришли из облака (другое устройство): перечитываем настройки и статистику

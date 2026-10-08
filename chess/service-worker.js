@@ -8,5 +8,13 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
-  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then((r) => { const cp = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, cp)); return r; }).catch(() => caches.match(e.request)));
+  e.respondWith(networkFirst(e.request));
 });
+// Сеть в приоритете, но только исправный ответ (2xx) годится: при ошибке сервера (например, 503, когда хостинг «лежит») отдаём сохранённую копию.
+async function networkFirst(req) {
+  const cache = await caches.open(CACHE); let bad = null;
+  try { const r = await fetch(req, { cache: 'no-cache' }); if (r.ok || r.type === 'opaque') { cache.put(req, r.clone()); return r; } bad = r; } catch (err) {}
+  const hit = await cache.match(req, { ignoreSearch: true }); if (hit) return hit;
+  if (req.mode === 'navigate') { const idx = await cache.match('./index.html'); if (idx) return idx; }
+  return bad || Response.error();
+}

@@ -372,7 +372,7 @@
     };
   }
   const getBackend = async () => backend || (backend = window.__pgrBackend || await firebaseBackend());
-  async function start() { try { const b = await getBackend(); b.onUser((u) => { user = u; cache = {}; window.dispatchEvent(new Event('pgr-user')); }); } catch (e) { console.warn('Рекорды недоступны:', e); } }
+  async function start() { try { const b = await getBackend(); b.onUser((u) => { user = u; cache = {}; window.dispatchEvent(new Event('pgr-user')); setTimeout(syncPending, 800); }); } catch (e) { console.warn('Рекорды недоступны:', e); } }
 
   const css = `
 .pgr-ov { position:fixed; inset:0; z-index:420; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:14px; font-family:'Noto Sans',system-ui,sans-serif; }
@@ -389,6 +389,13 @@
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
   const ordinal = (n) => n + '-е место';
+  // Результаты, решённые без сети или без входа, уходят в таблицу сами: когда вошли в аккаунт, вернулась сеть или страницу снова открыли
+  const SENT = 'pgrSent'; let syncing = false;
+  const sentSet = () => { try { return JSON.parse(localStorage.getItem(SENT) || '{}'); } catch (e) { return {}; } };
+  async function syncPending() {
+    if (!user || syncing || !cfg.pending) return; syncing = true; const sent = sentSet();
+    try { for (const it of cfg.pending()) { if (sent[it.id + ':' + user.uid]) continue; const r = await submit(it.id, it); if (r.status === 'new' || r.status === 'kept') { sent[it.id + ':' + user.uid] = 1; try { localStorage.setItem(SENT, JSON.stringify(sent)); } catch (e) {} if (r.status === 'new' && r.rank && window.PGA) PGA.event('rank', { pos: r.rank.pos }); } else if (r.status === 'error') break; } } catch (e) {} finally { syncing = false; }
+  }
   async function top(board, n) { const k = board + ':' + n; if (cache[k]) return cache[k]; const b = await getBackend(); return (cache[k] = await b.top(board, n)); }
   async function submit(board, d) {
     if (!user) return { status: 'guest' }; const b = await getBackend();
@@ -404,7 +411,7 @@
     const signIn = () => { if (window.PGSync && PGSync.signIn) PGSync.signIn().catch(() => {}); };
     if (!user) { host.innerHTML = 'Хотите попасть в таблицу рекордов? <button type="button">Войдите через Google</button>'; host.querySelector('button').onclick = signIn; const once = async () => { window.removeEventListener('pgr-user', once); if (user) winLine(host, board, d); }; window.addEventListener('pgr-user', once); return; }
     host.textContent = 'Записываем результат…'; const r = await submit(board, d);
-    if (r.status === 'error') host.textContent = 'Не удалось записать результат в таблицу. Проверьте интернет — он сохранится, когда вы откроете «Рекорды».';
+    if (r.status === 'error') host.textContent = 'Не удалось записать результат в таблицу (нет интернета?). Он сохранён у вас и отправится сам, когда связь появится.';
     else if (r.rank && window.PGA) PGA.event('rank', { pos: r.rank.pos });
     if (r.status !== 'error') host.innerHTML = (r.status === 'kept' ? 'В таблице уже есть ваш результат: ' + fmt(r.time) : 'Результат записан в таблицу') + (r.rank ? ` · <b>${ordinal(r.rank.pos)}</b> из ${r.rank.of}` : '');
   }
@@ -431,7 +438,8 @@
     const refresh = () => { if (document.body.contains(ov)) draw(); };
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgr-user', refresh); document.body.appendChild(ov); draw();
   }
-  window.PGRec = { config(c) { cfg = Object.assign(cfg, c); }, start, submit, top, open, winLine, fmt, get user() { return user; } };
+  window.addEventListener('online', () => setTimeout(syncPending, 500)); document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(syncPending, 500); });
+  window.PGRec = { config(c) { cfg = Object.assign(cfg, c); }, syncPending, start, submit, top, open, winLine, fmt, get user() { return user; } };
   const boot = () => { start(); const b = document.getElementById('pgr-btn'); if (b) b.onclick = open; };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
@@ -951,7 +959,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const SDK = new Function($('sdk-engine').textContent + '\nreturn SDK;')();
-const BUILD = '1.22 · 8 октября 2026';
+const BUILD = '1.24 · 8 октября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
@@ -1171,6 +1179,7 @@ $('open-prefs').onclick = () => {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('service-worker.js').catch(() => {});
 if (window.PGRec) PGRec.config({
   boards: () => { const tk = todayKey(), yk = dayBefore(tk); return [{ id: 'sd_' + tk, title: 'Сегодня', sub: 'Судоку дня · ' + tk }, { id: 'sd_' + yk, title: 'Вчера', sub: 'Судоку дня · ' + yk }]; },
+  pending: () => { const d = stats.daily, out = [], lim = keyOf(new Date(Date.now() - 14 * 86400000)); for (const k of Object.keys(d.results || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'sd_' + k, time: d.results[k], hints: d.hints[k] }); return out; },
   local: (id) => { const k = id.slice(3), d = stats.daily; return d && d.results[k] != null && d.hints && d.hints[k] != null ? { time: d.results[k], hints: d.hints[k] } : null; } });
 window.__sdk = { get S() { return S; }, SDK, startNew, select, setDigit, erase, undo, redo, hint, check, fillNotes, toggleNotes, get prefs() { return prefs; }, get stats() { return stats; }, todayKey, showMenu, setPause };
 renderMenu();

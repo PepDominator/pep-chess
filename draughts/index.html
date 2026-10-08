@@ -303,30 +303,6 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   window.addEventListener('pgs-change', showBar); window.addEventListener('storage', (e) => { if (e.key === 'pgSettings') showBar(); });
 })();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </script>
 <script>
 // ============ Синхронизация данных между устройствами (вход через Google, хранилище — Firestore) ============
@@ -1506,7 +1482,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '1.22 · 8 октября 2026';
+const BUILD = '1.24 · 8 октября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
