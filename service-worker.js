@@ -1,6 +1,6 @@
 // Общее меню. Обрабатывает только собственные файлы; страницы игр живут в своих подпапках
 // со своими service worker'ами и сюда не попадают. Чистит только свои кэши (префикс pep-hub-).
-const CACHE = 'pep-hub-v2';
+const CACHE = 'pep-hub-v3';
 const OWN = ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 const base = self.registration.scope;
 const isOwn = (url) => { const u = new URL(url); if (!url.startsWith(base)) return false; const rest = u.pathname.slice(new URL(base).pathname.length); return rest === '' || OWN.includes(rest); };

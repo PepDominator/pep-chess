@@ -1,6 +1,6 @@
 // Офлайн-кэш шахмат. Сеть в приоритете — обновления index.html подхватываются сами.
 // Чистим только СВОИ старые кэши (префикс pep-chess-), чтобы не задеть шашки и общее меню.
-const CACHE = 'pep-chess-v4';
+const CACHE = 'pep-chess-v5';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {

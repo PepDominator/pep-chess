@@ -1,5 +1,5 @@
 // Офлайн-кэш кроссвордов. Сеть в приоритете (обновления подхватываются сами); чистим только свои кэши (префикс pep-crossword-).
-const CACHE = 'pep-crossword-v1';
+const CACHE = 'pep-crossword-v2';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {

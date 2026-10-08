@@ -1,6 +1,6 @@
 // Офлайн-кэш: тяжёлые файлы движка (8.5 МБ) берём из кэша сразу, остальное — сеть в приоритете,
 // чтобы обновления index.html подхватывались без ручной очистки кэша.
-const CACHE = 'pep-draughts-v4';
+const CACHE = 'pep-draughts-v5';
 const ASSETS = ['./index.html', './manifest.json', './scan_normal.js', './scan_normal.data',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', (e) => {

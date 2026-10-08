@@ -1,5 +1,5 @@
 // Офлайн-кэш судоку. Сеть в приоритете (обновления подхватываются сами); чистим только свои кэши (префикс pep-sudoku-).
-const CACHE = 'pep-sudoku-v1';
+const CACHE = 'pep-sudoku-v2';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
