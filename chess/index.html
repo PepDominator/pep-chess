@@ -269,6 +269,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 
 
 
+
     </script>
 <script>
 // ============ Синхронизация данных между устройствами (вход через Google, хранилище — Firestore) ============
@@ -447,7 +448,8 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let backend = null, user = null, friends = [], inbox = [], unsub = null, h2h = null, pendingChallenge = null;
   const emit = () => window.dispatchEvent(new Event('pgf-change'));
-  const root = () => location.origin + location.pathname.replace(/(chess|draughts|sudoku|crossword)\/(index\.html)?$/, '').replace(/index\.html$/, '');
+  // корень сайта: адрес без последнего «сегмента-игры»; учитывает вложенные адреса вроде /pep-chess/ (имя репозитория на GitHub Pages)
+  const root = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
 
   // ---------- настоящий бэкенд на Firestore ----------
   async function firebaseBackend() {
@@ -5056,7 +5058,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '1.17 · 8 октября 2026';
+        const BUILD = '1.18 · 8 октября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });

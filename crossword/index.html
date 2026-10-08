@@ -644,7 +644,7 @@ if (typeof module !== 'undefined') module.exports = CW;
 const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 const DICT = JSON.parse($('cw-dict').textContent);
-const BUILD = '1.17 · 8 октября 2026';
+const BUILD = '1.18 · 8 октября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };

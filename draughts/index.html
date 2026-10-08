@@ -269,6 +269,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 
 
 
+
 </script>
 <script>
 // ============ Синхронизация данных между устройствами (вход через Google, хранилище — Firestore) ============
@@ -447,7 +448,8 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let backend = null, user = null, friends = [], inbox = [], unsub = null, h2h = null, pendingChallenge = null;
   const emit = () => window.dispatchEvent(new Event('pgf-change'));
-  const root = () => location.origin + location.pathname.replace(/(chess|draughts|sudoku|crossword)\/(index\.html)?$/, '').replace(/index\.html$/, '');
+  // корень сайта: адрес без последнего «сегмента-игры»; учитывает вложенные адреса вроде /pep-chess/ (имя репозитория на GitHub Pages)
+  const root = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
 
   // ---------- настоящий бэкенд на Firestore ----------
   async function firebaseBackend() {
@@ -1228,7 +1230,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '1.17 · 8 октября 2026';
+const BUILD = '1.18 · 8 октября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
