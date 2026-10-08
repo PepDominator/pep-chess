@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script>/*PGDARK-EARLY*/(function(){try{var t=(JSON.parse(localStorage.getItem('pgSettings')||'{}').theme)||'auto';var d=t==='dark'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}catch(e){}})()</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#EEF0E7">
@@ -18,9 +19,43 @@
 #boot-loader { display:none; }
 .boot-replay #setup, .boot-replay .menu-bg { display:none !important; }
 .boot-replay #boot-loader { display:flex; position:fixed; inset:0; z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:14px;
-  color:#6E7568; font:14px 'Noto Sans',system-ui,sans-serif; background:#EEF0E7; }
-.boot-replay #boot-loader::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid #D9DBCC; border-top-color:#3B5D4A; animation:bootspin .8s linear infinite; }
+  color:var(--k-mu); font:14px 'Noto Sans',system-ui,sans-serif; background:var(--k-bg); }
+.boot-replay #boot-loader::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid var(--k-line); border-top-color:#3B5D4A; animation:bootspin .8s linear infinite; }
 @keyframes bootspin { to { transform:rotate(360deg); } }
+/*PGDARK-VARS*/
+:root{--k-bg:#EEF0E7;--k-panel:#FDFDFA;--k-surf:#F3F2EA;--k-hover:#EAEADF;--k-line:#D9DBCC;--k-line2:#B7BAA5;--k-tx:#2A2E24;--k-mu:#6E7568;--k-mu2:#9A9D8E;--k-gt:#3B5D4A;--k-rt:#A23B33;--k-nt:#2F3A56;--k-warm:#F3EEDD;color-scheme:light}
+html[data-theme="dark"]{--k-bg:#131815;--k-panel:#1C221E;--k-surf:#252C27;--k-hover:#2E372F;--k-line:#39443C;--k-line2:#4D5A50;--k-tx:#E5E9DE;--k-mu:#A5AC9B;--k-mu2:#7E8677;--k-gt:#8CC3A0;--k-rt:#E8887E;--k-nt:#A9B9E0;--k-warm:#2B291E;--bg:#131815;--panel:#1C221E;--side-bg:#1C221E;--text:#E5E9DE;--muted:#A5AC9B;--ink-muted:#A5AC9B;--border:#39443C;--highlight:#2B3A2E;--green2:#8CC3A0;color-scheme:dark}
+
+/* кнопки-переключатели и «светлые острова» в тёмной теме */
+html[data-theme="dark"] .pg-sw::after, html[data-theme="dark"] .sw::after, html[data-theme="dark"] .toggle::after { background:#F1F3EA !important; }
+html[data-theme="dark"] img.piece, html[data-theme="dark"] .piece img { filter:none; }
+html[data-theme="dark"] ::selection { background:#3E6B52; color:#fff; }
+html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { color-scheme:dark; }
+/* судоку: тёмные клетки вместо палитры светлой доски */
+html[data-theme="dark"] .cell { background:#1F2622; border-right-color:#38443B; border-bottom-color:#38443B; }
+html[data-theme="dark"] .cell.alt { background:#262E29; }
+html[data-theme="dark"] .cell.peer { background:color-mix(in srgb, #4C7A5C 34%, #1F2622); }
+html[data-theme="dark"] .cell.alt.peer { background:color-mix(in srgb, #4C7A5C 34%, #262E29); }
+html[data-theme="dark"] .cell.same { background:color-mix(in srgb, #5878B8 42%, #1F2622) !important; }
+html[data-theme="dark"] .cell.sel { background:color-mix(in srgb, #C49A36 46%, #1F2622) !important; }
+html[data-theme="dark"] .cell.wrong { background:color-mix(in srgb, #C0463C 48%, #1F2622) !important; }
+/* кроссворд */
+html[data-theme="dark"] .c.l { background:#222A25; border-color:rgba(229,233,222,.38); box-shadow:0 1px 1px rgba(0,0,0,.4); }
+html[data-theme="dark"] .c.l.aw { background:color-mix(in srgb, #C49A36 30%, #222A25); border-color:rgba(214,180,90,.6); }
+html[data-theme="dark"] .c.l.ac { background:color-mix(in srgb, #C49A36 56%, #222A25); box-shadow:0 0 0 2px #8CC3A0, 0 2px 4px rgba(0,0,0,.45); }
+html[data-theme="dark"] .c.l.bad { background:color-mix(in srgb, #C0463C 46%, #222A25); }
+html[data-theme="dark"] { --navy:#5B76B8; }
+html[data-theme="dark"] .cell .v, html[data-theme="dark"] .c.l .ch { color:#9DB4EE; }
+html[data-theme="dark"] .cell.given .v { color:#EEF1E6; font-weight:700; }
+html[data-theme="dark"] .cell.wrong .v { color:#FF9A8E; }
+html[data-theme="dark"] .cell.hinted .v { color:#8CC3A0; }
+html[data-theme="dark"] #pad button, html[data-theme="dark"] #kb button { background:#252C27; border-color:#39443C; color:#CBD6F2; }
+html[data-theme="dark"] #pad button:disabled, html[data-theme="dark"] #kb button:disabled { color:#5A6760; }
+html[data-theme="dark"] #minimap { background:rgba(28,34,30,.93); border-color:rgba(229,233,222,.45); box-shadow:0 4px 14px rgba(0,0,0,.5); }
+/* шахматная и шашечная доски чуть приглушены, чтобы не слепили */
+html[data-theme="dark"] #board, html[data-theme="dark"] .board, html[data-theme="dark"] #chessboard { filter:brightness(.86) contrast(1.02); }
+/* кружок «чёрных» шашек и подобные тёмные значки не должны сливаться с тёмным фоном */
+html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 </style>
     <script>
 // ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
@@ -33,14 +68,29 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true };
+  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true, theme: 'auto' };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
+  // Тема оформления: светлая, тёмная или как в системе
+  const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  const isDark = (th) => th === 'dark' || ((th || 'auto') === 'auto' && !!(mq && mq.matches));
+  function applyTheme() {
+    const dark = isDark(get().theme), r = document.documentElement; r.dataset.theme = dark ? 'dark' : 'light';
+    let m = document.querySelector('meta[name="theme-color"]'); if (!m && document.head) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); } if (m) m.content = dark ? '#131815' : '#EEF0E7';
+  }
+  if (mq) { const h = () => applyTheme(); if (mq.addEventListener) mq.addEventListener('change', h); else if (mq.addListener) mq.addListener(h); }
   function apply() {
     const s = get(), t = THEMES[s.board] || THEMES.classic, r = document.documentElement;
-    r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums);
+    r.style.setProperty('--sq-light', t.l); r.style.setProperty('--sq-dark', t.d); r.classList.toggle('no-nums', !s.nums); applyTheme();
   }
   function set(patch) { const v = Object.assign(get(), patch); try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} apply(); window.dispatchEvent(new Event('pgs-change')); return v; }
-  window.PGS = { get, set, apply, THEMES };
+  window.PGS = { get, set, apply, THEMES, isDark };
+  const THEME_OPTS = [['light', 'Светлая'], ['dark', 'Тёмная'], ['auto', 'Как в системе']];
+  // Строка выбора темы оформления; используется и в панели настроек, и в судоку с кроссвордами
+  window.PGS.mountThemeRow = function (host) {
+    if (!host) return; const cur = get().theme || 'auto';
+    host.innerHTML = '<div class="pg-row" style="flex-wrap:wrap"><div><b>Тема оформления</b><span class="d">Светлая, тёмная или как настроено в телефоне и компьютере</span></div><div class="pg-seg" role="group" aria-label="Тема оформления">' + THEME_OPTS.map(([k, n]) => '<button type="button" data-th="' + k + '" class="' + (cur === k ? 'on' : '') + '">' + n + '</button>').join('') + '</div></div>';
+    host.querySelectorAll('.pg-seg button').forEach((b) => { b.onclick = () => { set({ theme: b.dataset.th }); window.PGS.mountThemeRow(host); }; });
+  };
   // Звук: одно место, через которое проходят все звуки приложения.
   const origPlay = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () { if (!get().sound) return Promise.resolve(); return origPlay.apply(this, arguments); };
@@ -48,27 +98,28 @@
   window.addEventListener('pgsync-applied', (e) => { if (e.detail && e.detail.key === KEY) { apply(); window.dispatchEvent(new Event('pgs-change')); } });
 
   const css = `
-.pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:#8B8E7F; cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
-.pg-gear:hover { color:#2A2E24; background:#EAEADF; } .pg-gear.static { position:static; }
+.pg-gear { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; line-height:1; color:var(--k-mu2); cursor:pointer; padding:4px 8px; z-index:3; font-family:inherit; }
+.pg-gear:hover { color:var(--k-tx); background:var(--k-hover); } .pg-gear.static { position:static; }
 .pg-ov { position:fixed; inset:0; z-index:400; background:rgba(42,46,36,.38); display:flex; align-items:center; justify-content:center; padding:16px; font-family:'Noto Sans',system-ui,sans-serif; }
-.pg-panel { background:#FDFDFA; border:1px solid #D9DBCC; width:100%; max-width:420px; max-height:calc(100dvh - 32px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:#2A2E24; }
+.pg-panel { background:var(--k-panel); border:1px solid var(--k-line); width:100%; max-width:420px; max-height:calc(100dvh - 32px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:var(--k-tx); }
 .pg-panel h3 { margin:0; padding:22px 24px 6px; font:italic 400 24px Georgia,'Times New Roman',serif; }
-.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 24px; border-bottom:1px solid #E6E8DA; }
-.pg-row b { display:block; font-size:14px; font-weight:600; } .pg-row span.d { display:block; font-size:12px; color:#6E7568; margin-top:2px; line-height:1.4; }
-.pg-sw { position:relative; width:44px; height:24px; flex-shrink:0; background:#C9CCBB; border:none; cursor:pointer; transition:background .15s; padding:0; }
-.pg-sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; transition:transform .15s; }
+.pg-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 24px; border-bottom:1px solid var(--k-line); }
+.pg-row b { display:block; font-size:14px; font-weight:600; } .pg-row span.d { display:block; font-size:12px; color:var(--k-mu); margin-top:2px; line-height:1.4; }
+.pg-sw { position:relative; width:44px; height:24px; flex-shrink:0; background:var(--k-line2); border:none; cursor:pointer; transition:background .15s; padding:0; }
+.pg-sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:var(--k-panel); transition:transform .15s; }
 .pg-sw.on { background:#3B5D4A; } .pg-sw.on::after { transform:translateX(20px); }
 .pg-themes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:6px 24px 16px; }
-.pg-th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font:inherit; font-size:11.5px; color:#6E7568; text-align:center; }
-.pg-th.on { border-color:#3B5D4A; color:#2A2E24; font-weight:700; }
+.pg-th { border:2px solid transparent; background:none; padding:4px; cursor:pointer; font:inherit; font-size:11.5px; color:var(--k-mu); text-align:center; }
+.pg-th.on { border-color:#3B5D4A; color:var(--k-tx); font-weight:700; }
 .pg-th i { display:block; aspect-ratio:1/1; margin-bottom:4px; box-shadow:0 0 0 1px rgba(42,46,36,.15); }
 .pg-title2 { padding:14px 24px 0; font-size:14px; font-weight:600; }
-.pg-small { background:#F3F2EA; border:1px solid #D9DBCC; padding:7px 12px; font:700 12.5px 'Noto Sans',sans-serif; color:#2A2E24; cursor:pointer; flex-shrink:0; } .pg-small:hover { background:#EAEADF; }
+.pg-seg { display:flex; width:100%; border:1px solid var(--k-line); } .pg-seg button { flex:1; background:var(--k-surf); border:none; border-right:1px solid var(--k-line); padding:8px 6px; font:600 12.5px 'Noto Sans',sans-serif; color:var(--k-mu); cursor:pointer; } .pg-seg button:last-child { border-right:none; } .pg-seg button.on { background:#3B5D4A; color:#fff; }
+.pg-small { background:var(--k-surf); border:1px solid var(--k-line); padding:7px 12px; font:700 12.5px 'Noto Sans',sans-serif; color:var(--k-tx); cursor:pointer; flex-shrink:0; } .pg-small:hover { background:var(--k-hover); }
 .pg-close { display:block; width:calc(100% - 48px); margin:18px 24px 22px; padding:12px; background:#3B5D4A; color:#fff; border:none; font:700 14px inherit; cursor:pointer; }
 #pg-confirm { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:350; display:none; align-items:center; gap:10px; background:#2F3A56; color:#fff; padding:10px 12px 10px 16px; box-shadow:0 10px 30px rgba(0,0,0,.35); font:600 14px 'Noto Sans',system-ui,sans-serif; max-width:calc(100vw - 20px); }
 #pg-confirm button { border:none; padding:9px 14px; font:700 13px inherit; cursor:pointer; }
-#pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:#EAEADF; color:#2A2E24; }
-.snd-btn { background:none; border:none; font-size:15px; line-height:1; color:#6E7568; cursor:pointer; width:28px; height:28px; padding:0; border-radius:2px; } .snd-btn:hover { background:#EAEADF; color:#2A2E24; }
+#pg-confirm .ok { background:#3B5D4A; color:#fff; } #pg-confirm .no { background:var(--k-hover); color:var(--k-tx); }
+.snd-btn { background:none; border:none; font-size:15px; line-height:1; color:var(--k-mu); cursor:pointer; width:28px; height:28px; padding:0; border-radius:2px; } .snd-btn:hover { background:var(--k-hover); color:var(--k-tx); }
 .pg-pending { box-shadow:inset 0 0 0 1000px rgba(47,58,86,.38) !important; }
 .no-nums .sq .num { display:none !important; }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
@@ -88,6 +139,7 @@
       const s = get();
       const sw = (k) => `<button class="pg-sw ${s[k] ? 'on' : ''}" data-k="${k}" role="switch" aria-checked="${s[k]}"></button>`;
       ov.innerHTML = `<div class="pg-panel" role="dialog" aria-modal="true"><h3>Настройки</h3>
+        <div id="pg-theme-row"></div>
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
         <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
@@ -98,6 +150,7 @@
         <div class="pg-title2">Оформление доски</div>
         <div class="pg-themes">${Object.entries(THEMES).map(([k, t]) => `<button class="pg-th ${s.board === k ? 'on' : ''}" data-b="${k}"><i style="background:linear-gradient(135deg,${t.l} 50%,${t.d} 50%)"></i>${t.n}</button>`).join('')}</div>
         <button class="pg-close">Готово</button></div>`;
+      window.PGS.mountThemeRow(ov.querySelector('#pg-theme-row'));
       if (window.PGSync) window.PGSync.mountRow(ov.querySelector('#pg-sync-row'));
       ov.querySelectorAll('.pg-sw').forEach((b) => { b.onclick = () => { const k = b.dataset.k; set({ [k]: !get()[k] }); paint(); }; });
       ov.querySelectorAll('.pg-th').forEach((b) => { b.onclick = () => { set({ board: b.dataset.b }); paint(); }; });
@@ -131,20 +184,20 @@
   const QUICK = ['Удачи!', 'Хорошая игра', 'Спасибо', 'Ничья?', 'Ой, зевнул', '👍'];
   let cfg = null, unsub = null, msgs = [], open = false, unread = 0, lastSent = 0, first = true, bar = null, panel = null, styled = false;
   const css = `
-#pgc-bar { display:flex; justify-content:flex-end; padding:5px 12px; background:#F3F2EA; border-top:1px solid #E6E8DA; border-bottom:1px solid #E6E8DA; flex-shrink:0; }
-#pgc-toggle { position:relative; background:#FDFDFA; border:1px solid #D9DBCC; padding:5px 12px; font:600 13px 'Noto Sans',system-ui,sans-serif; color:#2A2E24; cursor:pointer; } #pgc-toggle:hover { background:#EAEADF; }
+#pgc-bar { display:flex; justify-content:flex-end; padding:5px 12px; background:var(--k-surf); border-top:1px solid var(--k-line); border-bottom:1px solid var(--k-line); flex-shrink:0; }
+#pgc-toggle { position:relative; background:var(--k-panel); border:1px solid var(--k-line); padding:5px 12px; font:600 13px 'Noto Sans',system-ui,sans-serif; color:var(--k-tx); cursor:pointer; } #pgc-toggle:hover { background:var(--k-hover); }
 #pgc-toggle.on { background:#3B5D4A; color:#fff; border-color:#3B5D4A; }
 #pgc-badge { display:none; margin-left:6px; min-width:18px; padding:0 5px; background:#A23B33; color:#fff; font:700 11px/18px 'Noto Sans',sans-serif; text-align:center; }
-#pgc-panel { display:none; flex:1 1 auto; min-height:150px; flex-direction:column; background:#FDFDFA; font-family:'Noto Sans',system-ui,sans-serif; color:#2A2E24; overflow:hidden; }
-#pgc-list { flex:1 1 auto; min-height:60px; padding:10px 12px; overflow-y:auto; display:flex; flex-direction:column; gap:7px; background:#F8F7F1; }
-.pgc-empty { margin:auto; color:#8B8E7F; font-size:12.5px; text-align:center; line-height:1.5; }
-.pgc-m { max-width:86%; padding:6px 10px; font-size:14px; line-height:1.4; word-break:break-word; background:#fff; border:1px solid #E1E3D3; align-self:flex-start; }
-.pgc-m.me { align-self:flex-end; background:#E4ECE3; border-color:#CBD8C9; } .pgc-m small { display:block; font-size:11px; color:#8B8E7F; margin-bottom:1px; }
+#pgc-panel { display:none; flex:1 1 auto; min-height:150px; flex-direction:column; background:var(--k-panel); font-family:'Noto Sans',system-ui,sans-serif; color:var(--k-tx); overflow:hidden; }
+#pgc-list { flex:1 1 auto; min-height:60px; padding:10px 12px; overflow-y:auto; display:flex; flex-direction:column; gap:7px; background:var(--k-surf); }
+.pgc-empty { margin:auto; color:var(--k-mu2); font-size:12.5px; text-align:center; line-height:1.5; }
+.pgc-m { max-width:86%; padding:6px 10px; font-size:14px; line-height:1.4; word-break:break-word; background:var(--k-panel); border:1px solid var(--k-hover); align-self:flex-start; }
+.pgc-m.me { align-self:flex-end; background:var(--k-hover); border-color:var(--k-line2); } .pgc-m small { display:block; font-size:11px; color:var(--k-mu2); margin-bottom:1px; }
 #pgc-quick { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 2px; flex-shrink:0; }
-#pgc-quick button { background:#F3F2EA; border:1px solid #D9DBCC; padding:5px 9px; font:600 12.5px 'Noto Sans',sans-serif; color:#2A2E24; cursor:pointer; } #pgc-quick button:hover { background:#EAEADF; }
-#pgc-form { display:flex; gap:6px; padding:8px 12px 10px; flex-shrink:0; } #pgc-in { flex:1; min-width:0; background:#F3F2EA; border:1px solid #D9DBCC; padding:8px 10px; font:14px 'Noto Sans',sans-serif; color:#2A2E24; }
+#pgc-quick button { background:var(--k-surf); border:1px solid var(--k-line); padding:5px 9px; font:600 12.5px 'Noto Sans',sans-serif; color:var(--k-tx); cursor:pointer; } #pgc-quick button:hover { background:var(--k-hover); }
+#pgc-form { display:flex; gap:6px; padding:8px 12px 10px; flex-shrink:0; } #pgc-in { flex:1; min-width:0; background:var(--k-surf); border:1px solid var(--k-line); padding:8px 10px; font:14px 'Noto Sans',sans-serif; color:var(--k-tx); }
 #pgc-in:focus { outline:none; border-color:#3B5D4A; } #pgc-send { background:#3B5D4A; color:#fff; border:none; padding:0 14px; font:700 13px 'Noto Sans',sans-serif; cursor:pointer; }
-#pgc-err { padding:0 12px 6px; font-size:12px; color:#A23B33; display:none; flex-shrink:0; }`;
+#pgc-err { padding:0 12px 6px; font-size:12px; color:var(--k-rt); display:none; flex-shrink:0; }`;
   const $id = (id) => document.getElementById(id);
   const enabled = () => !window.PGS || window.PGS.get().chat !== false;
   function build() {
@@ -209,6 +262,13 @@
 
 
 
+
+
+
+
+
+
+
     </script>
 <script>
 // ============ Синхронизация данных между устройствами (вход через Google, хранилище — Firestore) ============
@@ -224,7 +284,8 @@
     sudokuPrefs: { m: 'lww' }, sudokuLevel: { m: 'lww' }, crosswordPrefs: { m: 'lww' },
     sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true }, crosswordWeekSave: { m: 'lww', slow: true },
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
-    chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 }
+    chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
+    chessCurrent: { m: 'lww', delay: 2500 }, draughtsCurrent: { m: 'lww', delay: 2500 }       // идущая партия с компьютером: продолжить можно на другом устройстве
   };
   const META = 'pgSyncMeta', UIDK = 'pgSyncUid', DEVK = 'pgDevId';
   const ls = window.localStorage, rawSet = Storage.prototype.setItem, rawRem = Storage.prototype.removeItem;
@@ -293,7 +354,7 @@
   }
   function schedule(k) {
     if (!uid || !backend) return; clearTimeout(timers[k]); const slow = REG[k].slow && getL(k) != null;      // удаление (партию закончили) отправляем сразу
-    timers[k] = setTimeout(() => { setSt({ status: 'syncing' }); pushKey(k); }, slow ? (window.__pgSyncSlowMs || 15000) : 1200);
+    timers[k] = setTimeout(() => { setSt({ status: 'syncing' }); pushKey(k); }, slow ? (window.__pgSyncSlowMs || 15000) : (REG[k].delay ? (window.__pgSyncGameMs || REG[k].delay) : 1200));
   }
   function flush() { Object.keys(timers).forEach((k) => { clearTimeout(timers[k]); delete timers[k]; if (uid && backend) pushKey(k); }); }
   function onLocalChange(k) { const m = getMeta(); m[k] = { t: Date.now() }; putMeta(m); schedule(k); }
@@ -358,13 +419,13 @@
   // ---------- строка «Синхронизация» для панелей настроек ----------
   function mountRow(host, compact) {
     if (!host) return; const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:14px;padding:' + (compact ? '12px 14px;border:1px solid #D9DBCC;background:#F8F7F1;' : '13px 24px;border-bottom:1px solid #E6E8DA;') + 'font-family:\'Noto Sans\',system-ui,sans-serif;color:#2A2E24';
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:14px;padding:' + (compact ? '12px 14px;border:1px solid var(--k-line);background:var(--k-surf);' : '13px 24px;border-bottom:1px solid var(--k-line);') + 'font-family:\'Noto Sans\',system-ui,sans-serif;color:var(--k-tx)';
     host.innerHTML = ''; host.appendChild(wrap);
-    const btnCss = 'background:#F3F2EA;border:1px solid #D9DBCC;padding:7px 12px;font:700 12.5px \'Noto Sans\',sans-serif;color:#2A2E24;cursor:pointer;flex-shrink:0;';
+    const btnCss = 'background:var(--k-surf);border:1px solid var(--k-line);padding:7px 12px;font:700 12.5px \'Noto Sans\',sans-serif;color:var(--k-tx);cursor:pointer;flex-shrink:0;';
     function paint() {
       const s = st, t = s.last ? new Date(s.last).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
-      if (!s.user) wrap.innerHTML = '<div><b style="font-size:14px;font-weight:600;display:block">Синхронизация между устройствами</b><span style="font-size:12px;color:#6E7568;display:block;margin-top:2px;line-height:1.4">Войдите через Google — настройки, незавершённые партии, судоку, кроссворды и статистика будут на всех ваших устройствах.' + (s.error ? ' <span style="color:#A23B33">' + s.error + '</span>' : '') + '</span></div><button data-a="in" style="' + btnCss + '">Войти</button>';
-      else wrap.innerHTML = '<div><b style="font-size:14px;font-weight:600;display:block">☁ ' + (s.status === 'syncing' ? 'Синхронизация…' : s.status === 'error' ? 'Нет связи с облаком' : 'Синхронизировано' + (t ? ' в ' + t : '')) + '</b><span style="font-size:12px;color:#6E7568;display:block;margin-top:2px;line-height:1.4">Аккаунт: ' + String(s.user.name).replace(/[<>&]/g, '') + (s.status === 'error' ? '. Данные сохранены на этом устройстве и отправятся позже.' : '') + '</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button data-a="now" style="' + btnCss + '">Сейчас</button><button data-a="out" style="' + btnCss + '">Выйти</button></div>';
+      if (!s.user) wrap.innerHTML = '<div><b style="font-size:14px;font-weight:600;display:block">Синхронизация между устройствами</b><span style="font-size:12px;color:var(--k-mu);display:block;margin-top:2px;line-height:1.4">Войдите через Google — настройки, незавершённые партии, судоку, кроссворды и статистика будут на всех ваших устройствах.' + (s.error ? ' <span style="color:var(--k-rt)">' + s.error + '</span>' : '') + '</span></div><button data-a="in" style="' + btnCss + '">Войти</button>';
+      else wrap.innerHTML = '<div><b style="font-size:14px;font-weight:600;display:block">☁ ' + (s.status === 'syncing' ? 'Синхронизация…' : s.status === 'error' ? 'Нет связи с облаком' : 'Синхронизировано' + (t ? ' в ' + t : '')) + '</b><span style="font-size:12px;color:var(--k-mu);display:block;margin-top:2px;line-height:1.4">Аккаунт: ' + String(s.user.name).replace(/[<>&]/g, '') + (s.status === 'error' ? '. Данные сохранены на этом устройстве и отправятся позже.' : '') + '</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button data-a="now" style="' + btnCss + '">Сейчас</button><button data-a="out" style="' + btnCss + '">Выйти</button></div>';
       wrap.querySelectorAll('button').forEach((b) => { b.onclick = async () => { const a = b.dataset.a; b.disabled = true; try { if (a === 'in') await signIn(); else if (a === 'now') await syncNow(); else await signOutNow(); } catch (e) { setSt({ error: 'Не удалось: ' + (e && e.code || e.message || e) }); } b.disabled = false; }; });
     }
     const h = () => { if (!wrap.isConnected) { window.removeEventListener('pgsync-state', h); return; } paint(); }; window.addEventListener('pgsync-state', h); paint();
@@ -372,6 +433,191 @@
 
   window.PGSync = { get state() { return Object.assign({}, st); }, signIn, signOut: signOutNow, syncNow, mountRow, start, REG, _merge: { history: mergeHistory, stats: mergeStats }, _reconcile: reconcile };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0)); else setTimeout(start, 0);
+})();
+
+// ============ Друзья и вызовы на партию (общее меню, шахматы, шашки) ============
+// Друзья хранятся в friends/{uid}/list/{friendUid}; приглашения и вызовы приходят в inbox/{uid}/items/{id}.
+// Как и в синхронизации, у модуля есть подменяемый «бэкенд» (window.__pgfBackend) — для тестов без сети.
+(function () {
+  if (window.PGF) return;
+  const SDK = 'https://www.gstatic.com/firebasejs/10.13.0/';
+  const CFG = { apiKey: 'AIzaSyDpce_OyUUijQajza3tIKQjcTBzAtGbQrY', authDomain: 'pep-chess-2026.firebaseapp.com', projectId: 'pep-chess-2026', storageBucket: 'pep-chess-2026.firebasestorage.app', messagingSenderId: '170856560854', appId: '1:170856560854:web:d9b6b766cbd56780ecf177' };
+  const STALE = 30 * 60 * 1000, GAME_NAME = { chess: 'шахматы', draughts: 'шашки' }, GAME_ICON = { chess: '♞', draughts: '⛀' };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let backend = null, user = null, friends = [], inbox = [], unsub = null, h2h = null, pendingChallenge = null;
+  const emit = () => window.dispatchEvent(new Event('pgf-change'));
+  const root = () => location.origin + location.pathname.replace(/(chess|draughts|sudoku|crossword)\/(index\.html)?$/, '').replace(/index\.html$/, '');
+
+  // ---------- настоящий бэкенд на Firestore ----------
+  async function firebaseBackend() {
+    const [A, Au, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')]);
+    let app = null; for (let i = 0; i < 60 && !app; i++) { const apps = A.getApps(); if (apps.length) app = apps[0]; else await sleep(50); }
+    if (!app) app = A.initializeApp(CFG);
+    const auth = Au.getAuth(app), db = F.getFirestore(app), ms = (v) => (v && v.toMillis ? v.toMillis() : 0);
+    return {
+      onUser(cb) { Au.onAuthStateChanged(auth, (u) => cb(u && !u.isAnonymous ? { uid: u.uid, name: u.displayName || u.email || 'Игрок', photo: u.photoURL || null } : null)); },
+      async profile(uid) { const s = await F.getDoc(F.doc(db, 'profiles', uid)); return s.exists() ? { uid, displayName: s.data().displayName || 'Игрок', photoURL: s.data().photoURL || null } : null; },
+      async friends(uid) { const s = await F.getDocs(F.collection(db, 'friends', uid, 'list')); return s.docs.map((d) => ({ uid: d.id, name: d.data().name, photo: d.data().photo || null, at: ms(d.data().at) })); },
+      async addFriend(uid, fid, data) { await F.setDoc(F.doc(db, 'friends', uid, 'list', fid), { name: String(data.name || 'Игрок').slice(0, 40), photo: data.photo || null, at: F.serverTimestamp() }); },
+      async removeFriend(uid, fid) { await F.deleteDoc(F.doc(db, 'friends', uid, 'list', fid)); },
+      inboxListen(uid, cb) { return F.onSnapshot(F.query(F.collection(db, 'inbox', uid, 'items'), F.orderBy('at', 'desc'), F.limit(10)), (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data(), at: ms(d.data().at) || Date.now() }))), () => cb([])); },
+      async inboxSend(toUid, id, data) { await F.setDoc(F.doc(db, 'inbox', toUid, 'items', id), { ...data, at: F.serverTimestamp() }); },
+      async inboxDelete(uid, id) { await F.deleteDoc(F.doc(db, 'inbox', uid, 'items', id)); },
+      async myGames(uid, game) { const col = game === 'chess' ? 'playerGames' : 'playerDraughts'; const s = await F.getDocs(F.query(F.collection(db, col, uid, 'games'), F.orderBy('finishedAt', 'desc'), F.limit(300))); return s.docs.map((d) => d.data()); }
+    };
+  }
+  const getBackend = async () => backend || (backend = window.__pgfBackend || await firebaseBackend());
+
+  // ---------- стили ----------
+  const css = `
+.pgf-btn { background:none; border:none; font:inherit; font-size:20px; line-height:1; color:var(--k-mu2); cursor:pointer; padding:4px 8px; font-size:14px; font-weight:600; } .pgf-btn:hover { color:var(--k-tx); background:var(--k-hover); }
+.pgf-ov { position:fixed; inset:0; z-index:420; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:14px; font-family:'Noto Sans',system-ui,sans-serif; }
+.pgf-panel { position:relative; background:var(--k-panel); border:1px solid var(--k-line); width:100%; max-width:480px; max-height:calc(100dvh - 28px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:var(--k-tx); padding:22px 22px 20px; }
+.pgf-panel h3 { margin:0 0 4px; font:italic 400 26px Georgia,'Times New Roman',serif; } .pgf-panel .pgf-sub { font-size:13px; color:var(--k-mu); margin:0 0 14px; line-height:1.45; }
+.pgf-x { position:absolute; top:10px; right:12px; background:none; border:none; font-size:18px; color:var(--k-mu2); cursor:pointer; }
+.pgf-box { background:var(--k-surf); border:1px solid var(--k-line); padding:12px; margin:0 0 14px; } .pgf-box b { display:block; font-size:13px; margin-bottom:6px; }
+.pgf-link { display:flex; gap:6px; } .pgf-link input { flex:1; min-width:0; background:var(--k-panel); border:1px solid var(--k-line); padding:8px 9px; font:12px 'Roboto Mono',monospace; color:var(--k-tx); }
+.pgf-b { background:#3B5D4A; color:#fff; border:none; padding:8px 12px; font:700 13px inherit; cursor:pointer; white-space:nowrap; } .pgf-b.alt { background:var(--k-surf); color:var(--k-tx); border:1px solid var(--k-line); } .pgf-b.sm { padding:6px 10px; font-size:12px; }
+.pgf-h { font-size:13px; font-weight:700; margin:16px 0 8px; display:flex; justify-content:space-between; align-items:center; }
+.pgf-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--k-line); } .pgf-row:last-child { border-bottom:none; }
+.pgf-av { width:34px; height:34px; border-radius:50%; background:var(--k-line2); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; overflow:hidden; flex-shrink:0; } .pgf-av img { width:100%; height:100%; object-fit:cover; }
+.pgf-who { flex:1; min-width:0; } .pgf-who b { display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .pgf-who span { display:block; font-size:12px; color:var(--k-mu); margin-top:1px; }
+.pgf-acts { display:flex; gap:6px; flex-shrink:0; }
+@media (max-width:520px) { .pgf-row { flex-wrap:wrap; } .pgf-who { flex:1 1 calc(100% - 50px); } .pgf-acts { width:100%; padding-left:44px; } .pgf-panel { padding:20px 16px 16px; } } .pgf-empty { font-size:13px; color:var(--k-mu); padding:6px 0 2px; line-height:1.5; }
+#pgf-toasts { position:fixed; right:12px; bottom:12px; z-index:430; display:flex; flex-direction:column; gap:8px; max-width:calc(100vw - 24px); width:340px; font-family:'Noto Sans',system-ui,sans-serif; }
+.pgf-toast { background:#2F3A56; color:#fff; padding:12px 14px; box-shadow:0 12px 34px rgba(0,0,0,.35); font-size:13.5px; line-height:1.4; } .pgf-toast b { font-weight:700; } .pgf-toast .pgf-acts { margin-top:9px; } .pgf-toast .pgf-b { background:#3B5D4A; } .pgf-toast .pgf-b.alt { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.4); }
+#pgf-challenge { position:fixed; left:50%; top:10px; transform:translateX(-50%); z-index:430; background:#C49A36; color:var(--k-tx); padding:9px 12px; font:600 13px 'Noto Sans',system-ui,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,.3); max-width:calc(100vw - 20px); display:flex; gap:10px; align-items:center; } #pgf-challenge button { background:rgba(0,0,0,.15); border:none; padding:4px 9px; font:700 12px inherit; cursor:pointer; color:inherit; }`;
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+
+  // ---------- состояние ----------
+  async function loadFriends() { try { friends = (await backend.friends(user.uid)).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru')); } catch (e) { friends = []; } emit(); }
+  function onInbox(items) { inbox = (items || []).filter((x) => x && x.from && x.from !== (user && user.uid)); renderToasts(); }
+  async function start() {
+    try { const b = await getBackend(); b.onUser(async (u) => { user = u; h2h = null; if (unsub) { try { unsub(); } catch (e) {} unsub = null; } if (!u) { friends = []; inbox = []; renderToasts(); emit(); return; } await loadFriends(); unsub = b.inboxListen(u.uid, onInbox); window.dispatchEvent(new Event('pgf-user')); }); } catch (e) { console.warn('Друзья недоступны:', e); }
+  }
+
+  // ---------- уведомления о вызовах ----------
+  function toastBox() { let b = document.getElementById('pgf-toasts'); if (!b) { b = document.createElement('div'); b.id = 'pgf-toasts'; document.body.appendChild(b); } return b; }
+  function dropItem(it) { if (user) backend.inboxDelete(user.uid, it.id).catch(() => {}); }
+  function renderToasts() {
+    if (!document.body) return; const box = toastBox(); box.innerHTML = '';
+    inbox.forEach((it) => {
+      const old = it.type === 'challenge' && Date.now() - (it.at || 0) > STALE; if (old) { dropItem(it); return; }
+      const t = document.createElement('div'); t.className = 'pgf-toast'; t.dataset.id = it.id; const who = '<b>' + esc(it.name || 'Игрок') + '</b>';
+      if (it.type === 'challenge') {
+        t.innerHTML = `${who} вызывает вас на партию в ${GAME_NAME[it.game] || 'игру'} ${GAME_ICON[it.game] || ''}<div class="pgf-acts"><button class="pgf-b sm" data-a="ok">Принять</button><button class="pgf-b sm alt" data-a="no">Не сейчас</button></div>`;
+        t.querySelector('[data-a=ok]').onclick = () => { dropItem(it); location.href = root() + (it.game === 'draughts' ? 'draughts/' : 'chess/') + '?game=' + encodeURIComponent(it.gameId); };
+      } else {
+        const already = friends.some((f) => f.uid === it.from);
+        t.innerHTML = `${who} добавил(а) вас в друзья${already ? '' : '<div class="pgf-acts"><button class="pgf-b sm" data-a="ok">Добавить в ответ</button><button class="pgf-b sm alt" data-a="no">Скрыть</button></div>'}`;
+        if (already) { dropItem(it); return; }
+        t.querySelector('[data-a=ok]').onclick = async () => { await addFriend(it.from, { name: it.name, photo: null }, true); dropItem(it); };
+      }
+      t.querySelector('[data-a=no]').onclick = () => { dropItem(it); };
+      box.appendChild(t);
+    });
+  }
+
+  // ---------- действия ----------
+  async function addFriend(fid, info, silent) {
+    if (!user || fid === user.uid) return false; let prof = null; try { prof = await backend.profile(fid); } catch (e) {}
+    const name = (prof && prof.displayName) || info.name || 'Игрок', photo = (prof && prof.photoURL) || info.photo || null;
+    await backend.addFriend(user.uid, fid, { name, photo }); await loadFriends();
+    if (!silent) { try { await backend.inboxSend(fid, 'f_' + user.uid, { type: 'friend', from: user.uid, name: user.name }); } catch (e) { console.warn('Уведомление другу не доставлено', e); } }
+    return true;
+  }
+  async function removeFriend(fid) { await backend.removeFriend(user.uid, fid); await loadFriends(); }
+  async function sendChallenge(toUid, game, gameId) {
+    const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    await backend.inboxSend(toUid, id, { type: 'challenge', from: user.uid, name: user.name, game, gameId }); return id;
+  }
+  const inviteLink = () => user ? root() + '?friend=' + encodeURIComponent(user.uid) + '&n=' + encodeURIComponent(user.name || '') : '';
+
+  // счётчики «я — друг» по записям моих онлайн-партий: у новых записей есть oppUid
+  async function loadH2H() {
+    if (h2h) return h2h; h2h = {};
+    for (const game of ['chess', 'draughts']) {
+      let list = []; try { list = await backend.myGames(user.uid, game); } catch (e) {}
+      list.forEach((g) => { if (!g.oppUid) return; const r = h2h[g.oppUid] = h2h[g.oppUid] || { chess: { w: 0, d: 0, l: 0 }, draughts: { w: 0, d: 0, l: 0 } }; const s = r[game]; if (g.result === 'win') s.w++; else if (g.result === 'loss') s.l++; else if (g.result === 'draw') s.d++; });
+    }
+    return h2h;
+  }
+  function h2hText(r) {
+    if (!r) return 'Партий друг с другом пока нет';
+    const parts = ['chess', 'draughts'].filter((g) => r[g].w + r[g].d + r[g].l > 0).map((g) => `${GAME_ICON[g]} ${r[g].w}–${r[g].d}–${r[g].l}`);
+    return parts.length ? 'Счёт: ' + parts.join(' · ') : 'Партий друг с другом пока нет';
+  }
+
+  // ---------- окно «Друзья» ----------
+  const avatar = (n, p) => `<span class="pgf-av">${p ? `<img src="${esc(p)}" alt="" referrerpolicy="no-referrer">` : esc((n || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
+  async function openFriends() {
+    if (document.getElementById('pgf-ov')) return; const ov = document.createElement('div'); ov.className = 'pgf-ov'; ov.id = 'pgf-ov';
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('pgf-change', paint); }; const onKey = (e) => { if (e.key === 'Escape') close(); };
+    function paint() {
+      const p = ov.querySelector('.pgf-panel'), top = p ? p.scrollTop : 0;
+      if (!user) { ov.innerHTML = '<div class="pgf-panel"><button class="pgf-x" aria-label="Закрыть">✕</button><h3>Друзья</h3><p class="pgf-sub">Войдите через Google, чтобы добавлять друзей по ссылке, вызывать их на партию и видеть общий счёт.</p><button class="pgf-b" id="pgf-signin">Войти через Google</button></div>'; ov.querySelector('#pgf-signin').onclick = () => { const b = document.getElementById('acc-in'); if (b) b.click(); close(); }; }
+      else {
+        ov.innerHTML = `<div class="pgf-panel"><button class="pgf-x" aria-label="Закрыть">✕</button><h3>Друзья</h3><p class="pgf-sub">Отправьте другу свою ссылку. Когда он её откроет и добавит вас, вы окажетесь в списках друг у друга и сможете вызывать друг друга на партии.</p>
+          <div class="pgf-box"><b>Ваша ссылка-приглашение</b><div class="pgf-link"><input id="pgf-link" readonly value="${esc(inviteLink())}"><button class="pgf-b" id="pgf-copy">Копировать</button>${navigator.share ? '<button class="pgf-b alt" id="pgf-share">Отправить</button>' : ''}</div></div>
+          <div class="pgf-h"><span>Мои друзья · ${friends.length}</span><span style="font-weight:400;font-size:11.5px;color:var(--k-mu)">счёт: победы–ничьи–поражения</span></div><div id="pgf-list"></div></div>`;
+        const list = ov.querySelector('#pgf-list');
+        if (!friends.length) list.innerHTML = '<div class="pgf-empty">Пока никого. Скопируйте ссылку выше и отправьте другу, а ещё можно открыть ссылку друга: она сама предложит добавить его.</div>';
+        friends.forEach((f) => {
+          const row = document.createElement('div'); row.className = 'pgf-row'; row.dataset.uid = f.uid;
+          row.innerHTML = `${avatar(f.name, f.photo)}<span class="pgf-who"><b>${esc(f.name)}</b><span class="pgf-h2h">${h2h ? esc(h2hText(h2h[f.uid])) : '…'}</span></span><span class="pgf-acts"><button class="pgf-b sm" data-g="chess" title="Вызвать на партию в шахматы">♞ Вызвать</button><button class="pgf-b sm" data-g="draughts" title="Вызвать на партию в шашки">⛀ Вызвать</button><button class="pgf-b sm alt" data-rm="1" title="Убрать из друзей">✕</button></span>`;
+          row.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { location.href = root() + b.dataset.g + '/?challenge=' + encodeURIComponent(f.uid) + '&cn=' + encodeURIComponent(f.name || ''); }; });
+          row.querySelector('[data-rm]').onclick = async () => { if (confirm('Убрать «' + f.name + '» из друзей?')) await removeFriend(f.uid); };
+          list.appendChild(row);
+        });
+        const copy = ov.querySelector('#pgf-copy'); if (copy) copy.onclick = async () => { const inp = ov.querySelector('#pgf-link'); try { await navigator.clipboard.writeText(inp.value); } catch (e) { inp.select(); document.execCommand && document.execCommand('copy'); } copy.textContent = 'Скопировано ✓'; setTimeout(() => { copy.textContent = 'Копировать'; }, 1600); };
+        const sh = ov.querySelector('#pgf-share'); if (sh) sh.onclick = () => navigator.share({ title: 'Pep Games', text: 'Добавь меня в друзья в Pep Games', url: inviteLink() }).catch(() => {});
+      }
+      ov.querySelector('.pgf-x').onclick = close; const np = ov.querySelector('.pgf-panel'); if (np) np.scrollTop = top;
+    }
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgf-change', paint); document.body.appendChild(ov); paint();
+    if (user) { try { await loadH2H(); } catch (e) {} paint(); }
+  }
+
+  // ---------- ссылка «добавь меня в друзья» (общее меню) ----------
+  async function handleFriendLink() {
+    const q = new URLSearchParams(location.search), fid = q.get('friend'); if (!fid) return; const nm = q.get('n') || 'Игрок';
+    const strip = () => { try { history.replaceState(null, '', location.pathname); } catch (e) {} };
+    const ov = document.createElement('div'); ov.className = 'pgf-ov'; ov.id = 'pgf-friend-ov'; document.body.appendChild(ov);
+    const close = () => { ov.remove(); strip(); };
+    async function paint() {
+      if (!user) { ov.innerHTML = `<div class="pgf-panel"><button class="pgf-x">✕</button><h3>Приглашение в друзья</h3><p class="pgf-sub">${esc(nm)} зовёт вас в друзья в Pep Games. Войдите через Google, чтобы принять приглашение.</p><button class="pgf-b" id="pgf-signin2">Войти через Google</button></div>`; ov.querySelector('#pgf-signin2').onclick = () => { const b = document.getElementById('acc-in'); if (b) b.click(); }; ov.querySelector('.pgf-x').onclick = close; return; }
+      if (fid === user.uid) { ov.innerHTML = '<div class="pgf-panel"><button class="pgf-x">✕</button><h3>Это ваша ссылка</h3><p class="pgf-sub">Отправьте её другу, а не открывайте самому.</p><button class="pgf-b" id="pgf-ok">Понятно</button></div>'; ov.querySelector('#pgf-ok').onclick = close; ov.querySelector('.pgf-x').onclick = close; return; }
+      let prof = null; try { prof = await backend.profile(fid); } catch (e) {} const name = (prof && prof.displayName) || nm, photo = prof && prof.photoURL; const already = friends.some((f) => f.uid === fid);
+      ov.innerHTML = `<div class="pgf-panel"><button class="pgf-x">✕</button><h3>${already ? 'Вы уже друзья' : 'Добавить в друзья?'}</h3><div class="pgf-row" style="border:none">${avatar(name, photo)}<span class="pgf-who"><b>${esc(name)}</b><span>${already ? 'Уже в вашем списке' : 'Сможете вызывать друг друга на партии'}</span></span></div>${already ? '' : '<div class="pgf-acts" style="margin-top:12px"><button class="pgf-b" id="pgf-yes">Добавить</button><button class="pgf-b alt" id="pgf-no">Не сейчас</button></div>'}</div>`;
+      ov.querySelector('.pgf-x').onclick = close; const no = ov.querySelector('#pgf-no'); if (no) no.onclick = close;
+      const yes = ov.querySelector('#pgf-yes'); if (yes) yes.onclick = async () => { yes.disabled = true; try { await addFriend(fid, { name, photo }, false); strip(); ov.innerHTML = `<div class="pgf-panel"><button class="pgf-x">✕</button><h3>Готово</h3><p class="pgf-sub">${esc(name)} теперь в ваших друзьях. Ему отправлено уведомление, он сможет добавить вас в ответ.</p><button class="pgf-b" id="pgf-done">Хорошо</button></div>`; ov.querySelector('#pgf-done').onclick = close; ov.querySelector('.pgf-x').onclick = close; } catch (e) { yes.disabled = false; alert('Не удалось добавить друга. Проверьте интернет и попробуйте ещё раз.'); } };
+    }
+    window.addEventListener('pgf-user', () => { if (document.body.contains(ov)) paint(); }); paint();
+  }
+
+  // ---------- вызов друга из игры: страница игры открыта по ссылке ?challenge=<uid> ----------
+  function challengeInit(game) {
+    const q = new URLSearchParams(location.search), to = q.get('challenge'); if (!to) return; const nm = q.get('cn') || 'другу';
+    pendingChallenge = { to, name: nm, game };
+    const bar = document.createElement('div'); bar.id = 'pgf-challenge'; bar.innerHTML = `<span>Вызов для «${esc(nm)}»: выберите «Играть по сети», задайте время и создайте игру — приглашение придёт автоматически.</span><button type="button">Отмена</button>`; document.body.appendChild(bar);
+    const cancel = () => { pendingChallenge = null; bar.remove(); try { history.replaceState(null, '', location.pathname); } catch (e) {} }; bar.querySelector('button').onclick = cancel;
+    const objName = game === 'chess' ? 'OnlineChess' : 'OnlineDraughts';
+    (async function hook() {
+      for (let i = 0; i < 200; i++) { const o = window[objName]; if (o && typeof o.createGame === 'function') {
+        const orig = o.createGame.bind(o);
+        o.createGame = async function () {
+          const id = await orig.apply(null, arguments);
+          if (pendingChallenge && id) { const pc = pendingChallenge; pendingChallenge = null; bar.remove(); try { await getBackend(); await sendChallenge(pc.to, pc.game, id); window.dispatchEvent(new CustomEvent('pgf-challenge-sent', { detail: { to: pc.to, gameId: id } })); toast('Вызов отправлен: «' + pc.name + '» увидит приглашение на любой странице Pep Games.'); } catch (e) { console.warn('Вызов не доставлен', e); toast('Друг пока не добавил вас в свой список, приглашение не доставлено. Отправьте ему ссылку на партию вручную.'); } }
+          return id;
+        }; return; } await sleep(100); }
+    })();
+  }
+  function toast(text) { const b = toastBox(), t = document.createElement('div'); t.className = 'pgf-toast'; t.textContent = text; b.appendChild(t); setTimeout(() => t.remove(), 7000); }
+
+  window.PGF = { start, open: openFriends, handleFriendLink, challengeInit, sendChallenge, addFriend, removeFriend, inviteLink, h2hText, get user() { return user; }, get friends() { return friends; }, get inbox() { return inbox; }, _toast: toast };
+  const boot = () => { start(); const btn = document.getElementById('pgf-btn'); if (btn) btn.onclick = openFriends; if (document.getElementById('acc-in')) handleFriendLink(); const g = /\/(chess|draughts)\//.test(location.pathname) ? RegExp.$1 : null; if (g) challengeInit(g); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
 </script>
@@ -2193,7 +2439,7 @@ if (typeof define !== 'undefined')
 
         /* ОКНО ПАРАМЕТРОВ */
         .modal {
-            background: #FDFDFA;
+            background: var(--k-panel);
             width: 600px; max-width: calc(100vw - 24px); border-radius: 2px; position: relative; padding-bottom: 24px; z-index: 100;
             border: 1px solid var(--border); overflow: hidden;
             box-shadow: 0 18px 50px rgba(42,46,36,0.10), 0 2px 8px rgba(42,46,36,0.06);
@@ -2213,11 +2459,11 @@ if (typeof define !== 'undefined')
             display: flex; justify-content: center; padding: 14px 24px 0; min-height: 20px;
         }
         .account-signin-btn {
-            display: flex; align-items: center; gap: 8px; background: #FDFDFA; border: 1px solid var(--border);
+            display: flex; align-items: center; gap: 8px; background: var(--k-panel); border: 1px solid var(--border);
             border-radius: 3px; padding: 6px 14px; font-size: 13px; color: var(--text); cursor: pointer;
             font-family: 'Noto Sans', sans-serif; transition: background 120ms, border-color 120ms;
         }
-        .account-signin-btn:hover { background: #F3F2EA; border-color: #B7BAA5; }
+        .account-signin-btn:hover { background: var(--k-surf); border-color: var(--k-line2); }
         .account-user { display: flex; align-items: center; gap: 8px; }
         .account-avatar { width: 22px; height: 22px; border-radius: 50%; }
         .account-name { font-size: 13px; color: var(--text); font-weight: 600; }
@@ -2227,20 +2473,20 @@ if (typeof define !== 'undefined')
         }
         .account-signout-btn:hover { color: var(--text); }
 
-        .analysis-share { display:none; align-items:center; flex-wrap:wrap; gap:8px; padding:7px 16px; background:#F8F7F1; border-bottom:1px solid var(--border); }
+        .analysis-share { display:none; align-items:center; flex-wrap:wrap; gap:8px; padding:7px 16px; background:var(--k-surf); border-bottom:1px solid var(--border); }
         #game-ui.analysis-mode .analysis-share { display:flex; }
-        .analysis-share button { background:#F3F2EA; border:1px solid var(--border); color:var(--text); padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
-        .analysis-share button:hover { background:#EAEADF; }
+        .analysis-share button { background:var(--k-surf); border:1px solid var(--border); color:var(--text); padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .analysis-share button:hover { background:var(--k-hover); }
         #share-msg { font-size:12px; color:var(--ink-muted); }
         .cat-hint { font-size:12.5px; color:var(--ink-muted); text-align:center; margin:14px 0 4px; }
         .quick-btn { background:#2F3A56; box-shadow:0 6px 16px rgba(47,58,86,.22); margin-top:10px; }
-        .lobby-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--border); background:#F8F7F1; margin-bottom:6px; }
+        .lobby-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--border); background:var(--k-surf); margin-bottom:6px; }
         .lobby-t { font-weight:700; font-size:14px; } .lobby-m { font-size:12px; color:var(--ink-muted); margin-top:2px; }
         .lobby-row button { background:var(--green); color:#fff; border:none; padding:8px 18px; font-weight:700; cursor:pointer; font-family:inherit; } .lobby-row button:hover { filter:brightness(1.1); }
         .lobby-empty { font-size:13px; color:var(--ink-muted); text-align:center; padding:10px 6px 4px; line-height:1.5; }
-        .ver { font-size:11px; color:#9A9D8E; text-align:center; margin-top:8px; }
-        .back-hub { position:absolute; top:14px; left:16px; font-size:12px; color:var(--ink-muted,#6E7568); text-decoration:none; z-index:3; }
-        .back-hub:hover { color:var(--text,#2A2E24); }
+        .ver { font-size:11px; color:var(--k-mu2); text-align:center; margin-top:8px; }
+        .back-hub { position:absolute; top:14px; left:16px; font-size:12px; color:var(--ink-muted,var(--k-mu)); text-decoration:none; z-index:3; }
+        .back-hub:hover { color:var(--text,var(--k-tx)); }
         .brand-title {
             text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
             color: var(--green); padding-top: 24px; display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -2259,64 +2505,68 @@ if (typeof define !== 'undefined')
         /* Слайдеры времени */
         .time-section { display: flex; gap: 30px; margin-bottom: 18px; margin-top: 4px; }
         .time-col { flex: 1; }
-        .time-label { font-size: 13px; color: var(--ink-muted, #6E7568); margin-bottom: 10px; }
+        .time-label { font-size: 13px; color: var(--ink-muted, var(--k-mu)); margin-bottom: 10px; }
         .time-values { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .val-box { background: #F3F2EA; border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 2px; font-weight: 700; font-size: 14px; min-width: 28px; text-align: center; }
-        .plus-sep { color: #9A9D8E; font-weight: 700; }
-        input[type=range] { width: 100%; height: 3px; background: #D9DBCC; border-radius: 2px; outline: none; margin: 14px 0 4px; accent-color: var(--green); -webkit-appearance: none; transition: background 150ms; }
+        .val-box { background: var(--k-surf); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 2px; font-weight: 700; font-size: 14px; min-width: 28px; text-align: center; }
+        .plus-sep { color: var(--k-mu2); font-weight: 700; }
+        input[type=range] { width: 100%; height: 3px; background: var(--k-line); border-radius: 2px; outline: none; margin: 14px 0 4px; accent-color: var(--green); -webkit-appearance: none; transition: background 150ms; }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: #FDFDFA; cursor: pointer; border: 2px solid var(--green);
+            -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--k-panel); cursor: pointer; border: 2px solid var(--green);
             transition: transform 150ms ease, background 150ms ease; box-shadow: 0 1px 4px rgba(42,46,36,0.25);
         }
         input[type=range]::-webkit-slider-thumb:hover { background: var(--green); transform: scale(1.15); }
-        input[type=range]:hover { background: #CDD0BC; }
+        input[type=range]:hover { background: var(--k-line); }
 
         /* Пресеты времени */
         .presets { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 24px; }
         .preset-btn {
-            background: #F3F2EA; border: 1px solid var(--border); color: var(--ink-muted, #6E7568); font-size: 13px; padding: 6px 4px;
+            background: var(--k-surf); border: 1px solid var(--border); color: var(--ink-muted, var(--k-mu)); font-size: 13px; padding: 6px 4px;
             border-radius: 2px; cursor: pointer; text-align: center; transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
         }
-        .preset-btn:hover { background: #EAEADF; border-color: #B7BAA5; transform: translateY(-1px); }
+        .preset-btn:hover { background: var(--k-hover); border-color: var(--k-line2); transform: translateY(-1px); }
         .preset-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
         .preset-btn.active:hover { transform: none; }
 
-        .section-title { font-size: 13px; color: var(--ink-muted, #6E7568); margin-bottom: 10px; text-align: center; }
+        .section-title { font-size: 13px; color: var(--ink-muted, var(--k-mu)); margin-bottom: 10px; text-align: center; }
 
         .custom-time-row { display: flex; gap: 16px; margin-bottom: 24px; margin-top: -6px; }
         .custom-time-field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-        .custom-time-field label { font-size: 12px; color: var(--ink-muted, #6E7568); }
+        .custom-time-field label { font-size: 12px; color: var(--ink-muted, var(--k-mu)); }
         .custom-time-field input[type=number] {
-            background: #F3F2EA; border: 1px solid var(--border); color: var(--text); padding: 8px 10px;
+            background: var(--k-surf); border: 1px solid var(--border); color: var(--text); padding: 8px 10px;
             border-radius: 2px; font-size: 14px; font-family: 'Noto Sans', sans-serif; width: 100%; transition: box-shadow 150ms, border-color 150ms;
         }
         .custom-time-field input[type=number]:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(59,93,74,0.15); }
 
         .nickname-section { margin-bottom: 20px; }
+        .resume-card { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; margin-bottom: 18px; border: 1px solid #D9C58E; background: linear-gradient(135deg,var(--k-warm),var(--k-surf)); }
+        .resume-card b { display: block; font-size: 14px; } .resume-card span { display: block; font-size: 12px; color: var(--k-mu); margin-top: 2px; line-height: 1.35; }
+        .resume-card .rc-btns { display: flex; gap: 6px; flex-shrink: 0; flex-direction: column; } .resume-card button { cursor: pointer; font: 700 13px inherit; padding: 8px 12px; border: 1px solid #3B5D4A; background: #3B5D4A; color: #fff; }
+        .resume-card button.rc-x { background: transparent; color: var(--k-mu); border-color: var(--k-line); font-weight: 600; font-size: 12px; padding: 5px 10px; }
         .nickname-input {
-            background: #F3F2EA; border: 1px solid var(--border); color: var(--text); padding: 9px 12px;
+            background: var(--k-surf); border: 1px solid var(--border); color: var(--text); padding: 9px 12px;
             border-radius: 2px; font-size: 14px; font-family: 'Noto Sans', sans-serif; width: 100%; margin-top: 6px;
             transition: box-shadow 150ms, border-color 150ms;
         }
         .nickname-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(59,93,74,0.15); }
-        .nickname-input::placeholder { color: #9A9D8E; }
+        .nickname-input::placeholder { color: var(--k-mu2); }
 
-        .level-row { display: flex; background: #F3F2EA; border-radius: 3px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border); }
-        .lv-btn { flex: 1; border: none; background: transparent; color: var(--ink-muted, #6E7568); padding: 10px 0; cursor: pointer; border-right: 1px solid var(--border); font-weight: bold; font-size: 14px; transition: background 120ms, color 120ms; }
+        .level-row { display: flex; background: var(--k-surf); border-radius: 3px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border); }
+        .lv-btn { flex: 1; border: none; background: transparent; color: var(--ink-muted, var(--k-mu)); padding: 10px 0; cursor: pointer; border-right: 1px solid var(--border); font-weight: bold; font-size: 14px; transition: background 120ms, color 120ms; }
         .lv-btn:last-child { border-right: none; }
-        .lv-btn:hover:not(.active) { background: #EAEADF; color: var(--text); }
+        .lv-btn:hover:not(.active) { background: var(--k-hover); color: var(--text); }
         .lv-btn.active { background: var(--green); color: #fff; }
 
         .side-row { display: flex; gap: 8px; margin-bottom: 26px; }
         .side-btn {
-            flex: 1; background: #F3F2EA; border: 1px solid var(--border); height: 92px; display: flex; flex-direction: column;
+            flex: 1; background: var(--k-surf); border: 1px solid var(--border); height: 92px; display: flex; flex-direction: column;
             justify-content: center; align-items: center; cursor: pointer; border-radius: 3px; gap: 8px;
             transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
         }
-        .side-btn:hover:not(.active) { transform: translateY(-3px); border-color: #B7BAA5; background: #EAEADF; }
+        .side-btn:hover:not(.active) { transform: translateY(-3px); border-color: var(--k-line2); background: var(--k-hover); }
         .side-btn .king-icon { font-size: 26px; transition: transform 150ms ease; }
         .side-btn:hover .king-icon { transform: scale(1.1); }
-        .side-btn span.label { font-size: 13px; color: var(--ink-muted, #6E7568); }
+        .side-btn span.label { font-size: 13px; color: var(--ink-muted, var(--k-mu)); }
         .side-btn.active { background: var(--green); border-color: var(--green); box-shadow: 0 6px 16px rgba(59,93,74,0.25); }
         .side-btn.active span.label { color: #fff; }
 
@@ -2333,7 +2583,7 @@ if (typeof define !== 'undefined')
 
         .history-link-btn {
             display: block; width: 100%; margin-top: 12px; padding: 10px; background: transparent;
-            border: none; color: var(--ink-muted, #6E7568); font-size: 14px; cursor: pointer; text-align: center;
+            border: none; color: var(--ink-muted, var(--k-mu)); font-size: 14px; cursor: pointer; text-align: center;
             font-family: 'Noto Sans', sans-serif; position: relative;
         }
         .history-link-btn::after {
@@ -2344,12 +2594,12 @@ if (typeof define !== 'undefined')
         .history-link-btn:hover::after { width: 60%; left: 20%; }
 
         /* Переключатель режима партии (бот / сеть) */
-        .mode-tabs { display: flex; background: #F3F2EA; border: 1px solid var(--border); border-radius: 3px; margin-bottom: 22px; overflow: hidden; }
+        .mode-tabs { display: flex; background: var(--k-surf); border: 1px solid var(--border); border-radius: 3px; margin-bottom: 22px; overflow: hidden; }
         .mode-tab {
             flex: 1; border: none; background: transparent; color: var(--ink-muted); padding: 9px 0; cursor: pointer;
             font-size: 14px; font-weight: 700; font-family: 'Noto Sans', sans-serif; transition: background 120ms, color 120ms;
         }
-        .mode-tab:hover:not(.active) { background: #EAEADF; color: var(--text); }
+        .mode-tab:hover:not(.active) { background: var(--k-hover); color: var(--text); }
         .mode-tab.active { background: var(--green); color: #fff; }
 
         .online-divider { display: flex; align-items: center; text-align: center; color: var(--ink-muted); font-size: 12px; margin: 14px 0; }
@@ -2364,7 +2614,7 @@ if (typeof define !== 'undefined')
             transition: background 120ms;
         }
         .online-join-btn:hover { background: #2E4A3A; }
-        .online-error { color: #A23B33; font-size: 13px; margin-top: 8px; }
+        .online-error { color: var(--k-rt); font-size: 13px; margin-top: 8px; }
 
         #setup-view-waiting, #setup-view-join-prompt { text-align: center; padding-bottom: 8px; }
         .online-waiting-icon {
@@ -2379,7 +2629,7 @@ if (typeof define !== 'undefined')
 
         /* Статус соперника и предложения ничьи/заявки в сетевой игре */
         .online-banner {
-            background: #F3F2EA; border-top: 1px solid var(--border); padding: 10px 16px; display: flex;
+            background: var(--k-surf); border-top: 1px solid var(--border); padding: 10px 16px; display: flex;
             align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text);
         }
         .online-banner-btn {
@@ -2387,12 +2637,12 @@ if (typeof define !== 'undefined')
             font-family: 'Noto Sans', sans-serif;
         }
         .online-banner-accept { background: var(--green); color: #fff; }
-        .online-banner-decline { background: #EAEADF; color: var(--text); }
+        .online-banner-decline { background: var(--k-hover); color: var(--text); }
 
         /* Экран истории партий */
         #history-screen .setup-content { max-height: 480px; overflow-y: auto; }
         #history-list { display: flex; flex-direction: column; gap: 8px; }
-        .history-empty { color: #757269; text-align: center; padding: 30px 0; font-size: 14px; }
+        .history-empty { color: var(--k-mu); text-align: center; padding: 30px 0; font-size: 14px; }
         .history-item {
             background: #1f1d1a; border: 1px solid #3a3733; border-radius: 4px; padding: 12px 14px;
             display: flex; align-items: center; gap: 12px; cursor: pointer;
@@ -2404,17 +2654,17 @@ if (typeof define !== 'undefined')
         .history-result-dot.draw { background: #8a8782; }
         .history-info { flex: 1; min-width: 0; }
         .history-result-text { color: #e6e6e6; font-size: 14px; font-weight: 700; }
-        .history-meta { color: #757269; font-size: 12px; margin-top: 2px; }
+        .history-meta { color: var(--k-mu); font-size: 12px; margin-top: 2px; }
         .history-moves-preview {
-            color: #9b9892; font-size: 12px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis;
+            color: var(--k-mu2); font-size: 12px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis;
             white-space: nowrap;
         }
         .history-clear-btn {
             display: block; width: 100%; margin-top: 14px; padding: 8px; background: transparent;
-            border: 1px solid #45423d; color: #8a8782; font-size: 13px; cursor: pointer; border-radius: 4px;
+            border: 1px solid #45423d; color: var(--k-mu); font-size: 13px; cursor: pointer; border-radius: 4px;
             font-family: 'Noto Sans', sans-serif;
         }
-        .history-clear-btn:hover { color: #e0584b; border-color: #e0584b; }
+        .history-clear-btn:hover { color: var(--k-rt); border-color: #e0584b; }
 
         /* ИГРОВОЙ ИНТЕРФЕЙС */
         #game-ui { display: none; gap: 0; align-items: flex-start; }
@@ -2435,17 +2685,17 @@ if (typeof define !== 'undefined')
         #eval-bar-outer.visible { display: flex; }
         #eval-bar-score-label {
             text-align: center; font-family: 'Roboto Mono', monospace; font-size: 14px; font-weight: 700;
-            color: var(--text); background: #F3F2EA; padding: 4px 0; margin-bottom: 4px; border-radius: 2px; border: 1px solid var(--border);
+            color: var(--text); background: var(--k-surf); padding: 4px 0; margin-bottom: 4px; border-radius: 2px; border: 1px solid var(--border);
         }
-        #eval-bar-score-label.positive { color: #3B5D4A; }
-        #eval-bar-score-label.negative { color: #A2473B; }
+        #eval-bar-score-label.positive { color: var(--k-gt); }
+        #eval-bar-score-label.negative { color: var(--k-rt); }
         #eval-bar-wrap {
             width: 40px; height: calc(var(--cell-size) * 8 - 31px); position: relative; background: #2A2E24;
             overflow: hidden; border-radius: 2px; border: 1px solid var(--border);
         }
         #eval-bar-opponent { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #2A2E24; }
         #eval-bar-user {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background: #FBFAF4;
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background: var(--k-panel);
             transition: height 0.4s ease, background-color 0.2s ease;
         }
         #eval-bar-zero {
@@ -2530,17 +2780,17 @@ if (typeof define !== 'undefined')
 
         .analysis-mode-header {
             display: none; align-items: center; justify-content: space-between; padding: 10px 16px;
-            background: #F3F2EA; border-bottom: 1px solid var(--border);
+            background: var(--k-surf); border-bottom: 1px solid var(--border);
         }
         .analysis-back-btn {
             background: transparent; border: none; color: var(--ink-muted); font-size: 13px; cursor: pointer;
             padding: 6px 10px; border-radius: 2px;
         }
-        .analysis-back-btn:hover { background: #EAEADF; color: var(--text); }
+        .analysis-back-btn:hover { background: var(--k-hover); color: var(--text); }
         .analysis-result-line { font-size: 13px; color: var(--ink-muted); }
 
         .timer-row { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
-        .timer { font-family: 'Roboto Mono', monospace; font-size: 40px; font-weight: 400; color: #AEB2A0; letter-spacing: 1px; }
+        .timer { font-family: 'Roboto Mono', monospace; font-size: 40px; font-weight: 400; color: var(--k-mu2); letter-spacing: 1px; }
         .timer.active { color: var(--text); }
         .timer.low-time { color: var(--text); }
         .exit-game-btn {
@@ -2548,33 +2798,33 @@ if (typeof define !== 'undefined')
             width: 28px; height: 28px; border-radius: 2px; display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
-        .exit-game-btn:hover { background: #EAEADF; color: #A23B33; }
+        .exit-game-btn:hover { background: var(--k-hover); color: var(--k-rt); }
         .timer-row.low-time-bg { background: #A23B33; }
         .timer-row.low-time-bg .timer { color: #fff; }
         .top-row { padding-bottom: 4px; }
         .add-btn { width: 26px; height: 26px; background: var(--accent-blue); border-radius: 2px; color: #fff; display:flex; align-items:center; justify-content:center; font-size: 16px; cursor: pointer; font-weight: bold; }
 
         .status-bar {
-            background: #F3F2EA; padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text);
+            background: var(--k-surf); padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text);
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
 
         .analysis-bar {
-            background: #F3F2EA; padding: 8px 16px; display: flex; align-items: center; gap: 10px;
+            background: var(--k-surf); padding: 8px 16px; display: flex; align-items: center; gap: 10px;
             font-size: 13px; color: var(--text); border-top: 1px solid var(--border); min-height: 32px; flex-wrap: wrap;
         }
         .analysis-toggle { position: relative; display: inline-block; width: 34px; height: 18px; flex-shrink: 0; }
         .analysis-toggle input { opacity: 0; width: 0; height: 0; }
         .toggle-slider {
             position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #D3D5C5; transition: 0.2s; border-radius: 18px;
+            background-color: var(--k-line); transition: 0.2s; border-radius: 18px;
         }
         .toggle-slider::before {
             position: absolute; content: ''; height: 14px; width: 14px; left: 2px; bottom: 2px;
-            background-color: #FBFBF8; transition: 0.2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(42,46,36,0.25);
+            background-color: var(--k-panel); transition: 0.2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(42,46,36,0.25);
         }
         .analysis-toggle input:checked + .toggle-slider { background-color: var(--green); }
-        .analysis-toggle input:checked + .toggle-slider::before { transform: translateX(16px); background-color: #fff; }
+        .analysis-toggle input:checked + .toggle-slider::before { transform: translateX(16px); background-color: var(--k-panel); }
 
         .analysis-score {
             font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 14px; color: var(--text); flex-shrink: 0;
@@ -2586,7 +2836,7 @@ if (typeof define !== 'undefined')
         }
 
         .analysis-lines {
-            background: #F3F2EA; border-top: 1px solid var(--border); max-height: 81px; overflow-y: auto;
+            background: var(--k-surf); border-top: 1px solid var(--border); max-height: 81px; overflow-y: auto;
             display: none;
         }
         .analysis-lines.visible { display: block; }
@@ -2594,35 +2844,35 @@ if (typeof define !== 'undefined')
             display: flex; align-items: baseline; gap: 8px; padding: 5px 16px; font-size: 12px;
             border-bottom: 1px solid var(--border); cursor: pointer;
         }
-        .analysis-line-row:hover { background: #EAEADF; }
+        .analysis-line-row:hover { background: var(--k-hover); }
         .analysis-line-score {
             font-family: 'Roboto Mono', monospace; font-weight: 700; min-width: 38px; flex-shrink: 0;
         }
-        .analysis-line-score.positive { color: #44694F; }
-        .analysis-line-score.negative { color: #A2473B; }
+        .analysis-line-score.positive { color: var(--k-gt); }
+        .analysis-line-score.negative { color: var(--k-rt); }
         .analysis-line-moves {
             color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
         }
 
         .nav-bar {
-            background: #F3F2EA; display: flex; border-bottom: 1px solid var(--border);
+            background: var(--k-surf); display: flex; border-bottom: 1px solid var(--border);
         }
         .nav-btn {
-            flex: 1; background: transparent; border: none; color: #9A9D8E; padding: 8px 0; cursor: pointer; font-size: 15px;
+            flex: 1; background: transparent; border: none; color: var(--k-mu2); padding: 8px 0; cursor: pointer; font-size: 15px;
             border-right: 1px solid var(--border);
         }
         .nav-btn:last-child { border-right: none; }
-        .nav-btn:hover:not(:disabled) { background: #EAEADF; color: var(--text); }
-        .nav-btn:disabled { color: #C7CABC; cursor: default; }
+        .nav-btn:hover:not(:disabled) { background: var(--k-hover); color: var(--text); }
+        .nav-btn:disabled { color: var(--k-mu2); cursor: default; }
 
         /* История ходов */
         #move-history {
-            flex-grow: 1; overflow-y: auto; background: #F8F7F1; font-size: 15px;
+            flex-grow: 1; overflow-y: auto; background: var(--k-surf); font-size: 15px;
             display: grid; grid-template-columns: 38px 1fr 1fr; align-content: start;
         }
         .move-num { color: var(--ink-muted); text-align: right; padding: 4px 8px 4px 0; line-height: 1.6; }
         .move-text { color: var(--text); cursor: pointer; padding: 4px 6px; line-height: 1.6; border-radius: 2px; }
-        .move-text:hover { background: #EAEADF; }
+        .move-text:hover { background: var(--k-hover); }
         .move-text.current { background: var(--accent-blue); color: #fff; }
 
         .welcome-info {
@@ -2638,14 +2888,14 @@ if (typeof define !== 'undefined')
         .welcome-line2 { color: var(--text); font-size: 15px; font-weight: 700; }
 
         .action-bar {
-            background: #F3F2EA; padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 28px;
+            background: var(--k-surf); padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 28px;
             border-top: 1px solid var(--border);
         }
         .action-btn {
-            background: transparent; border: none; color: #8B8E7F; font-size: 20px; cursor: pointer;
+            background: transparent; border: none; color: var(--k-mu2); font-size: 20px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 2px;
         }
-        .action-btn:hover { background: #EAEADF; color: var(--text); }
+        .action-btn:hover { background: var(--k-hover); color: var(--text); }
         .action-btn.flash { background: var(--green); color: #fff; }
 
         .new-game-btn {
@@ -2655,7 +2905,7 @@ if (typeof define !== 'undefined')
         }
         .new-game-btn:hover { background: #2E4A3A; }
 
-        #post-game-buttons { background: #F3F2EA; padding: 12px 16px; border-top: 1px solid var(--border); }
+        #post-game-buttons { background: var(--k-surf); padding: 12px 16px; border-top: 1px solid var(--border); }
         .result-score-line {
             font-family: 'Roboto Mono', monospace; font-size: 22px; font-weight: 700; color: var(--text);
             text-align: center; margin-bottom: 4px;
@@ -2668,12 +2918,12 @@ if (typeof define !== 'undefined')
         }
         .rematch-btn { background: var(--green); color: #fff; }
         .rematch-btn:hover { background: #2E4A3A; }
-        .analyze-btn { background: #FBFBF8; color: var(--text); border: 1px solid var(--border); margin-bottom: 0; }
-        .analyze-btn:hover { background: #EAEADF; }
+        .analyze-btn { background: var(--k-panel); color: var(--text); border: 1px solid var(--border); margin-bottom: 0; }
+        .analyze-btn:hover { background: var(--k-hover); }
 
         .player-row {
             padding: 10px 16px; font-size: 14px; color: var(--ink-muted); display: flex; justify-content: space-between; align-items: center;
-            background: #F3F2EA;
+            background: var(--k-surf);
         }
         .player-name { color: var(--text); font-weight: 500; }
         .player-rating { color: var(--ink-muted); }
@@ -2716,6 +2966,11 @@ if (typeof define !== 'undefined')
 
             <!-- ОСНОВНОЙ ВИД: настройка партии (против бота или создание сетевой игры) -->
             <div id="setup-view-config">
+
+                <div id="resume-card" class="resume-card">
+                    <div><b id="resume-title">Продолжить партию</b><span id="resume-info"></span></div>
+                    <div class="rc-btns"><button id="resume-btn" onclick="resumeSavedGame()">Продолжить</button><button class="rc-x" onclick="discardSavedGame()">Отказаться</button></div>
+                </div>
 
                 <div class="nickname-section">
                     <label class="time-label" for="nickname-input">Ваш никнейм</label>
@@ -3237,6 +3492,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 
         let game = new Chess(), userCol = 'w', level = 3, timers = { w: 600, b: 600 }, inc = 5;
         let draggedPos = null;
+        let curGameId = null, curTakenOver = false, curLastSavedAt = 0;   // сохранение идущей партии с компьютером (синхронизируется между устройствами)
         let viewIndex = -1;       // -1 = живая позиция (последний реальный ход), иначе индекс в historyFens
         let historyFens = [];     // FEN после каждого хода (включая начальную позицию под индексом 0)
         let historySAN = [];      // SAN-нотация ходов
@@ -4180,10 +4436,12 @@ function createLive(cfg) {
             }
         }
 
-        function initGame(overrideSettings) {
+        function initGame(overrideSettings, resumeRec) {
             resetGameState();
-            gameMode = 'bot';
-            if (overrideSettings) {
+            gameMode = 'bot'; curTakenOver = false;
+            if (resumeRec) {
+                userCol = resumeRec.userCol; level = resumeRec.level; inc = resumeRec.inc; timers.w = resumeRec.timers.w; timers.b = resumeRec.timers.b; curGameId = resumeRec.id;
+            } else if (overrideSettings) {
                 userCol = overrideSettings.userCol;
                 level = overrideSettings.level;
                 inc = overrideSettings.inc;
@@ -4224,6 +4482,10 @@ function createLive(cfg) {
             historyFens = [game.fen()];
             historySAN = [];
             analysisCurrentFen = null;
+            if (resumeRec) {          // восстанавливаем позицию повторением записанных ходов
+                for (const san of resumeRec.san) { const mv = game.move(san); if (!mv) break; historyFens.push(game.fen()); historySAN.push(mv.san); lastMoveSquares = { from: mv.from, to: mv.to }; }
+                updateHistory();
+            } else { curGameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); curClear(); }
 
             updateWelcomeInfo();
             render();
@@ -4245,9 +4507,49 @@ function createLive(cfg) {
                 }
             }).catch((err) => {
                 console.error('Не удалось загрузить Stockfish:', err);
-                if (statusBar) statusBar.innerHTML = `<span style="color:#e0584b">Ошибка загрузки движка</span>`;
+                if (statusBar) statusBar.innerHTML = `<span style="color:var(--k-rt)">Ошибка загрузки движка</span>`;
             });
         }
+
+
+        // ==================== ПРОДОЛЖЕНИЕ ПАРТИИ С КОМПЬЮТЕРОМ (в том числе на другом устройстве) ====================
+        const CUR_KEY = 'chessCurrent';
+        const curDev = () => { let d = null; try { d = localStorage.getItem('pgDevId'); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('pgDevId', d); } } catch (e) {} return d || 'x'; };
+        function curLoad() { try { const r = JSON.parse(localStorage.getItem(CUR_KEY) || 'null'); return r && r.san && r.san.length && r.timers ? r : null; } catch (e) { return null; } }
+        function curClear() { try { if (localStorage.getItem(CUR_KEY) !== null) localStorage.removeItem(CUR_KEY); } catch (e) {} }
+        function curSave() {
+            if (curTakenOver || gameMode !== 'bot' || gameOver || viewingPastGame || analysisFreePlay || !curGameId) return;
+            if (historySAN.length < 1) { curClear(); return; }          // ходы отменены до начала — сохранять нечего
+            curLastSavedAt = Date.now();
+            try { localStorage.setItem(CUR_KEY, JSON.stringify({ v: 1, id: curGameId, dev: curDev(), at: curLastSavedAt, userCol, level, inc, timers: { w: Math.round(timers.w * 10) / 10, b: Math.round(timers.b * 10) / 10 }, san: historySAN.slice() })); } catch (e) {}
+        }
+        document.addEventListener('visibilitychange', () => { if (document.hidden) curSave(); }); window.addEventListener('pagehide', curSave);
+        function paintResumeCard() {
+            const card = document.getElementById('resume-card'); if (!card) return; const r = curLoad();
+            if (!r || uiGameMode !== 'bot') { card.style.display = 'none'; return; }
+            const moves = Math.ceil(r.san.length / 2), other = r.dev !== curDev(), live = other && Date.now() - r.at < 120000;
+            const who = other ? 'с другого устройства' : 'на этом устройстве';
+            document.getElementById('resume-info').textContent = `Ход ${moves} · вы играете ${r.userCol === 'w' ? 'белыми' : 'чёрными'} · уровень ${r.level} · ${who}` + (live ? '. Партия сейчас идёт там — если продолжить здесь, там она остановится' : '');
+            card.style.display = 'flex';
+        }
+        function resumeSavedGame() {
+            const r = curLoad(); if (!r) { paintResumeCard(); return; }
+            if (r.dev !== curDev() && Date.now() - r.at < 120000 && !confirm('Эта партия только что шла на другом устройстве. Забрать её сюда?')) return;
+            initGame(null, r);
+        }
+        function discardSavedGame() { if (!confirm('Отказаться от недоигранной партии? Она не будет засчитана.')) return; curClear(); paintResumeCard(); }
+        // Данные пришли из облака: показываем карточку, а если эту же партию продолжили на другом устройстве — останавливаем здесь сохранение
+        window.addEventListener('pgsync-applied', (e) => {
+            if (!e.detail || e.detail.key !== CUR_KEY) return; paintResumeCard();
+            if (gameMode === 'bot' && !gameOver && curGameId) {
+                const r = curLoad();
+                if ((!r && curLastSavedAt) || (r && r.id === curGameId && r.dev !== curDev() && r.at > curLastSavedAt)) {
+                    curTakenOver = true; const sb = document.querySelector('.status-bar');
+                    if (sb) sb.innerHTML = '<span style="color:var(--k-rt)">' + (r ? 'Партия продолжена на другом устройстве. Здесь она больше не сохраняется' : 'Партия завершена на другом устройстве') + '</span>';
+                }
+            }
+        });
+        setTimeout(paintResumeCard, 0);
 
         // ==================== СЕТЕВАЯ ИГРА ====================
 
@@ -4268,6 +4570,7 @@ function createLive(cfg) {
         }
 
         function setGameModeUI(mode) {
+            setTimeout(() => { if (typeof paintResumeCard === 'function') paintResumeCard(); }, 0);
             document.getElementById('mode-tab-bot').classList.toggle('active', mode === 'bot');
             document.getElementById('mode-tab-online').classList.toggle('active', mode === 'online');
             document.getElementById('level-section').style.display = mode === 'online' ? 'none' : '';
@@ -4725,7 +5028,7 @@ function createLive(cfg) {
         function updateOnlineBanner(data) {
             const banner = document.getElementById('online-banner');
             if (!banner) return;
-            if (identityChanged() && !gameOver) { banner.style.display = 'flex'; banner.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; return; }
+            if (identityChanged() && !gameOver) { banner.style.display = 'flex'; banner.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; return; }
             if (data.drawOfferBy && data.drawOfferBy !== onlineMyColor && !gameOver) {
                 banner.style.display = 'flex';
                 banner.innerHTML = `<span>Соперник предлагает ничью</span>
@@ -4753,20 +5056,20 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '1.12 · 7 октября 2026';
+        const BUILD = '1.17 · 8 октября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
-        window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
+        window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
         function showOnlineSyncError(action, err) {
             console.error(action, err);
-            if (identityChanged()) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:#A23B33">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; return; }
+            if (identityChanged()) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; return; }
             const banner = document.getElementById('online-banner');
             if (!banner) return;
             const detail = (err && (err.code || err.message)) ? String(err.code || err.message) : 'неизвестная ошибка';
             banner.style.display = 'flex';
-            banner.innerHTML = `<span style="color:#A23B33">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}</span>`;
+            banner.innerHTML = `<span style="color:var(--k-rt)">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}</span>`;
             // Диагностика отказа базы: кто мы, кто хозяин/гость партии и кто должен ходить по правилам.
-            if (err && err.code === 'permission-denied') explainOnlineDenied().then((x) => { if (x) banner.innerHTML = `<span style="color:#A23B33">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}${escapeHtml(x)}</span>`; });
+            if (err && err.code === 'permission-denied') explainOnlineDenied().then((x) => { if (x) banner.innerHTML = `<span style="color:var(--k-rt)">Не удалось ${escapeHtml(action)}: ${escapeHtml(detail)}${escapeHtml(x)}</span>`; });
         }
         async function explainOnlineDenied() {
             try {
@@ -4893,7 +5196,7 @@ function createLive(cfg) {
         function openPublicChess(p) {
             viewGameRecord({ date: p.date && p.date.toDate ? p.date.toDate().toISOString() : new Date().toISOString(), userColor: 'w', level: null, opponent: null, result: 'draw', resultText: pubTextC(p.result), moves: p.moves || [] });
             setSpectatorLabels(p.names || {}, p.ratings || {}, null);
-            const sb = document.querySelector('.status-bar'); if (sb) sb.innerHTML = `<span style="color:#8a8782">Партия: ${escapeHtml((p.names && p.names.w) || 'Белые')} — ${escapeHtml((p.names && p.names.b) || 'Чёрные')}</span>`;
+            const sb = document.querySelector('.status-bar'); if (sb) sb.innerHTML = `<span style="color:var(--k-mu)">Партия: ${escapeHtml((p.names && p.names.w) || 'Белые')} — ${escapeHtml((p.names && p.names.b) || 'Чёрные')}</span>`;
         }
         let watchUnsubC = null;
         async function watchChessGame(id) {
@@ -5503,7 +5806,7 @@ function createLive(cfg) {
                     // партия не считается "выигранной/проигранной" — просто свободный разбор позиции.
                     gameOver = false;
                     const statusBar = document.querySelector('.status-bar');
-                    if (statusBar) statusBar.innerHTML = `<span style="color:#8a8782">Режим анализа — играйте за обе стороны</span>`;
+                    if (statusBar) statusBar.innerHTML = `<span style="color:var(--k-mu)">Режим анализа — играйте за обе стороны</span>`;
                 } else if (gameMode === 'online') {
                     checkGameOver();
                     sendOnlineMove(move);
@@ -5564,6 +5867,7 @@ function createLive(cfg) {
             }
             highlightCurrentMove();
             container.scrollTop = container.scrollHeight;
+            curSave();
         }
 
         function highlightCurrentMove() {
@@ -5759,7 +6063,7 @@ function createLive(cfg) {
         let suppressOnlineReport = false; // true, когда результат уже пришёл ОТ соперника — не отправляем его обратно
 
         function endGame(message, resultCode) {
-            gameOver = true;
+            gameOver = true; curClear();
             lastEndedGameMessage = message;
             lastEndedGameResultCode = resultCode;
             if (gameTickInterval) clearInterval(gameTickInterval);
@@ -5768,7 +6072,7 @@ function createLive(cfg) {
             sounds.end.currentTime = 0;
             sounds.end.play().catch((err) => console.warn('Не удалось воспроизвести звук окончания партии:', err));
             const status = document.querySelector('.status-bar');
-            status.innerHTML = `<span style="color:#e0584b">${message}</span>`;
+            status.innerHTML = `<span style="color:var(--k-rt)">${message}</span>`;
             saveGameToHistory(message, resultCode);
             showResultAndPostGameButtons(message, resultCode);
             if (gameMode === 'online' && !suppressOnlineReport) {
@@ -5834,6 +6138,7 @@ function createLive(cfg) {
                 userColor: userCol,
                 level: null,
                 opponent: onlineOpponentName || 'Соперник',
+                oppUid: (onlineLastData && (onlineRole === 'host' ? onlineLastData.guestUid : onlineLastData.hostUid)) || null,
                 result: resultCode || 'unknown',
                 resultText: message,
                 moves: historySAN.slice(),
@@ -6191,7 +6496,7 @@ function createLive(cfg) {
             render();
 
             const statusBar = document.querySelector('.status-bar');
-            if (statusBar) statusBar.innerHTML = `<span style="color:#8a8782">Просмотр сохранённой партии</span>`;
+            if (statusBar) statusBar.innerHTML = `<span style="color:var(--k-mu)">Просмотр сохранённой партии</span>`;
 
             ['t-top', 't-bottom'].forEach(id => document.getElementById(id).classList.remove('active'));
             document.getElementById('t-top').innerText = '--:--';
