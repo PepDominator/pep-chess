@@ -573,7 +573,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   async function removeFriend(fid) { await backend.removeFriend(user.uid, fid); await loadFriends(); }
   async function sendChallenge(toUid, game, gameId) {
     const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-    await backend.inboxSend(toUid, id, { type: 'challenge', from: user.uid, name: user.name, game, gameId }); return id;
+    await backend.inboxSend(toUid, id, { type: 'challenge', from: user.uid, name: user.name, game, gameId }); if (window.PGA) PGA.event('challenge'); return id;
   }
   const inviteLink = () => user ? root() + '?friend=' + encodeURIComponent(user.uid) + '&n=' + encodeURIComponent(user.name || '') : '';
 
@@ -681,32 +681,67 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     ['streak30', 'Общие', '🌋', 'Месяц подряд', 'Решайте задание дня 30 дней подряд', 30, (c) => C(c, 'streak')],
     ['inboard', 'Общие', '🏆', 'В таблице', 'Попадите в таблицу рекордов', 1, (c) => Math.min(1, C(c, 'inboard'))],
     ['podium', 'Общие', '🥇', 'На пьедестале', 'Войдите в тройку таблицы рекордов', 1, (c) => Math.min(1, C(c, 'podium'))],
+    ['night', 'Общие', '🌙', 'Ночная смена', 'Завершите партию или головоломку между полуночью и пятью утра', 1, (c) => Math.min(1, C(c, 'night'))],
+    ['early', 'Общие', '🌅', 'Ранняя пташка', 'Завершите партию или головоломку между пятью и восемью утра', 1, (c) => Math.min(1, C(c, 'early'))],
+    ['streak3', 'Общие', '✨', 'Три дня подряд', 'Решайте задание дня 3 дня подряд', 3, (c) => C(c, 'streak')],
+    ['streak14', 'Общие', '⚡', 'Две недели подряд', 'Решайте задание дня 14 дней подряд', 14, (c) => C(c, 'streak')],
+    ['dailyset', 'Общие', '📆', 'Ежедневный набор', 'Решите судоку, кроссворд и картинку дня в один и тот же день', 1, (c) => Math.min(1, C(c, 'dailyset'))],
+    ['allfive', 'Общие', '🎰', 'Пять в одном', 'Завершите партию в шахматах и шашках и решите судоку, кроссворд и японский кроссворд', 5, (c) => (C(c, 'chP') > 0) + (C(c, 'drP') > 0) + (C(c, 'sd') > 0) + (C(c, 'cw') > 0) + (C(c, 'jp') > 0)],
+    ['friend3', 'Общие', '👯', 'Компания', 'Добавьте трёх друзей', 3, (c) => C(c, 'friend')],
+    ['challenge', 'Общие', '⚔️', 'Вызов брошен', 'Вызовите друга на партию', 1, (c) => Math.min(1, C(c, 'chal'))],
+    ['top10', 'Общие', '🔟', 'В десятке', 'Войдите в десятку таблицы рекордов', 1, (c) => Math.min(1, C(c, 'top10'))],
+    ['champion', 'Общие', '👑', 'Чемпион дня', 'Займите первое место в таблице рекордов', 1, (c) => Math.min(1, C(c, 'first1'))],
+    ['dark', 'Общие', '🕶️', 'Тёмная сторона', 'Включите тёмную тему', 1, (c) => Math.min(1, C(c, 'dark'))],
+    ['install', 'Общие', '📲', 'Как приложение', 'Установите Pep Games на устройство', 1, (c) => Math.min(1, C(c, 'install'))],
+    ['offline', 'Общие', '✈️', 'Без связи', 'Завершите игру, когда нет интернета', 1, (c) => Math.min(1, C(c, 'offline'))],
+    ['coll10', 'Общие', '🏅', 'Коллекционер', 'Получите 10 достижений', 10, (c, u) => Object.keys(u).filter((k) => k !== 'coll10' && k !== 'coll25').length],
+    ['coll25', 'Общие', '🎖️', 'Большая коллекция', 'Получите 25 достижений', 25, (c, u) => Object.keys(u).filter((k) => k !== 'coll10' && k !== 'coll25').length],
     ['ch1', 'Шахматы', '♞', 'Первая победа', 'Выиграйте партию в шахматы', 1, (c) => Math.min(1, C(c, 'chW'))],
     ['ch5', 'Шахматы', '♝', 'Сильный соперник', 'Победите компьютер уровня 5 или выше', 5, (c) => C(c, 'chBot')],
     ['ch8', 'Шахматы', '♛', 'Покоритель Stockfish', 'Победите компьютер самого сильного уровня (8)', 8, (c) => C(c, 'chBot')],
     ['ch10', 'Шахматы', '♜', 'Десять побед', 'Выиграйте 10 шахматных партий', 10, (c) => C(c, 'chW')],
     ['chon', 'Шахматы', '🌐', 'Живой соперник', 'Выиграйте шахматную партию у человека по сети', 1, (c) => Math.min(1, C(c, 'chOn'))],
+    ['chdraw', 'Шахматы', '🤝', 'Мирный исход', 'Сыграйте вничью в шахматы', 1, (c) => Math.min(1, C(c, 'chD'))],
+    ['chblack', 'Шахматы', '⚫', 'Чёрными тоже', 'Выиграйте в шахматы, играя чёрными', 1, (c) => Math.min(1, C(c, 'chBlk'))],
+    ['chmini', 'Шахматы', '⚡', 'Миниатюра', 'Выиграйте у компьютера уровня 3+ меньше чем за 15 ходов', 1, (c) => Math.min(1, C(c, 'chMini'))],
+    ['chlong', 'Шахматы', '🏔️', 'Затяжная партия', 'Доиграйте шахматную партию до 60-го хода', 1, (c) => Math.min(1, C(c, 'chLong'))],
+    ['ch50', 'Шахматы', '🎲', 'Полсотни партий', 'Сыграйте 50 партий в шахматы', 50, (c) => C(c, 'chP')],
     ['dr1', 'Шашки', '⛀', 'Первая победа', 'Выиграйте партию в шашки', 1, (c) => Math.min(1, C(c, 'drW'))],
     ['dr5', 'Шашки', '⛁', 'Сильный соперник', 'Победите компьютер уровня 5 или выше', 5, (c) => C(c, 'drBot')],
     ['dr8', 'Шашки', '👑', 'Покоритель Scan', 'Победите компьютер самого сильного уровня (8)', 8, (c) => C(c, 'drBot')],
     ['dr10', 'Шашки', '🎯', 'Десять побед', 'Выиграйте 10 партий в шашки', 10, (c) => C(c, 'drW')],
     ['dron', 'Шашки', '🌐', 'Живой соперник', 'Выиграйте партию в шашки у человека по сети', 1, (c) => Math.min(1, C(c, 'drOn'))],
+    ['drdraw', 'Шашки', '🤝', 'Мирный исход', 'Сыграйте вничью в шашки', 1, (c) => Math.min(1, C(c, 'drD'))],
+    ['drblack', 'Шашки', '⚫', 'Чёрными тоже', 'Выиграйте в шашки, играя чёрными', 1, (c) => Math.min(1, C(c, 'drBlk'))],
+    ['drmini', 'Шашки', '⚡', 'Быстрый разгром', 'Выиграйте у компьютера уровня 3+ меньше чем за 20 ходов', 1, (c) => Math.min(1, C(c, 'drMini'))],
+    ['drlong', 'Шашки', '🏔️', 'Долгая борьба', 'Доиграйте партию в шашки до 50-го хода', 1, (c) => Math.min(1, C(c, 'drLong'))],
+    ['dr50', 'Шашки', '🎲', 'Полсотни партий', 'Сыграйте 50 партий в шашки', 50, (c) => C(c, 'drP')],
     ['sd1', 'Судоку', '🔢', 'Первая головоломка', 'Решите судоку', 1, (c) => Math.min(1, C(c, 'sd'))],
     ['sd10', 'Судоку', '🧩', 'Десять головоломок', 'Решите 10 судоку', 10, (c) => C(c, 'sd')],
     ['sd100', 'Судоку', '💯', 'Сотня', 'Решите 100 судоку', 100, (c) => C(c, 'sd')],
     ['sdx', 'Судоку', '🧠', 'Эксперт', 'Решите судоку на уровне «Эксперт»', 1, (c) => Math.min(1, C(c, 'sdx'))],
     ['sdclean', 'Судоку', '✨', 'Чистая работа', 'Решите «Сложно» или «Эксперт» без подсказок и ошибок', 1, (c) => Math.min(1, C(c, 'sdclean'))],
     ['sdfast', 'Судоку', '⚡', 'Молния', 'Решите «Легко» быстрее чем за 3 минуты', 1, (c) => Math.min(1, C(c, 'sdfast'))],
+    ['sd50', 'Судоку', '🧮', 'Полсотни', 'Решите 50 судоку', 50, (c) => C(c, 'sd')],
+    ['sdfx', 'Судоку', '⏱️', 'Скоростной эксперт', 'Решите «Эксперт» быстрее чем за 15 минут', 1, (c) => Math.min(1, C(c, 'sdfx'))],
+    ['sdnm', 'Судоку', '✔️', 'Без единой ошибки', 'Решите судоку уровня «Средне» и выше без ошибок', 1, (c) => Math.min(1, C(c, 'sdnm'))],
     ['cw1', 'Кроссворды', '🔤', 'Первый кроссворд', 'Разгадайте кроссворд', 1, (c) => Math.min(1, C(c, 'cw'))],
     ['cw10', 'Кроссворды', '📰', 'Десять кроссвордов', 'Разгадайте 10 кроссвордов', 10, (c) => C(c, 'cw')],
     ['cwbig', 'Кроссворды', '🗺️', 'Крупная форма', 'Разгадайте кроссворд из 49 слов и больше', 1, (c) => Math.min(1, C(c, 'cwbig'))],
     ['cwweek', 'Кроссворды', '📅', 'Суперкроссворд недели', 'Разгадайте суперкроссворд недели', 1, (c) => Math.min(1, C(c, 'cwweek'))],
     ['cwexp', 'Кроссворды', '🎓', 'Эрудит', 'Разгадайте кроссворд на уровне «Эксперт»', 1, (c) => Math.min(1, C(c, 'cwexp'))],
     ['cwclean', 'Кроссворды', '🪶', 'Без подсказок', 'Разгадайте кроссворд из 22 слов и больше без подсказок', 1, (c) => Math.min(1, C(c, 'cwclean'))],
+    ['cw50', 'Кроссворды', '📚', 'Полсотни кроссвордов', 'Разгадайте 50 кроссвордов', 50, (c) => C(c, 'cw')],
+    ['cwquick', 'Кроссворды', '⏱️', 'Быстрая разгадка', 'Разгадайте кроссворд от 15 слов быстрее чем за 4 минуты', 1, (c) => Math.min(1, C(c, 'cwquick'))],
+    ['cwmega', 'Кроссворды', '🌐', 'Суперкроссворд', 'Разгадайте кроссворд из 100 слов и больше', 1, (c) => Math.min(1, C(c, 'cwmega'))],
     ['jp1', 'Японские кроссворды', '🧩', 'Первая картинка', 'Решите японский кроссворд', 1, (c) => Math.min(1, C(c, 'jp'))],
     ['jp10', 'Японские кроссворды', '🖼️', 'Галерея', 'Решите 10 японских кроссвордов', 10, (c) => C(c, 'jp')],
     ['jpbig', 'Японские кроссворды', '🗺️', 'Большое полотно', 'Решите японский кроссворд от 50 × 50', 1, (c) => Math.min(1, C(c, 'jpbig'))],
     ['jphuge', 'Японские кроссворды', '🏔️', 'Марафонец', 'Решите японский кроссворд 100 × 100', 1, (c) => Math.min(1, C(c, 'jphuge'))],
+    ['jp50', 'Японские кроссворды', '🎨', 'Мастерская', 'Решите 50 японских кроссвордов', 50, (c) => C(c, 'jp')],
+    ['jpfast', 'Японские кроссворды', '⚡', 'Быстрая картинка', 'Решите японский кроссворд до 10 × 10 быстрее чем за полторы минуты', 1, (c) => Math.min(1, C(c, 'jpfast'))],
+    ['jpmid', 'Японские кроссворды', '🖌️', 'Крупный план', 'Решите японский кроссворд от 30 × 30', 1, (c) => Math.min(1, C(c, 'jpmid'))],
+    ['jprect', 'Японские кроссворды', '▭', 'Не квадрат', 'Решите прямоугольный японский кроссворд', 1, (c) => Math.min(1, C(c, 'jprect'))],
     ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))]
   ].map(([id, group, icon, title, desc, goal, prog]) => ({ id, group, icon, title, desc, goal, prog }));
 
@@ -737,7 +772,11 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   }
   function check() {
     const s = read(), fresh = [];
-    DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); } });
+    for (let pass = 0; pass < 4; pass++) {                   // повторяем: одно достижение может открыть другое («Коллекционер»)
+      let any = false;
+      DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c, s.u) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); any = true; } });
+      if (!any) break;
+    }
     if (fresh.length) { write(s); toasts(fresh); window.dispatchEvent(new CustomEvent('pga-unlocked', { detail: { ids: fresh.map((x) => x.id) } })); }
     return fresh.map((x) => x.id);
   }
@@ -750,22 +789,36 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     if (sd && sd.solved) { max('sd', Object.values(sd.solved).reduce((a, b) => a + (b || 0), 0)); max('sdx', sd.solved.expert || 0); if (sd.daily) max('streak', sd.daily.streak || 0); }
     if (cw && cw.solved) { max('cw', Object.values(cw.solved).reduce((a, b) => a + (b || 0), 0)); max('cwbig', (cw.solved.super || 0) + (cw.solved.mega || 0)); if (cw.weekly && cw.weekly.results) max('cwweek', Object.keys(cw.weekly.results).length); if (cw.daily) max('streak', cw.daily.streak || 0); }
     [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (!Array.isArray(list)) return; max(p + 'P', list.length); list.forEach((r) => { if (r.result === 'win') { max(p + 'W', list.filter((x) => x.result === 'win').length); if (r.opponent) max(p + 'On', list.filter((x) => x.result === 'win' && x.opponent).length); else if (r.level) max(p + 'Bot', r.level); } }); });
+    [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (Array.isArray(list)) max(p + 'D', list.filter((r) => r.result === 'draw').length); });
+    try { if (window.PGS && PGS.get().theme === 'dark') max('dark', 1); } catch (e) {} try { if (window.PGS && PGS.install && PGS.install.installed()) max('install', 1); } catch (e) {}
     max('done', (c.sd || 0) + (c.cw || 0) + (c.chP || 0) + (c.drP || 0) + (c.jp || 0) ? 1 : 0);
     write(s); return check();
   }
+  const dayNum = () => { const t = new Date(); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); };
+  function dailySet(c) {          // судоку, кроссворд и картинка дня решены в один день
+    const J = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, d = new Date(), tk = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const has = (k) => { const o = J(k); return !!(o && o.daily && o.daily.results && o.daily.results[tk] != null); };
+    if (has('sudokuStats') && has('crosswordStats') && has('nonogramStats') && dayNum() > (c.dailysetLast || 0)) { c.dailyset = (c.dailyset || 0) + 1; c.dailysetLast = dayNum(); }
+  }
   function event(game, d) {
     d = d || {}; const s = read(), c = s.c; const inc = (k, n) => { c[k] = (c[k] || 0) + (n || 1); }, max = (k, v) => { c[k] = Math.max(c[k] || 0, v || 0); };
-    if (game === 'sudoku') { inc('sd'); inc('done'); if (d.diff === 'expert') inc('sdx'); if (!d.hints && !d.mistakes && (d.diff === 'hard' || d.diff === 'expert')) inc('sdclean'); if (d.diff === 'easy' && d.time < 180000) inc('sdfast'); }
-    if (game === 'crossword') { inc('cw'); inc('done'); if (d.words >= 49) inc('cwbig'); if (d.week) inc('cwweek'); if (d.level >= 5) inc('cwexp'); if (d.words >= 22 && !d.hints) inc('cwclean'); }
-    if (game === 'nonogram') { inc('jp'); inc('done'); if (d.rows >= 50 && d.cols >= 50) inc('jpbig'); if (d.rows >= 100 && d.cols >= 100) inc('jphuge'); if (d.rows >= 20 && d.cols >= 20 && !d.hints) inc('jpclean'); }
-    if ((game === 'sudoku' || game === 'crossword' || game === 'nonogram') && d.daily) max('streak', d.streak);
-    if (game === 'chess' || game === 'draughts') { const p = game === 'chess' ? 'ch' : 'dr'; inc(p + 'P'); inc('done'); if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); } }
+    if (game === 'sudoku') { inc('sd'); inc('done'); if (d.diff === 'expert') inc('sdx'); if (!d.hints && !d.mistakes && (d.diff === 'hard' || d.diff === 'expert')) inc('sdclean'); if (d.diff === 'easy' && d.time < 180000) inc('sdfast'); if (d.diff === 'expert' && d.time < 900000) inc('sdfx'); if (!d.mistakes && d.diff !== 'easy') inc('sdnm'); }
+    if (game === 'crossword') { inc('cw'); inc('done'); if (d.words >= 49) inc('cwbig'); if (d.words >= 100) inc('cwmega'); if (d.week) inc('cwweek'); if (d.level >= 5) inc('cwexp'); if (d.words >= 22 && !d.hints) inc('cwclean'); if (d.words >= 15 && d.time < 240000) inc('cwquick'); }
+    if (game === 'nonogram') { inc('jp'); inc('done'); if (d.rows >= 50 && d.cols >= 50) inc('jpbig'); if (d.rows >= 100 && d.cols >= 100) inc('jphuge'); if (d.rows >= 20 && d.cols >= 20 && !d.hints) inc('jpclean'); if (d.rows <= 10 && d.cols <= 10 && d.time < 90000) inc('jpfast'); if (d.rows >= 30 && d.cols >= 30) inc('jpmid'); if (d.rows !== d.cols) inc('jprect'); }
+    if ((game === 'sudoku' || game === 'crossword' || game === 'nonogram') && d.daily) { max('streak', d.streak); dailySet(c); }
+    if (game === 'chess' || game === 'draughts') {
+      const p = game === 'chess' ? 'ch' : 'dr'; inc(p + 'P'); inc('done'); if (d.result === 'draw') inc(p + 'D');
+      if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
+      if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
+    }
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
     if (game === 'friend') inc('friend');
-    if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 3) inc('podium'); }
+    if (game === 'challenge') inc('chal');
+    if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
     write(s); return check();
   }
   const curStreak = (k) => { try { const o = JSON.parse(localStorage.getItem(k) || 'null'), d = o && o.daily; if (!d || !d.last) return 0; const today = keyOf(new Date()), y = keyOf(new Date(Date.now() - 86400000)); return d.last === today || d.last === y ? d.streak || 0 : 0; } catch (e) { return 0; } };
-  function list() { const s = read(); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, value: Math.min(d.goal, d.prog(s.c)), got: s.u[d.id] || 0 })); }
+  function list() { const s = read(); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, value: Math.min(d.goal, d.prog(s.c, s.u)), got: s.u[d.id] || 0 })); }
   function open() {
     if (document.getElementById('pga-ov')) return; const ov = document.createElement('div'); ov.className = 'pga-ov'; ov.id = 'pga-ov';
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('pgsync-applied', paint); }; const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -779,6 +832,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgsync-applied', paint); document.body.appendChild(ov); seed(); paint();
   }
   window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak };
+  window.addEventListener('pgs-change', () => { try { if (window.PGS && PGS.get().theme === 'dark') { const s = read(); if (!(s.c.dark > 0)) { s.c.dark = 1; write(s); check(); } } } catch (e) {} });
   const boot = () => { const b = document.getElementById('pga-btn'); if (b) b.onclick = open; setTimeout(seed, 600); if (b && /[?&]achievements=1/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} open(); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
@@ -848,7 +902,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     ] },
     nonogram: { title: 'Правила японских кроссвордов', icon: '🧩', sections: [
       ['Цель игры', ['Закрасить клетки так, чтобы получилась картинка. Числа слева от строки и над столбцом показывают, <b>сколько клеток подряд</b> закрашено в этой линии, и в каком порядке идут такие группы. Между двумя группами всегда есть хотя бы одна пустая клетка.',
-        'Пример: в строке из 7 клеток подсказка «3 1» значит: сначала три закрашенные клетки подряд, потом (после пробела) одна. Подсказка «0» — в линии нет ни одной закрашенной клетки.']],
+        'Пример: в строке из 7 клеток подсказка «3 1» значит: сначала три закрашенные клетки подряд, потом (после пробела) одна. Картинка всегда занимает всё поле: в каждой строке и в каждом столбце есть закрашенные клетки.']],
       ['Как решать', [
         '<b>Пересечение.</b> Если группа очень длинная, часть её клеток закрашена при любой расстановке: сдвиньте группу в самый левый и самый правый край и найдите общие клетки.',
         '<b>Полная линия.</b> Если сумма всех групп и пробелов между ними равна длине линии, расстановка известна целиком.',
@@ -5336,7 +5390,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '1.25 · 9 октября 2026';
+        const BUILD = '1.27 · 9 октября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
@@ -6453,7 +6507,7 @@ function createLive(cfg) {
                     moves: historySAN.slice(),
                     finalFen: game.fen()
                 };
-                if (window.PGA) PGA.event('chess', { result: resultCode, online: gameMode === 'online', level: gameMode === 'online' ? null : level });
+                if (window.PGA) PGA.event('chess', { result: resultCode, online: gameMode === 'online', level: gameMode === 'online' ? null : level, moves: historySAN.length, color: userCol });
                 const list = loadGameHistory();
                 list.unshift(record);
                 if (list.length > GAME_HISTORY_LIMIT) list.length = GAME_HISTORY_LIMIT;

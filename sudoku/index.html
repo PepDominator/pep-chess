@@ -463,32 +463,67 @@
     ['streak30', 'Общие', '🌋', 'Месяц подряд', 'Решайте задание дня 30 дней подряд', 30, (c) => C(c, 'streak')],
     ['inboard', 'Общие', '🏆', 'В таблице', 'Попадите в таблицу рекордов', 1, (c) => Math.min(1, C(c, 'inboard'))],
     ['podium', 'Общие', '🥇', 'На пьедестале', 'Войдите в тройку таблицы рекордов', 1, (c) => Math.min(1, C(c, 'podium'))],
+    ['night', 'Общие', '🌙', 'Ночная смена', 'Завершите партию или головоломку между полуночью и пятью утра', 1, (c) => Math.min(1, C(c, 'night'))],
+    ['early', 'Общие', '🌅', 'Ранняя пташка', 'Завершите партию или головоломку между пятью и восемью утра', 1, (c) => Math.min(1, C(c, 'early'))],
+    ['streak3', 'Общие', '✨', 'Три дня подряд', 'Решайте задание дня 3 дня подряд', 3, (c) => C(c, 'streak')],
+    ['streak14', 'Общие', '⚡', 'Две недели подряд', 'Решайте задание дня 14 дней подряд', 14, (c) => C(c, 'streak')],
+    ['dailyset', 'Общие', '📆', 'Ежедневный набор', 'Решите судоку, кроссворд и картинку дня в один и тот же день', 1, (c) => Math.min(1, C(c, 'dailyset'))],
+    ['allfive', 'Общие', '🎰', 'Пять в одном', 'Завершите партию в шахматах и шашках и решите судоку, кроссворд и японский кроссворд', 5, (c) => (C(c, 'chP') > 0) + (C(c, 'drP') > 0) + (C(c, 'sd') > 0) + (C(c, 'cw') > 0) + (C(c, 'jp') > 0)],
+    ['friend3', 'Общие', '👯', 'Компания', 'Добавьте трёх друзей', 3, (c) => C(c, 'friend')],
+    ['challenge', 'Общие', '⚔️', 'Вызов брошен', 'Вызовите друга на партию', 1, (c) => Math.min(1, C(c, 'chal'))],
+    ['top10', 'Общие', '🔟', 'В десятке', 'Войдите в десятку таблицы рекордов', 1, (c) => Math.min(1, C(c, 'top10'))],
+    ['champion', 'Общие', '👑', 'Чемпион дня', 'Займите первое место в таблице рекордов', 1, (c) => Math.min(1, C(c, 'first1'))],
+    ['dark', 'Общие', '🕶️', 'Тёмная сторона', 'Включите тёмную тему', 1, (c) => Math.min(1, C(c, 'dark'))],
+    ['install', 'Общие', '📲', 'Как приложение', 'Установите Pep Games на устройство', 1, (c) => Math.min(1, C(c, 'install'))],
+    ['offline', 'Общие', '✈️', 'Без связи', 'Завершите игру, когда нет интернета', 1, (c) => Math.min(1, C(c, 'offline'))],
+    ['coll10', 'Общие', '🏅', 'Коллекционер', 'Получите 10 достижений', 10, (c, u) => Object.keys(u).filter((k) => k !== 'coll10' && k !== 'coll25').length],
+    ['coll25', 'Общие', '🎖️', 'Большая коллекция', 'Получите 25 достижений', 25, (c, u) => Object.keys(u).filter((k) => k !== 'coll10' && k !== 'coll25').length],
     ['ch1', 'Шахматы', '♞', 'Первая победа', 'Выиграйте партию в шахматы', 1, (c) => Math.min(1, C(c, 'chW'))],
     ['ch5', 'Шахматы', '♝', 'Сильный соперник', 'Победите компьютер уровня 5 или выше', 5, (c) => C(c, 'chBot')],
     ['ch8', 'Шахматы', '♛', 'Покоритель Stockfish', 'Победите компьютер самого сильного уровня (8)', 8, (c) => C(c, 'chBot')],
     ['ch10', 'Шахматы', '♜', 'Десять побед', 'Выиграйте 10 шахматных партий', 10, (c) => C(c, 'chW')],
     ['chon', 'Шахматы', '🌐', 'Живой соперник', 'Выиграйте шахматную партию у человека по сети', 1, (c) => Math.min(1, C(c, 'chOn'))],
+    ['chdraw', 'Шахматы', '🤝', 'Мирный исход', 'Сыграйте вничью в шахматы', 1, (c) => Math.min(1, C(c, 'chD'))],
+    ['chblack', 'Шахматы', '⚫', 'Чёрными тоже', 'Выиграйте в шахматы, играя чёрными', 1, (c) => Math.min(1, C(c, 'chBlk'))],
+    ['chmini', 'Шахматы', '⚡', 'Миниатюра', 'Выиграйте у компьютера уровня 3+ меньше чем за 15 ходов', 1, (c) => Math.min(1, C(c, 'chMini'))],
+    ['chlong', 'Шахматы', '🏔️', 'Затяжная партия', 'Доиграйте шахматную партию до 60-го хода', 1, (c) => Math.min(1, C(c, 'chLong'))],
+    ['ch50', 'Шахматы', '🎲', 'Полсотни партий', 'Сыграйте 50 партий в шахматы', 50, (c) => C(c, 'chP')],
     ['dr1', 'Шашки', '⛀', 'Первая победа', 'Выиграйте партию в шашки', 1, (c) => Math.min(1, C(c, 'drW'))],
     ['dr5', 'Шашки', '⛁', 'Сильный соперник', 'Победите компьютер уровня 5 или выше', 5, (c) => C(c, 'drBot')],
     ['dr8', 'Шашки', '👑', 'Покоритель Scan', 'Победите компьютер самого сильного уровня (8)', 8, (c) => C(c, 'drBot')],
     ['dr10', 'Шашки', '🎯', 'Десять побед', 'Выиграйте 10 партий в шашки', 10, (c) => C(c, 'drW')],
     ['dron', 'Шашки', '🌐', 'Живой соперник', 'Выиграйте партию в шашки у человека по сети', 1, (c) => Math.min(1, C(c, 'drOn'))],
+    ['drdraw', 'Шашки', '🤝', 'Мирный исход', 'Сыграйте вничью в шашки', 1, (c) => Math.min(1, C(c, 'drD'))],
+    ['drblack', 'Шашки', '⚫', 'Чёрными тоже', 'Выиграйте в шашки, играя чёрными', 1, (c) => Math.min(1, C(c, 'drBlk'))],
+    ['drmini', 'Шашки', '⚡', 'Быстрый разгром', 'Выиграйте у компьютера уровня 3+ меньше чем за 20 ходов', 1, (c) => Math.min(1, C(c, 'drMini'))],
+    ['drlong', 'Шашки', '🏔️', 'Долгая борьба', 'Доиграйте партию в шашки до 50-го хода', 1, (c) => Math.min(1, C(c, 'drLong'))],
+    ['dr50', 'Шашки', '🎲', 'Полсотни партий', 'Сыграйте 50 партий в шашки', 50, (c) => C(c, 'drP')],
     ['sd1', 'Судоку', '🔢', 'Первая головоломка', 'Решите судоку', 1, (c) => Math.min(1, C(c, 'sd'))],
     ['sd10', 'Судоку', '🧩', 'Десять головоломок', 'Решите 10 судоку', 10, (c) => C(c, 'sd')],
     ['sd100', 'Судоку', '💯', 'Сотня', 'Решите 100 судоку', 100, (c) => C(c, 'sd')],
     ['sdx', 'Судоку', '🧠', 'Эксперт', 'Решите судоку на уровне «Эксперт»', 1, (c) => Math.min(1, C(c, 'sdx'))],
     ['sdclean', 'Судоку', '✨', 'Чистая работа', 'Решите «Сложно» или «Эксперт» без подсказок и ошибок', 1, (c) => Math.min(1, C(c, 'sdclean'))],
     ['sdfast', 'Судоку', '⚡', 'Молния', 'Решите «Легко» быстрее чем за 3 минуты', 1, (c) => Math.min(1, C(c, 'sdfast'))],
+    ['sd50', 'Судоку', '🧮', 'Полсотни', 'Решите 50 судоку', 50, (c) => C(c, 'sd')],
+    ['sdfx', 'Судоку', '⏱️', 'Скоростной эксперт', 'Решите «Эксперт» быстрее чем за 15 минут', 1, (c) => Math.min(1, C(c, 'sdfx'))],
+    ['sdnm', 'Судоку', '✔️', 'Без единой ошибки', 'Решите судоку уровня «Средне» и выше без ошибок', 1, (c) => Math.min(1, C(c, 'sdnm'))],
     ['cw1', 'Кроссворды', '🔤', 'Первый кроссворд', 'Разгадайте кроссворд', 1, (c) => Math.min(1, C(c, 'cw'))],
     ['cw10', 'Кроссворды', '📰', 'Десять кроссвордов', 'Разгадайте 10 кроссвордов', 10, (c) => C(c, 'cw')],
     ['cwbig', 'Кроссворды', '🗺️', 'Крупная форма', 'Разгадайте кроссворд из 49 слов и больше', 1, (c) => Math.min(1, C(c, 'cwbig'))],
     ['cwweek', 'Кроссворды', '📅', 'Суперкроссворд недели', 'Разгадайте суперкроссворд недели', 1, (c) => Math.min(1, C(c, 'cwweek'))],
     ['cwexp', 'Кроссворды', '🎓', 'Эрудит', 'Разгадайте кроссворд на уровне «Эксперт»', 1, (c) => Math.min(1, C(c, 'cwexp'))],
     ['cwclean', 'Кроссворды', '🪶', 'Без подсказок', 'Разгадайте кроссворд из 22 слов и больше без подсказок', 1, (c) => Math.min(1, C(c, 'cwclean'))],
+    ['cw50', 'Кроссворды', '📚', 'Полсотни кроссвордов', 'Разгадайте 50 кроссвордов', 50, (c) => C(c, 'cw')],
+    ['cwquick', 'Кроссворды', '⏱️', 'Быстрая разгадка', 'Разгадайте кроссворд от 15 слов быстрее чем за 4 минуты', 1, (c) => Math.min(1, C(c, 'cwquick'))],
+    ['cwmega', 'Кроссворды', '🌐', 'Суперкроссворд', 'Разгадайте кроссворд из 100 слов и больше', 1, (c) => Math.min(1, C(c, 'cwmega'))],
     ['jp1', 'Японские кроссворды', '🧩', 'Первая картинка', 'Решите японский кроссворд', 1, (c) => Math.min(1, C(c, 'jp'))],
     ['jp10', 'Японские кроссворды', '🖼️', 'Галерея', 'Решите 10 японских кроссвордов', 10, (c) => C(c, 'jp')],
     ['jpbig', 'Японские кроссворды', '🗺️', 'Большое полотно', 'Решите японский кроссворд от 50 × 50', 1, (c) => Math.min(1, C(c, 'jpbig'))],
     ['jphuge', 'Японские кроссворды', '🏔️', 'Марафонец', 'Решите японский кроссворд 100 × 100', 1, (c) => Math.min(1, C(c, 'jphuge'))],
+    ['jp50', 'Японские кроссворды', '🎨', 'Мастерская', 'Решите 50 японских кроссвордов', 50, (c) => C(c, 'jp')],
+    ['jpfast', 'Японские кроссворды', '⚡', 'Быстрая картинка', 'Решите японский кроссворд до 10 × 10 быстрее чем за полторы минуты', 1, (c) => Math.min(1, C(c, 'jpfast'))],
+    ['jpmid', 'Японские кроссворды', '🖌️', 'Крупный план', 'Решите японский кроссворд от 30 × 30', 1, (c) => Math.min(1, C(c, 'jpmid'))],
+    ['jprect', 'Японские кроссворды', '▭', 'Не квадрат', 'Решите прямоугольный японский кроссворд', 1, (c) => Math.min(1, C(c, 'jprect'))],
     ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))]
   ].map(([id, group, icon, title, desc, goal, prog]) => ({ id, group, icon, title, desc, goal, prog }));
 
@@ -519,7 +554,11 @@
   }
   function check() {
     const s = read(), fresh = [];
-    DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); } });
+    for (let pass = 0; pass < 4; pass++) {                   // повторяем: одно достижение может открыть другое («Коллекционер»)
+      let any = false;
+      DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c, s.u) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); any = true; } });
+      if (!any) break;
+    }
     if (fresh.length) { write(s); toasts(fresh); window.dispatchEvent(new CustomEvent('pga-unlocked', { detail: { ids: fresh.map((x) => x.id) } })); }
     return fresh.map((x) => x.id);
   }
@@ -532,22 +571,36 @@
     if (sd && sd.solved) { max('sd', Object.values(sd.solved).reduce((a, b) => a + (b || 0), 0)); max('sdx', sd.solved.expert || 0); if (sd.daily) max('streak', sd.daily.streak || 0); }
     if (cw && cw.solved) { max('cw', Object.values(cw.solved).reduce((a, b) => a + (b || 0), 0)); max('cwbig', (cw.solved.super || 0) + (cw.solved.mega || 0)); if (cw.weekly && cw.weekly.results) max('cwweek', Object.keys(cw.weekly.results).length); if (cw.daily) max('streak', cw.daily.streak || 0); }
     [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (!Array.isArray(list)) return; max(p + 'P', list.length); list.forEach((r) => { if (r.result === 'win') { max(p + 'W', list.filter((x) => x.result === 'win').length); if (r.opponent) max(p + 'On', list.filter((x) => x.result === 'win' && x.opponent).length); else if (r.level) max(p + 'Bot', r.level); } }); });
+    [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (Array.isArray(list)) max(p + 'D', list.filter((r) => r.result === 'draw').length); });
+    try { if (window.PGS && PGS.get().theme === 'dark') max('dark', 1); } catch (e) {} try { if (window.PGS && PGS.install && PGS.install.installed()) max('install', 1); } catch (e) {}
     max('done', (c.sd || 0) + (c.cw || 0) + (c.chP || 0) + (c.drP || 0) + (c.jp || 0) ? 1 : 0);
     write(s); return check();
   }
+  const dayNum = () => { const t = new Date(); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); };
+  function dailySet(c) {          // судоку, кроссворд и картинка дня решены в один день
+    const J = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, d = new Date(), tk = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const has = (k) => { const o = J(k); return !!(o && o.daily && o.daily.results && o.daily.results[tk] != null); };
+    if (has('sudokuStats') && has('crosswordStats') && has('nonogramStats') && dayNum() > (c.dailysetLast || 0)) { c.dailyset = (c.dailyset || 0) + 1; c.dailysetLast = dayNum(); }
+  }
   function event(game, d) {
     d = d || {}; const s = read(), c = s.c; const inc = (k, n) => { c[k] = (c[k] || 0) + (n || 1); }, max = (k, v) => { c[k] = Math.max(c[k] || 0, v || 0); };
-    if (game === 'sudoku') { inc('sd'); inc('done'); if (d.diff === 'expert') inc('sdx'); if (!d.hints && !d.mistakes && (d.diff === 'hard' || d.diff === 'expert')) inc('sdclean'); if (d.diff === 'easy' && d.time < 180000) inc('sdfast'); }
-    if (game === 'crossword') { inc('cw'); inc('done'); if (d.words >= 49) inc('cwbig'); if (d.week) inc('cwweek'); if (d.level >= 5) inc('cwexp'); if (d.words >= 22 && !d.hints) inc('cwclean'); }
-    if (game === 'nonogram') { inc('jp'); inc('done'); if (d.rows >= 50 && d.cols >= 50) inc('jpbig'); if (d.rows >= 100 && d.cols >= 100) inc('jphuge'); if (d.rows >= 20 && d.cols >= 20 && !d.hints) inc('jpclean'); }
-    if ((game === 'sudoku' || game === 'crossword' || game === 'nonogram') && d.daily) max('streak', d.streak);
-    if (game === 'chess' || game === 'draughts') { const p = game === 'chess' ? 'ch' : 'dr'; inc(p + 'P'); inc('done'); if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); } }
+    if (game === 'sudoku') { inc('sd'); inc('done'); if (d.diff === 'expert') inc('sdx'); if (!d.hints && !d.mistakes && (d.diff === 'hard' || d.diff === 'expert')) inc('sdclean'); if (d.diff === 'easy' && d.time < 180000) inc('sdfast'); if (d.diff === 'expert' && d.time < 900000) inc('sdfx'); if (!d.mistakes && d.diff !== 'easy') inc('sdnm'); }
+    if (game === 'crossword') { inc('cw'); inc('done'); if (d.words >= 49) inc('cwbig'); if (d.words >= 100) inc('cwmega'); if (d.week) inc('cwweek'); if (d.level >= 5) inc('cwexp'); if (d.words >= 22 && !d.hints) inc('cwclean'); if (d.words >= 15 && d.time < 240000) inc('cwquick'); }
+    if (game === 'nonogram') { inc('jp'); inc('done'); if (d.rows >= 50 && d.cols >= 50) inc('jpbig'); if (d.rows >= 100 && d.cols >= 100) inc('jphuge'); if (d.rows >= 20 && d.cols >= 20 && !d.hints) inc('jpclean'); if (d.rows <= 10 && d.cols <= 10 && d.time < 90000) inc('jpfast'); if (d.rows >= 30 && d.cols >= 30) inc('jpmid'); if (d.rows !== d.cols) inc('jprect'); }
+    if ((game === 'sudoku' || game === 'crossword' || game === 'nonogram') && d.daily) { max('streak', d.streak); dailySet(c); }
+    if (game === 'chess' || game === 'draughts') {
+      const p = game === 'chess' ? 'ch' : 'dr'; inc(p + 'P'); inc('done'); if (d.result === 'draw') inc(p + 'D');
+      if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
+      if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
+    }
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
     if (game === 'friend') inc('friend');
-    if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 3) inc('podium'); }
+    if (game === 'challenge') inc('chal');
+    if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
     write(s); return check();
   }
   const curStreak = (k) => { try { const o = JSON.parse(localStorage.getItem(k) || 'null'), d = o && o.daily; if (!d || !d.last) return 0; const today = keyOf(new Date()), y = keyOf(new Date(Date.now() - 86400000)); return d.last === today || d.last === y ? d.streak || 0 : 0; } catch (e) { return 0; } };
-  function list() { const s = read(); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, value: Math.min(d.goal, d.prog(s.c)), got: s.u[d.id] || 0 })); }
+  function list() { const s = read(); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, value: Math.min(d.goal, d.prog(s.c, s.u)), got: s.u[d.id] || 0 })); }
   function open() {
     if (document.getElementById('pga-ov')) return; const ov = document.createElement('div'); ov.className = 'pga-ov'; ov.id = 'pga-ov';
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('pgsync-applied', paint); }; const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -561,6 +614,7 @@
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgsync-applied', paint); document.body.appendChild(ov); seed(); paint();
   }
   window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak };
+  window.addEventListener('pgs-change', () => { try { if (window.PGS && PGS.get().theme === 'dark') { const s = read(); if (!(s.c.dark > 0)) { s.c.dark = 1; write(s); check(); } } } catch (e) {} });
   const boot = () => { const b = document.getElementById('pga-btn'); if (b) b.onclick = open; setTimeout(seed, 600); if (b && /[?&]achievements=1/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} open(); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
@@ -630,7 +684,7 @@
     ] },
     nonogram: { title: 'Правила японских кроссвордов', icon: '🧩', sections: [
       ['Цель игры', ['Закрасить клетки так, чтобы получилась картинка. Числа слева от строки и над столбцом показывают, <b>сколько клеток подряд</b> закрашено в этой линии, и в каком порядке идут такие группы. Между двумя группами всегда есть хотя бы одна пустая клетка.',
-        'Пример: в строке из 7 клеток подсказка «3 1» значит: сначала три закрашенные клетки подряд, потом (после пробела) одна. Подсказка «0» — в линии нет ни одной закрашенной клетки.']],
+        'Пример: в строке из 7 клеток подсказка «3 1» значит: сначала три закрашенные клетки подряд, потом (после пробела) одна. Картинка всегда занимает всё поле: в каждой строке и в каждом столбце есть закрашенные клетки.']],
       ['Как решать', [
         '<b>Пересечение.</b> Если группа очень длинная, часть её клеток закрашена при любой расстановке: сдвиньте группу в самый левый и самый правый край и найдите общие клетки.',
         '<b>Полная линия.</b> Если сумма всех групп и пробелов между ними равна длине линии, расстановка известна целиком.',
@@ -750,6 +804,8 @@ h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0
 #pad button { position:relative; background:var(--k-panel); border:1px solid var(--border); font-size:calc(var(--cell)*.5); font-weight:500; color:var(--navy); padding:0; height:calc(var(--cell)*1.05); cursor:pointer; touch-action:manipulation; }
 #pad button:hover { background:var(--k-hover); } #pad button:disabled { opacity:.25; cursor:default; }
 #pad button small { position:absolute; bottom:1px; right:3px; font-size:10px; color:var(--muted); font-weight:600; }
+#pad.notes button { background:#FBF3D6; border-color:#D9C58E; font-size:calc(var(--cell)*.4); font-style:italic; } .tool { line-height:1.15; text-align:center; }
+#t-view.on { background:var(--k-warm); border-color:#C49A36; color:var(--text); }
 #toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#2F3A56; color:#fff; padding:10px 18px; font-size:14px; font-weight:600; box-shadow:0 10px 30px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:opacity .25s; z-index:300; } #toast.on { opacity:1; }
 .ov { position:fixed; inset:0; z-index:200; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:16px; }
 .win { background:var(--k-panel); border:1px solid var(--border); width:100%; max-width:380px; text-align:center; padding:28px 26px 24px; box-shadow:0 30px 80px rgba(42,46,36,.3); animation:pop .35s cubic-bezier(.3,1.4,.5,1) both; } @keyframes pop { from { transform:scale(.85); opacity:0; } }
@@ -844,12 +900,13 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <button class="tool" id="t-undo"><span class="i">↶</span>Отмена</button>
       <button class="tool" id="t-redo"><span class="i">↷</span>Вернуть</button>
       <button class="tool" id="t-erase"><span class="i">⌫</span>Стереть</button>
-      <button class="tool" id="t-notes"><span class="i">✎</span>Заметки<span class="bd" id="notes-state">выкл</span></button>
+      <button class="tool" id="t-notes" title="Режим записи: цифры будут записываться в клетку мелко, как заметки"><span class="i">✎</span>Писать<br>заметки<span class="bd" id="notes-state">выкл</span></button>
       <button class="tool" id="t-hint"><span class="i">💡</span>Подсказка</button>
     </div>
-    <div class="tools" style="grid-template-columns:repeat(2,1fr)">
-      <button class="tool" id="t-auto" style="flex-direction:row;justify-content:center;gap:8px;padding:9px 0"><span class="i" style="font-size:16px">✨</span>Все заметки</button>
-      <button class="tool" id="t-check" style="flex-direction:row;justify-content:center;gap:8px;padding:9px 0"><span class="i" style="font-size:16px">✔</span>Проверить</button>
+    <div class="tools" style="grid-template-columns:repeat(3,1fr)">
+      <button class="tool" id="t-auto" title="Заполнить заметки всех пустых клеток возможными цифрами"><span class="i">✨</span>Все заметки</button>
+      <button class="tool" id="t-view" title="Скрыть или показать мелкие цифры-заметки (сами заметки не стираются)"><span class="i" id="view-i">👁</span><span id="view-t">Скрыть заметки</span></button>
+      <button class="tool" id="t-check"><span class="i">✔</span>Проверить</button>
     </div>
     <div id="pad"></div>
   </div>
@@ -985,13 +1042,13 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const SDK = new Function($('sdk-engine').textContent + '\nreturn SDK;')();
-const BUILD = '1.25 · 9 октября 2026';
+const BUILD = '1.27 · 9 октября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
 const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-const readPrefs = () => Object.assign({ autoCheck: true, hlSame: true, hlPeers: true, autoNotes: true }, load(LS.prefs, {}));
+const readPrefs = () => Object.assign({ autoCheck: true, hlSame: true, hlPeers: true, autoNotes: true, showNotes: true }, load(LS.prefs, {}));
 let prefs = readPrefs();
 const readStats = () => { const s = load(LS.stats, {}); s.solved = Object.assign({ easy: 0, medium: 0, hard: 0, expert: 0 }, s.solved); s.best = s.best || {}; s.daily = Object.assign({ last: null, streak: 0, results: {} }, s.daily); return s; };
 let stats = readStats();
@@ -1066,7 +1123,7 @@ function apply(changes, mist) {
 function after() { render(); persist(); if (S.val.every((v, i) => v === S.sol[i])) win(); }
 function setDigit(d) {
   if (!S || S.done || S.paused || S.sel < 0) return; const i = S.sel; if (S.puz[i]) return;
-  if (S.notesMode) { if (S.val[i]) return; apply([{ i, v0: 0, n0: S.notes[i], v1: 0, n1: S.notes[i] ^ (1 << (d - 1)) }]); return; }
+  if (S.notesMode) { if (S.val[i]) return; if (!prefs.showNotes) { prefs.showNotes = true; store(LS.prefs, prefs); toast('Заметки показаны'); } apply([{ i, v0: 0, n0: S.notes[i], v1: 0, n1: S.notes[i] ^ (1 << (d - 1)) }]); return; }
   if (S.val[i] === d) { erase(); return; }
   const ch = [{ i, v0: S.val[i], n0: S.notes[i], v1: d, n1: 0 }], bit = 1 << (d - 1);
   if (prefs.autoNotes) for (const p of SDK.PEERS[i]) if (S.notes[p] & bit) ch.push({ i: p, v0: S.val[p], n0: S.notes[p], v1: S.val[p], n1: S.notes[p] & ~bit });
@@ -1076,7 +1133,9 @@ function setDigit(d) {
 function erase() { if (!S || S.done || S.paused || S.sel < 0) return; const i = S.sel; if (S.puz[i] || (!S.val[i] && !S.notes[i])) return; apply([{ i, v0: S.val[i], n0: S.notes[i], v1: 0, n1: 0 }]); }
 function undo() { if (!S || S.done || S.paused || !S.hist.length) return; const h = S.hist.pop(); for (const c of h.changes) { S.val[c.i] = c.v0; S.notes[c.i] = c.n0; } S.redo.push(h); S.checked = false; render(); persist(); }
 function redo() { if (!S || S.done || S.paused || !S.redo.length) return; const h = S.redo.pop(); for (const c of h.changes) { S.val[c.i] = c.v1; S.notes[c.i] = c.n1; } S.hist.push(h); render(); persist(); if (S.val.every((v, i) => v === S.sol[i])) win(); }
-function toggleNotes() { if (!S) return; S.notesMode = !S.notesMode; render(); }
+function toggleNotes() { if (!S) return; S.notesMode = !S.notesMode; if (S.notesMode && !prefs.showNotes) showNotes(true); render(); }
+function showNotes(on, silent) { prefs.showNotes = on; store(LS.prefs, prefs); if (!silent) toast(on ? 'Заметки показаны' : 'Заметки скрыты — они сохранены'); render(); }
+function toggleView() { if (S) showNotes(!prefs.showNotes); }
 function hint() {
   if (!S || S.done || S.paused) return; let i = S.sel, d;
   if (i >= 0 && !S.puz[i] && S.val[i] !== S.sol[i]) d = S.sol[i];
@@ -1089,6 +1148,7 @@ function hint() {
   apply(ch, 0); const el = cells[i]; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 function fillNotes() {
+  if (S && !prefs.showNotes) { prefs.showNotes = true; store(LS.prefs, prefs); }
   if (!S || S.done || S.paused) return; const grid = S.val.map((v, k) => (v === S.sol[k] ? v : 0)), cand = SDK.candidates(grid), ch = [];
   for (let i = 0; i < 81; i++) if (!S.val[i] && S.notes[i] !== cand[i]) ch.push({ i, v0: 0, n0: S.notes[i], v1: 0, n1: cand[i] });
   if (ch.length) apply(ch, 0); else toast('Заметки уже заполнены');
@@ -1126,11 +1186,12 @@ function render() {
     if (i === sel) cls += ' sel'; else if (prefs.hlSame && sv && v === sv) cls += ' same'; else if (prefs.hlPeers && peers && (peers.has(i))) cls += ' peer';
     if (v && v !== S.sol[i] && showWrong) cls += ' wrong';
     el.className += cls; el.firstChild.textContent = v || '';
-    const nodes = el.lastChild.children, m = v ? 0 : S.notes[i]; for (let k = 0; k < 9; k++) nodes[k].textContent = (m >> k) & 1 ? k + 1 : '';
+    const nodes = el.lastChild.children, m = v || !prefs.showNotes ? 0 : S.notes[i]; for (let k = 0; k < 9; k++) nodes[k].textContent = (m >> k) & 1 ? k + 1 : '';
   }
   $('mist').textContent = S.mistakes; $('hints').textContent = S.hints; $('left-n').textContent = left;
   $('lv').innerHTML = (S.daily ? 'Судоку дня' : DIFF[S.diff]) + (S.daily ? '<small>' + S.dateKey + '</small>' : '');
-  $('t-notes').classList.toggle('on', S.notesMode); $('notes-state').textContent = S.notesMode ? 'вкл' : 'выкл';
+  $('t-notes').classList.toggle('on', S.notesMode); $('notes-state').textContent = S.notesMode ? 'вкл' : 'выкл'; $('pad').classList.toggle('notes', S.notesMode);
+  const any = S.notes.some((m, i) => m && !S.val[i]); $('view-i').textContent = prefs.showNotes ? '👁' : '🙈'; $('view-t').textContent = prefs.showNotes ? 'Скрыть заметки' : 'Показать заметки' + (any ? ' •' : ''); $('t-view').classList.toggle('on', !prefs.showNotes);
   $('t-undo').disabled = !S.hist.length; $('t-redo').disabled = !S.redo.length;
   document.querySelectorAll('#pad button').forEach((b) => { const n = +b.dataset.n; b.disabled = cntOk[n] >= 9; b.lastChild.textContent = 9 - cnt[n] > 0 ? 9 - cnt[n] : ''; });
   $('timer').textContent = fmt(S.time);
@@ -1152,9 +1213,9 @@ document.addEventListener('keydown', (e) => {
   const mv = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -9, ArrowDown: 9 }[e.key];
   if (mv !== undefined) { e.preventDefault(); let i = S.sel < 0 ? 40 : S.sel; const r = SDK.ROW[i], c = SDK.COL[i]; if ((mv === -1 && c === 0) || (mv === 1 && c === 8) || (mv === -9 && r === 0) || (mv === 9 && r === 8)) return; select(i + mv); return; }
   if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { erase(); return; }
-  const k = e.key.toLowerCase(); if (k === 'n' || k === 'т') toggleNotes(); else if (k === 'h' || k === 'р') hint(); else if (k === ' ') { e.preventDefault(); setPause(true); }
+  const k = e.key.toLowerCase(); if (k === 'n' || k === 'т') toggleNotes(); else if (k === 'v' || k === 'м') toggleView(); else if (k === 'h' || k === 'р') hint(); else if (k === ' ') { e.preventDefault(); setPause(true); }
 });
-$('t-undo').onclick = undo; $('t-redo').onclick = redo; $('t-erase').onclick = erase; $('t-notes').onclick = toggleNotes; $('t-hint').onclick = hint; $('t-auto').onclick = fillNotes; $('t-check').onclick = check;
+$('t-undo').onclick = undo; $('t-redo').onclick = redo; $('t-erase').onclick = erase; $('t-notes').onclick = toggleNotes; $('t-hint').onclick = hint; $('t-view').onclick = toggleView; $('t-auto').onclick = fillNotes; $('t-check').onclick = check;
 
 /* ---------- меню ---------- */
 function openGame() { $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('pause-ov').style.display = S.paused ? 'flex' : 'none'; $('pause-btn').textContent = S.paused ? 'Играть' : 'Пауза'; lastTick = performance.now(); resize(); render(); }
@@ -1187,7 +1248,7 @@ if (window.PGSync) PGSync.mountRow($('sync-row'), true);
 /* ---------- настройки ---------- */
 $('open-prefs').onclick = () => {
   if ($('prefs-ov')) return; const ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'prefs-ov';
-  const rows = [['autoCheck', 'Показывать ошибки сразу', 'Неверная цифра подсвечивается красным, как только вы её поставили'], ['hlSame', 'Подсвечивать одинаковые цифры', 'Выберите клетку с цифрой — такие же цифры на поле выделятся'], ['hlPeers', 'Подсвечивать ряд, столбец и блок', 'Помогает не пропустить конфликт'], ['autoNotes', 'Убирать заметки автоматически', 'Когда вы ставите цифру, она пропадает из заметок соседних клеток']];
+  const rows = [['autoCheck', 'Показывать ошибки сразу', 'Неверная цифра подсвечивается красным, как только вы её поставили'], ['hlSame', 'Подсвечивать одинаковые цифры', 'Выберите клетку с цифрой — такие же цифры на поле выделятся'], ['hlPeers', 'Подсвечивать ряд, столбец и блок', 'Помогает не пропустить конфликт'], ['showNotes', 'Показывать заметки', 'Мелкие цифры-кандидаты в клетках. Если мешают, их можно скрыть, не стирая'], ['autoNotes', 'Убирать заметки автоматически', 'Когда вы ставите цифру, она пропадает из заметок соседних клеток']];
   function paint() {
     const th = window.PGS ? PGS.THEMES : {}, cur = window.PGS ? PGS.get().board : 'classic';
     ov.innerHTML = `<div class="panel"><h3>Настройки</h3><div id="pg-theme-row"></div><div id="pg-install-row"></div>${rows.map(([k, t, d]) => `<div class="srow"><div><b>${t}</b><span class="d">${d}</span></div><button class="sw ${prefs[k] ? 'on' : ''}" data-k="${k}"></button></div>`).join('')}
