@@ -190,6 +190,7 @@
     sudokuPrefs: { m: 'lww' }, sudokuLevel: { m: 'lww' }, crosswordPrefs: { m: 'lww' },
     sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true }, crosswordWeekSave: { m: 'lww', slow: true },
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
+    nonogramPrefs: { m: 'lww' }, nonogramSave: { m: 'lww', slow: true }, nonogramStats: { m: 'stats' },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
     pgAch: { m: 'ach' },                                                                      // достижения: объединяются, счётчики — максимум
     chessCurrent: { m: 'lww', delay: 2500 }, draughtsCurrent: { m: 'lww', delay: 2500 }       // идущая партия с компьютером: продолжить можно на другом устройстве
@@ -483,7 +484,12 @@
     ['cwbig', 'Кроссворды', '🗺️', 'Крупная форма', 'Разгадайте кроссворд из 49 слов и больше', 1, (c) => Math.min(1, C(c, 'cwbig'))],
     ['cwweek', 'Кроссворды', '📅', 'Суперкроссворд недели', 'Разгадайте суперкроссворд недели', 1, (c) => Math.min(1, C(c, 'cwweek'))],
     ['cwexp', 'Кроссворды', '🎓', 'Эрудит', 'Разгадайте кроссворд на уровне «Эксперт»', 1, (c) => Math.min(1, C(c, 'cwexp'))],
-    ['cwclean', 'Кроссворды', '🪶', 'Без подсказок', 'Разгадайте кроссворд из 22 слов и больше без подсказок', 1, (c) => Math.min(1, C(c, 'cwclean'))]
+    ['cwclean', 'Кроссворды', '🪶', 'Без подсказок', 'Разгадайте кроссворд из 22 слов и больше без подсказок', 1, (c) => Math.min(1, C(c, 'cwclean'))],
+    ['jp1', 'Японские кроссворды', '🧩', 'Первая картинка', 'Решите японский кроссворд', 1, (c) => Math.min(1, C(c, 'jp'))],
+    ['jp10', 'Японские кроссворды', '🖼️', 'Галерея', 'Решите 10 японских кроссвордов', 10, (c) => C(c, 'jp')],
+    ['jpbig', 'Японские кроссворды', '🗺️', 'Большое полотно', 'Решите японский кроссворд от 50 × 50', 1, (c) => Math.min(1, C(c, 'jpbig'))],
+    ['jphuge', 'Японские кроссворды', '🏔️', 'Марафонец', 'Решите японский кроссворд 100 × 100', 1, (c) => Math.min(1, C(c, 'jphuge'))],
+    ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))]
   ].map(([id, group, icon, title, desc, goal, prog]) => ({ id, group, icon, title, desc, goal, prog }));
 
   const css = `
@@ -521,18 +527,20 @@
   function seed() {
     const s = read(), c = s.c; const max = (k, v) => { if (v > (c[k] || 0)) c[k] = v; };
     const J = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
-    const sd = J('sudokuStats'), cw = J('crosswordStats'), ch = J('chessGameHistory'), dr = J('draughtsHistory');
+    const sd = J('sudokuStats'), cw = J('crosswordStats'), ch = J('chessGameHistory'), dr = J('draughtsHistory'), jp = J('nonogramStats');
+    if (jp && jp.solved) { max('jp', Object.values(jp.solved).reduce((a, b) => a + (b || 0), 0)); if (jp.daily) max('streak', jp.daily.streak || 0); }
     if (sd && sd.solved) { max('sd', Object.values(sd.solved).reduce((a, b) => a + (b || 0), 0)); max('sdx', sd.solved.expert || 0); if (sd.daily) max('streak', sd.daily.streak || 0); }
     if (cw && cw.solved) { max('cw', Object.values(cw.solved).reduce((a, b) => a + (b || 0), 0)); max('cwbig', (cw.solved.super || 0) + (cw.solved.mega || 0)); if (cw.weekly && cw.weekly.results) max('cwweek', Object.keys(cw.weekly.results).length); if (cw.daily) max('streak', cw.daily.streak || 0); }
     [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (!Array.isArray(list)) return; max(p + 'P', list.length); list.forEach((r) => { if (r.result === 'win') { max(p + 'W', list.filter((x) => x.result === 'win').length); if (r.opponent) max(p + 'On', list.filter((x) => x.result === 'win' && x.opponent).length); else if (r.level) max(p + 'Bot', r.level); } }); });
-    max('done', (c.sd || 0) + (c.cw || 0) + (c.chP || 0) + (c.drP || 0) ? 1 : 0);
+    max('done', (c.sd || 0) + (c.cw || 0) + (c.chP || 0) + (c.drP || 0) + (c.jp || 0) ? 1 : 0);
     write(s); return check();
   }
   function event(game, d) {
     d = d || {}; const s = read(), c = s.c; const inc = (k, n) => { c[k] = (c[k] || 0) + (n || 1); }, max = (k, v) => { c[k] = Math.max(c[k] || 0, v || 0); };
     if (game === 'sudoku') { inc('sd'); inc('done'); if (d.diff === 'expert') inc('sdx'); if (!d.hints && !d.mistakes && (d.diff === 'hard' || d.diff === 'expert')) inc('sdclean'); if (d.diff === 'easy' && d.time < 180000) inc('sdfast'); }
     if (game === 'crossword') { inc('cw'); inc('done'); if (d.words >= 49) inc('cwbig'); if (d.week) inc('cwweek'); if (d.level >= 5) inc('cwexp'); if (d.words >= 22 && !d.hints) inc('cwclean'); }
-    if ((game === 'sudoku' || game === 'crossword') && d.daily) max('streak', d.streak);
+    if (game === 'nonogram') { inc('jp'); inc('done'); if (d.rows >= 50 && d.cols >= 50) inc('jpbig'); if (d.rows >= 100 && d.cols >= 100) inc('jphuge'); if (d.rows >= 20 && d.cols >= 20 && !d.hints) inc('jpclean'); }
+    if ((game === 'sudoku' || game === 'crossword' || game === 'nonogram') && d.daily) max('streak', d.streak);
     if (game === 'chess' || game === 'draughts') { const p = game === 'chess' ? 'ch' : 'dr'; inc(p + 'P'); inc('done'); if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); } }
     if (game === 'friend') inc('friend');
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 3) inc('podium'); }
@@ -619,6 +627,24 @@
         'Начинайте с цифр, которых на поле уже много: для них проще найти оставшиеся места.',
         'На высоких уровнях понадобятся более сложные приёмы: пары, тройки и их сочетания. Тут помогают заметки.']],
       ['Уровни и «судоку дня»', ['Четыре уровня: от «Легко» до «Эксперт». <b>Судоку дня</b> у всех одинаковое и каждый день новое: за решение подряд копится серия, а лучшее время можно сравнить в таблице рекордов.']]
+    ] },
+    nonogram: { title: 'Правила японских кроссвордов', icon: '🧩', sections: [
+      ['Цель игры', ['Закрасить клетки так, чтобы получилась картинка. Числа слева от строки и над столбцом показывают, <b>сколько клеток подряд</b> закрашено в этой линии, и в каком порядке идут такие группы. Между двумя группами всегда есть хотя бы одна пустая клетка.',
+        'Пример: в строке из 7 клеток подсказка «3 1» значит: сначала три закрашенные клетки подряд, потом (после пробела) одна. Подсказка «0» — в линии нет ни одной закрашенной клетки.']],
+      ['Как решать', [
+        '<b>Пересечение.</b> Если группа очень длинная, часть её клеток закрашена при любой расстановке: сдвиньте группу в самый левый и самый правый край и найдите общие клетки.',
+        '<b>Полная линия.</b> Если сумма всех групп и пробелов между ними равна длине линии, расстановка известна целиком.',
+        '<b>Крестики.</b> Отмечайте клетки, которые точно пустые: так проще увидеть, где может стоять следующая группа.',
+        '<b>От края.</b> Если клетка у края уже закрашена, первая группа начинается с неё. Закончив одну линию, переходите к пересекающимся.',
+        '<b>Серые числа</b> показывают, что линия уже собрана верно. Все головоломки в игре решаются логикой, без угадывания.',
+        'Иногда часть клеток открыта заранее (они подкрашены и не меняются): это нужно, чтобы решение было единственным.']],
+      ['Как играть в приложении', [
+        'Нажмите на клетку, чтобы закрасить её; нажмите ещё раз, чтобы стереть. <b>Правая кнопка мыши</b> или режим <b>«Крестик»</b> ставят крестик. Зажав и проведя по строке или столбцу, вы закрасите сразу несколько клеток.',
+        'Большое поле: колесо мыши прокручивает, <b>Ctrl + колесо</b> меняет масштаб, на телефоне два пальца двигают и масштабируют. Кнопка «Двигать» превращает один палец в перемещение. Маленькая <b>карта</b> в углу показывает, где вы находитесь.',
+        'Включите «Крестики на готовых линиях» в настройках, и пустые клетки собранных линий будут помечаться сами.',
+        '<b>Подсказка</b> закрашивает верную клетку, <b>Проверить</b> показывает лишние закрашенные клетки. Оба действия считаются как подсказки.',
+        'Прогресс сохраняется сам: большую головоломку (хоть 100 × 100) можно решать частями и продолжить позже, в том числе на другом устройстве.']],
+      ['Размеры и картинка дня', ['Поле от 5 × 5 до 100 × 100, можно прямоугольное. Чем больше поле, тем дольше решение: от пары минут до нескольких часов. <b>Кроссворд дня</b> (15 × 15) у всех одинаковый, за решение подряд копится серия, а лучшее время попадает в таблицу рекордов.']]
     ] },
     crossword: { title: 'Правила кроссвордов', icon: '🔤', sections: [
       ['Как разгадывать', [
@@ -1008,7 +1034,7 @@ if (typeof module !== 'undefined') module.exports = CW;
 const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 const DICT = JSON.parse($('cw-dict').textContent);
-const BUILD = '1.24 · 8 октября 2026';
+const BUILD = '1.25 · 9 октября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
