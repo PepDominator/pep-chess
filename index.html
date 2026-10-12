@@ -234,7 +234,12 @@
     const A = parse(a) || {}, B = parse(b) || {}, u = {}, c = {};
     for (const k of new Set(Object.keys(A.u || {}).concat(Object.keys(B.u || {})))) { const x = (A.u || {})[k], y = (B.u || {})[k]; u[k] = !x ? y : !y ? x : Math.min(x, y); }
     for (const k of new Set(Object.keys(A.c || {}).concat(Object.keys(B.c || {})))) c[k] = Math.max((A.c || {})[k] || 0, (B.c || {})[k] || 0);
-    return JSON.stringify({ u, c });
+    // дни активности: игры, время суток, задания и победы объединяются, число завершённых игр — большее из двух; хранятся последние 420 дней
+    const d = {}; for (const k of new Set(Object.keys(A.d || {}).concat(Object.keys(B.d || {})))) { const x = (A.d || {})[k] || {}, y = (B.d || {})[k] || {}; d[k] = { g: (x.g | 0) | (y.g | 0), t: (x.t | 0) | (y.t | 0), q: (x.q | 0) | (y.q | 0), w: (x.w | 0) | (y.w | 0), n: Math.max(x.n | 0, y.n | 0) }; }
+    const dk = Object.keys(d).sort(); if (dk.length > 420) dk.slice(0, dk.length - 420).forEach((k) => delete d[k]);
+    // коллекция картинок: объединение без повторов
+    const p = []; for (const e of (A.p || []).concat(B.p || [])) if (p.indexOf(e) < 0) p.push(e);
+    return JSON.stringify({ u, c, d, p: p.slice(-700) });
   }
   // Решает, что делать с ключом при сравнении локальных данных с облачными
   function reconcile(k, cloud) {
@@ -541,9 +546,29 @@
   if (window.PGA) return;
   const KEY = 'pgAch';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); return o && typeof o === 'object' ? { u: o.u || {}, c: o.c || {} } : { u: {}, c: {} }; } catch (e) { return { u: {}, c: {} }; } };
-  const write = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  // u — полученные достижения; c — счётчики; d — «дни активности»: { 'ГГГГ-ММ-ДД': { g: игры (битовая маска), t: время суток, n: сколько завершено, q: задания дня, w: победы } }; p — коллекция увиденных картинок и их категорий
+  const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); return o && typeof o === 'object' ? { u: o.u || {}, c: o.c || {}, d: o.d || {}, p: Array.isArray(o.p) ? o.p : [] } : { u: {}, c: {}, d: {}, p: [] }; } catch (e) { return { u: {}, c: {}, d: {}, p: [] }; } };
+  const write = (s) => { try { const keys = Object.keys(s.d || {}).sort(); if (keys.length > 420) keys.slice(0, keys.length - 420).forEach((k) => delete s.d[k]); if ((s.p || []).length > 700) s.p = s.p.slice(-700); localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} try { window.dispatchEvent(new Event('pga-changed')); } catch (e) {} };
   const C = (c, k) => c[k] || 0;
+  const keyOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const dnum = (k) => { const a = k.split('-').map(Number); return Math.round(Date.UTC(a[0], a[1] - 1, a[2]) / 86400000); };
+  const pop = (x) => { let n = 0; x = x | 0; while (x) { n += x & 1; x >>= 1; } return n; };
+  // Что можно вывести из дней активности: серии, число дней, игры и время суток за день, выполненные задания дня и т. п.
+  function stats(s) {
+    const keys = Object.keys(s.d || {}).sort(), nums = keys.map(dnum), today = dnum(keyOf(new Date())), X = { days: keys.length, best: 0, cur: 0, bestQ: 0, qTotal: 0, bestM: 0, maxG: 0, maxN: 0, mde: 0, nights: 0, dw: false, weekdays: 0, monthMax: 0, weekend: false, pics: 0, cats: 0 };
+    let run = 0, runQ = 0, runM = 0; const wd = new Set(), mon = {};
+    keys.forEach((k, i) => {
+      const d = s.d[k], consec = i > 0 && nums[i] === nums[i - 1] + 1, prev = consec ? s.d[keys[i - 1]] : null;
+      run = consec ? run + 1 : 1; X.best = Math.max(X.best, run);
+      const full = ((d.q | 0) & 15) === 15; runQ = full ? (prev && ((prev.q | 0) & 15) === 15 ? runQ + 1 : 1) : 0; X.bestQ = Math.max(X.bestQ, runQ); if (full) X.qTotal++;
+      const mor = !!((d.t | 0) & 1); runM = mor ? (prev && ((prev.t | 0) & 1) ? runM + 1 : 1) : 0; X.bestM = Math.max(X.bestM, runM);
+      X.maxG = Math.max(X.maxG, pop(d.g)); X.maxN = Math.max(X.maxN, d.n | 0); X.mde = Math.max(X.mde, pop((d.t | 0) & 7)); if ((d.t | 0) & 8) X.nights++; if (((d.w | 0) & 3) === 3) X.dw = true;
+      const a = k.split('-').map(Number), wday = new Date(a[0], a[1] - 1, a[2]).getDay(); wd.add(wday); mon[k.slice(0, 7)] = (mon[k.slice(0, 7)] || 0) + 1; if (wday === 6 && i + 1 < keys.length && nums[i + 1] === nums[i] + 1) X.weekend = true;
+    });
+    if (nums.length && nums[nums.length - 1] >= today - 1) X.cur = run; X.weekdays = wd.size; X.monthMax = Math.max(0, ...Object.values(mon));
+    (s.p || []).forEach((e) => { if (String(e).indexOf('cat:') === 0) X.cats++; else X.pics++; });
+    return X;
+  }
   // id, игра, значок, название, описание, цель, прогресс по счётчикам
   const DEFS = [
     ['first', 'Общие', '🌱', 'Первые шаги', 'Завершите любую партию или головоломку', 1, (c) => Math.min(1, C(c, 'done'))],
@@ -616,10 +641,65 @@
     ['jprect', 'Японские кроссворды', '▭', 'Не квадрат', 'Решите прямоугольный японский кроссворд', 1, (c) => Math.min(1, C(c, 'jprect'))],
     ['jpexp', 'Японские кроссворды', '🧠', 'Эксперт нонограмм', 'Решите японский кроссворд уровня «Эксперт» от 15 × 15', 1, (c) => Math.min(1, C(c, 'jpx'))],
     ['jpall', 'Японские кроссворды', '🪜', 'Все ступени', 'Решите по японскому кроссворду на каждом из пяти уровней сложности', 5, (c) => (C(c, 'jpl1') > 0) + (C(c, 'jpl2') > 0) + (C(c, 'jpl3') > 0) + (C(c, 'jpl4') > 0) + (C(c, 'jpl5') > 0)],
-    ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))]
-  ].map(([id, group, icon, title, desc, goal, prog]) => ({ id, group, icon, title, desc, goal, prog }));
+    ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))],
+    // ---- каждый день ----
+    ['act3', 'Каждый день', '🔥', 'Входит в привычку', 'Завершайте хотя бы одну игру 3 дня подряд', 3, (c, u, X) => X.best],
+    ['act7', 'Каждый день', '🗓️', 'Неделя без перерыва', 'Играйте 7 дней подряд', 7, (c, u, X) => X.best],
+    ['act14', 'Каждый день', '🏃', 'Две недели в строю', 'Играйте 14 дней подряд', 14, (c, u, X) => X.best],
+    ['act30', 'Каждый день', '🌙', 'Месяц в игре', 'Играйте 30 дней подряд', 30, (c, u, X) => X.best],
+    ['act100', 'Каждый день', '🏛️', 'Столетний игрок', 'Играйте 100 дней подряд', 100, (c, u, X) => X.best],
+    ['days10', 'Каждый день', '🔟', 'Десять игровых дней', 'Проведите в игре 10 разных дней', 10, (c, u, X) => X.days],
+    ['days50', 'Каждый день', '🪴', 'Полсотни дней', 'Проведите в игре 50 разных дней', 50, (c, u, X) => X.days],
+    ['days100', 'Каждый день', '🌳', 'Сотня игровых дней', 'Проведите в игре 100 разных дней', 100, (c, u, X) => X.days],
+    ['days365', 'Каждый день', '🎂', 'Год с нами', 'Проведите в игре 365 разных дней', 365, (c, u, X) => X.days],
+    ['quest1', 'Каждый день', '✅', 'Всё на сегодня', 'Выполните все четыре задания дня за один день', 1, (c, u, X) => Math.min(1, X.qTotal)],
+    ['quest3', 'Каждый день', '🎯', 'Три полных дня', 'Выполните все задания дня в 3 разных дня', 3, (c, u, X) => X.qTotal],
+    ['quest7', 'Каждый день', '🥇', 'Неделя заданий', 'Выполняйте все задания дня 7 дней подряд', 7, (c, u, X) => X.bestQ],
+    ['week7', 'Каждый день', '📅', 'Все дни недели', 'Сыграйте в каждый из семи дней недели (понедельник, вторник и так далее)', 7, (c, u, X) => X.weekdays],
+    ['weekend', 'Каждый день', '🏖️', 'Выходные в игре', 'Играйте и в субботу, и в воскресенье одних выходных', 1, (c, u, X) => (X.weekend ? 1 : 0)],
+    ['morning3', 'Каждый день', '🌅', 'Жаворонок', 'Играйте по утрам (с 5 до 12) 3 дня подряд', 3, (c, u, X) => X.bestM],
+    ['owl3', 'Каждый день', '🦉', 'Ночная сова', 'Играйте ночью (с 0 до 5) в 3 разных дня', 3, (c, u, X) => X.nights],
+    ['threetimes', 'Каждый день', '🍽️', 'Три приёма', 'Сыграйте утром, днём и вечером одного дня', 3, (c, u, X) => X.mde],
+    ['games3day', 'Каждый день', '🎭', 'Три игры за день', 'Сыграйте в три разные игры за один день', 3, (c, u, X) => X.maxG],
+    ['games5day', 'Каждый день', '🎪', 'Все пять за день', 'Сыграйте во все пять игр за один день', 5, (c, u, X) => X.maxG],
+    ['n5day', 'Каждый день', '🏁', 'Марафон дня', 'Завершите 5 игр за один день', 5, (c, u, X) => X.maxN],
+    ['n10day', 'Каждый день', '🚀', 'Десять за день', 'Завершите 10 игр за один день', 10, (c, u, X) => X.maxN],
+    ['comeback', 'Каждый день', '👋', 'Я вернулся', 'Вернитесь в игру после перерыва в две недели и больше', 1, (c) => Math.min(1, C(c, 'comeback'))],
+    ['month10', 'Каждый день', '📆', 'Десять дней в месяце', 'Играйте 10 разных дней в одном месяце', 10, (c, u, X) => X.monthMax],
+    ['month20', 'Каждый день', '🗒️', 'Двадцать дней в месяце', 'Играйте 20 разных дней в одном месяце', 20, (c, u, X) => X.monthMax],
+    ['doublewin', 'Каждый день', '⚔️', 'Дубль', 'Выиграйте и в шахматах, и в шашках в один день', 1, (c, u, X) => (X.dw ? 1 : 0)],
+    // ---- особые дни и часы ----
+    ['fri13', 'Особые дни', '🖤', 'Пятница, 13-е', 'Завершите игру в пятницу, 13-го числа', 1, (c) => Math.min(1, C(c, 'fri13'))],
+    ['ny', 'Особые дни', '🎄', 'С Новым годом!', 'Завершите игру 31 декабря или 1 января', 1, (c) => Math.min(1, C(c, 'ny'))],
+    ['leap', 'Особые дни', '🐸', 'Високосный день', 'Завершите игру 29 февраля', 1, (c) => Math.min(1, C(c, 'leap'))],
+    ['apr1', 'Особые дни', '🤡', 'Первое апреля', 'Завершите игру 1 апреля', 1, (c) => Math.min(1, C(c, 'apr1'))],
+    ['round', 'Особые дни', '🔢', 'Круглая дата', 'Завершите игру в день, когда число равно месяцу (например, 9.09 или 11.11)', 1, (c) => Math.min(1, C(c, 'round'))],
+    ['mirror', 'Особые дни', '🪞', 'Зеркальное время', 'Завершите игру, когда на часах время читается одинаково в обе стороны (12:21, 20:02)', 1, (c) => Math.min(1, C(c, 'mirror'))],
+    ['seq', 'Особые дни', '🔗', 'По порядку', 'Завершите игру ровно в 12:34, 01:23 или 23:45', 1, (c) => Math.min(1, C(c, 'seq'))],
+    ['pi', 'Особые дни', '🥧', 'Число Пи', 'Завершите игру в 3:14 (утром или дня)', 1, (c) => Math.min(1, C(c, 'pi'))],
+    ['midnight', 'Особые дни', '🕛', 'Ровно в полночь', 'Завершите игру в первые пять минут после полуночи', 1, (c) => Math.min(1, C(c, 'midnight'))],
+    // ---- коллекции и мастерство ----
+    ['pic10', 'Коллекции', '🖼️', 'Десять сюжетов', 'Решите японские кроссворды с 10 разными картинками', 10, (c, u, X) => X.pics],
+    ['pic50', 'Коллекции', '🏛️', 'Пятьдесят сюжетов', 'Решите японские кроссворды с 50 разными картинками', 50, (c, u, X) => X.pics],
+    ['pic100', 'Коллекции', '🎨', 'Музей', 'Решите японские кроссворды со 100 разными картинками', 100, (c, u, X) => X.pics],
+    ['piccat', 'Коллекции', '🗂️', 'Знаток тем', 'Решите японские кроссворды из 10 разных категорий картинок', 10, (c, u, X) => X.cats],
+    ['clean3', 'Мастерство', '🧼', 'Три чистых подряд', 'Решите три головоломки подряд без подсказок и ошибок', 3, (c) => C(c, 'cleanBest')],
+    ['clean10', 'Мастерство', '💎', 'Десять чистых подряд', 'Решите десять головоломок подряд без подсказок и ошибок', 10, (c) => C(c, 'cleanBest')],
+    // ---- секретные ----
+    ['slogo', 'Секретные', '🕵️', 'Любопытный', 'Нажмите на заголовок главной страницы 7 раз подряд', 1, (c) => Math.min(1, C(c, 'slogo')), 1],
+    ['stheme', 'Секретные', '🦎', 'Хамелеон', 'Переключите тему оформления 5 раз', 5, (c) => C(c, 'themeSw'), 1],
+    ['sresign', 'Секретные', '🏳️', 'Сдаюсь!', 'Проиграйте шахматную партию, не сделав и трёх ходов', 1, (c) => Math.min(1, C(c, 'sresign')), 1],
+    ['snightwin', 'Секретные', '🌃', 'Полуночный стратег', 'Выиграйте шахматную партию ночью (с 0 до 5)', 1, (c) => Math.min(1, C(c, 'snightwin')), 1]
+  ].map(([id, group, icon, title, desc, goal, prog, secret]) => ({ id, group, icon, title, desc, goal, prog, secret: !!secret }));
+  const RANKS = [[0, 'Новичок'], [5, 'Любитель'], [15, 'Игрок'], [30, 'Знаток'], [50, 'Мастер'], [75, 'Эксперт'], [100, 'Гроссмейстер'], [115, 'Легенда']];
+  const rankOf = (n) => { let r = RANKS[0], nx = null; for (let i = 0; i < RANKS.length; i++) if (n >= RANKS[i][0]) { r = RANKS[i]; nx = RANKS[i + 1] || null; } return { name: r[1], next: nx ? nx[0] - n : 0, nextName: nx ? nx[1] : '' }; };
 
   const css = `
+.pga-rank { display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:6px 20px 8px; font-size:13px; } .pga-rank .pga-rk b { font-size:15px; color:var(--k-gt); } .pga-rn { color:var(--k-mu); font-size:12px; }
+.pga-quests { margin:2px 16px 10px; border:1px solid var(--k-line); background:var(--k-surf); padding:8px 12px 6px; } .pga-qh { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; margin-bottom:4px; } .pga-qh span { color:var(--k-mu); font-size:12px; }
+.pga-q { display:flex; align-items:center; gap:10px; padding:5px 0; border-top:1px solid var(--k-line); font-size:13.5px; } .pga-q .pga-qi { width:22px; text-align:center; font-size:15px; } .pga-q .pga-qt { flex:1; } .pga-q a { background:#3B5D4A; color:#fff; padding:4px 10px; font-size:12px; font-weight:700; text-decoration:none; } .pga-q.ok .pga-qt { color:var(--k-mu); text-decoration:line-through; } .pga-q.ok .pga-qi { color:var(--k-gt); font-weight:700; }
+.pga-item.sec .pga-t b { color:var(--k-mu); } .pga-item.sec .pga-ic { filter:grayscale(1); opacity:.6; }
+.pga-badge { position:absolute; top:-4px; right:-4px; min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:#C0392B; color:#fff; font:700 11px/17px 'Noto Sans',system-ui,sans-serif; text-align:center; font-style:normal; pointer-events:none; } #pga-btn { position:relative; top:auto; right:auto; left:auto; bottom:auto; }
 .pga-ov { position:fixed; inset:0; z-index:420; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:14px; font-family:'Noto Sans',system-ui,sans-serif; }
 .pga-panel { position:relative; background:var(--k-panel); border:1px solid var(--k-line); width:100%; max-width:520px; max-height:calc(100dvh - 28px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:var(--k-tx); padding:22px 20px 18px; }
 .pga-panel h3 { margin:0 0 4px; font:italic 400 26px Georgia,'Times New Roman',serif; } .pga-sub { font-size:13px; color:var(--k-mu); margin:0 0 12px; } .pga-x { position:absolute; top:10px; right:12px; background:none; border:none; font-size:18px; color:var(--k-mu2); cursor:pointer; }
@@ -635,10 +715,10 @@
 @keyframes pgaIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
-  const keyOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
   function toasts(list) {
     if (!document.body) return; let box = document.getElementById('pga-toasts'); if (!box) { box = document.createElement('div'); box.id = 'pga-toasts'; document.body.appendChild(box); }
+    if (list.length > 3) { const rest = list.length - 2; list = list.slice(0, 2).concat([{ id: 'more', icon: '🏅', title: 'Ещё достижений: ' + rest, desc: 'Нажмите, чтобы посмотреть все' }]); }          // не заваливаем экран, если достижений сразу много
     list.forEach((d, i) => setTimeout(() => {
       const t = document.createElement('div'); t.className = 'pga-toast'; t.dataset.id = d.id; t.innerHTML = `<span class="i">${d.icon}</span><div><small>Достижение получено</small><b>${esc(d.title)}</b><span>${esc(d.desc)}</span></div>`;
       t.onclick = () => { t.remove(); if (document.getElementById('pga-btn')) open(); else location.href = rootUrl() + '?achievements=1'; }; box.appendChild(t); setTimeout(() => t.remove(), 7000);
@@ -648,7 +728,7 @@
     const s = read(), fresh = [];
     for (let pass = 0; pass < 4; pass++) {                   // повторяем: одно достижение может открыть другое («Коллекционер»)
       let any = false;
-      DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c, s.u) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); any = true; } });
+      const X = stats(s); DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c, s.u, X) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); any = true; } });
       if (!any) break;
     }
     if (fresh.length) { write(s); toasts(fresh); window.dispatchEvent(new CustomEvent('pga-unlocked', { detail: { ids: fresh.map((x) => x.id) } })); }
@@ -666,6 +746,8 @@
     [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (Array.isArray(list)) max(p + 'D', list.filter((r) => r.result === 'draw').length); });
     try { if (window.PGS && PGS.get().theme === 'dark') max('dark', 1); } catch (e) {} try { if (window.PGS && PGS.install && PGS.install.installed()) max('install', 1); } catch (e) {}
     max('done', (c.sd || 0) + (c.cw || 0) + (c.chP || 0) + (c.drP || 0) + (c.jp || 0) ? 1 : 0);
+    // прошлые решённые задания дня уже были днями в игре: серия «дней подряд» не начинается с нуля
+    [[sd, 4, 1], [cw, 8, 2], [jp, 16, 4]].forEach(([st, gbit, qbit]) => { const res = st && st.daily && st.daily.results; if (res) Object.keys(res).forEach((k) => { if (/^\d{4}-\d{2}-\d{2}$/.test(k)) { const day = s.d[k] = s.d[k] || { g: 0, t: 0, n: 0, q: 0, w: 0 }; day.g |= gbit; day.q |= qbit | 8; day.n = Math.max(day.n | 0, 1); } }); });
     write(s); return check();
   }
   const dayNum = () => { const t = new Date(); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); };
@@ -673,6 +755,13 @@
     const J = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, d = new Date(), tk = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const has = (k) => { const o = J(k); return !!(o && o.daily && o.daily.results && o.daily.results[tk] != null); };
     if (has('sudokuStats') && has('crosswordStats') && has('nonogramStats') && dayNum() > (c.dailysetLast || 0)) { c.dailyset = (c.dailyset || 0) + 1; c.dailysetLast = dayNum(); }
+  }
+  // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
+  function touchDay(s, game, d) {
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16 }[game]; if (!gbit) return;
+    const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
+    if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
+    const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
   }
   function event(game, d) {
     d = d || {}; const s = read(), c = s.c; const inc = (k, n) => { c[k] = (c[k] || 0) + (n || 1); }, max = (k, v) => { c[k] = Math.max(c[k] || 0, v || 0); };
@@ -686,28 +775,52 @@
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
     if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts';
+    if (completion) {
+      touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
+      if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
+      if (hhmm === hhmm.split('').reverse().join('')) inc('mirror'); if (hhmm === '1234' || hhmm === '0123' || hhmm === '2345') inc('seq'); if (hhmm === '0314' || hhmm === '1514') inc('pi'); if (H === 0 && M < 5) inc('midnight');
+      if (game === 'chess') { if (d.result === 'win' && H < 5) inc('snightwin'); if (d.result && d.result !== 'win' && d.result !== 'draw' && d.moves && d.moves <= 4) inc('sresign'); }
+      const clean = game === 'sudoku' ? !d.hints && !d.mistakes : (game === 'crossword' || game === 'nonogram') ? !d.hints : null;
+      if (clean !== null) { let run = 0; try { run = +localStorage.getItem('pgCleanRun') || 0; } catch (e) {} run = clean ? run + 1 : 0; try { localStorage.setItem('pgCleanRun', String(run)); } catch (e) {} max('cleanBest', run); }
+      if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
+    }
+    if (game === 'secret' && d.id === 'logo') inc('slogo');
     if (game === 'friend') inc('friend');
     if (game === 'challenge') inc('chal');
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
     write(s); return check();
   }
+  const QUESTS = [[1, '🔢', 'Судоку дня', 'sudoku/'], [2, '🔤', 'Кроссворд дня', 'crossword/'], [4, '🧩', 'Картинка дня', 'nonogram/'], [8, '🎯', 'Завершить любую игру', '']];
+  function questBits() {
+    const s = read(), k = keyOf(new Date()), d = s.d[k] || { q: 0, n: 0 }; let q = d.q | 0;
+    [['sudokuStats', 1], ['crosswordStats', 2], ['nonogramStats', 4]].forEach(([key, bit]) => { try { const o = JSON.parse(localStorage.getItem(key) || 'null'); if (o && o.daily && o.daily.results && o.daily.results[k] != null) q |= bit; } catch (e) {} });
+    if ((d.n | 0) > 0 || (q & 7)) q |= 8; return q & 15;
+  }
   const curStreak = (k) => { try { const o = JSON.parse(localStorage.getItem(k) || 'null'), d = o && o.daily; if (!d || !d.last) return 0; const today = keyOf(new Date()), y = keyOf(new Date(Date.now() - 86400000)); return d.last === today || d.last === y ? d.streak || 0 : 0; } catch (e) { return 0; } };
-  function list() { const s = read(); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, value: Math.min(d.goal, d.prog(s.c, s.u)), got: s.u[d.id] || 0 })); }
+  function list() { const s = read(), X = stats(s); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, secret: d.secret, value: Math.min(d.goal, d.prog(s.c, s.u, X)), got: s.u[d.id] || 0 })); }
   function open() {
     if (document.getElementById('pga-ov')) return; const ov = document.createElement('div'); ov.className = 'pga-ov'; ov.id = 'pga-ov';
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('pgsync-applied', paint); }; const onKey = (e) => { if (e.key === 'Escape') close(); };
     function paint() {
-      const items = list(), got = items.filter((x) => x.got).length, groups = [...new Set(items.map((x) => x.group))], ss = curStreak('sudokuStats'), sc = curStreak('crosswordStats');
+      const items = list(), got = items.filter((x) => x.got).length, groups = [...new Set(items.map((x) => x.group))], ss = curStreak('sudokuStats'), sc = curStreak('crosswordStats'), X = stats(read()), rk = rankOf(got), q = questBits(), done = pop(q), root = rootUrl();
+      const row = (x) => { const hid = x.secret && !x.got; return `<div class="pga-item${x.got ? ' on' : ''}${hid ? ' sec' : ''}" data-id="${x.id}"><span class="pga-ic">${hid ? '❓' : x.icon}</span><div class="pga-t"><b>${hid ? 'Секретное достижение' : esc(x.title)}</b><span>${hid ? 'Подсказка: исследуйте игру, и оно найдёт вас' : esc(x.desc)}</span>${!x.got && !hid && x.goal > 1 ? `<div class="pga-bar"><i style="width:${Math.round(100 * x.value / x.goal)}%"></i></div>` : ''}</div><span class="pga-d">${x.got ? new Date(x.got).toLocaleDateString('ru-RU') : (!hid && x.goal > 1 ? x.value + ' / ' + x.goal : '')}</span></div>`; };
       ov.innerHTML = `<div class="pga-panel" role="dialog"><button class="pga-x" aria-label="Закрыть">✕</button><h3>Достижения</h3><p class="pga-sub">Получено ${got} из ${items.length}</p>
-        <div class="pga-streaks"><div class="pga-chip">Серия судоку дня<b>${ss} <i>${ss ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия кроссворда дня<b>${sc} <i>${sc ? '🔥' : ''}</i></b></div></div>
-        ${groups.map((g) => `<div class="pga-g">${esc(g)}</div>` + items.filter((x) => x.group === g).map((x) => `<div class="pga-item${x.got ? ' on' : ''}" data-id="${x.id}"><span class="pga-ic">${x.icon}</span><div class="pga-t"><b>${esc(x.title)}</b><span>${esc(x.desc)}</span>${!x.got && x.goal > 1 ? `<div class="pga-bar"><i style="width:${Math.round(100 * x.value / x.goal)}%"></i></div>` : ''}</div><span class="pga-d">${x.got ? new Date(x.got).toLocaleDateString('ru-RU') : (x.goal > 1 ? x.value + ' / ' + x.goal : '')}</span></div>`).join('')).join('')}</div>`;
+        <div class="pga-rank"><span class="pga-rk">Звание: <b>${esc(rk.name)}</b></span>${rk.next ? `<span class="pga-rn">до «${esc(rk.nextName)}»: ещё ${rk.next}</span>` : '<span class="pga-rn">высшее звание!</span>'}</div>
+        <div class="pga-quests"><div class="pga-qh"><b>Задания на сегодня</b><span>${done} из 4${done === 4 ? ' — всё выполнено 🎉' : ''}</span></div>${QUESTS.map(([bit, ic, t, href]) => `<div class="pga-q${q & bit ? ' ok' : ''}"><span class="pga-qi">${q & bit ? '✓' : ic}</span><span class="pga-qt">${esc(t)}</span>${q & bit || !href ? '' : `<a href="${root}${href}">Играть</a>`}</div>`).join('')}</div>
+        <div class="pga-streaks"><div class="pga-chip">Дней подряд в игре<b>${X.cur} <i>${X.cur ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия судоку дня<b>${ss} <i>${ss ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия кроссворда дня<b>${sc} <i>${sc ? '🔥' : ''}</i></b></div></div>
+        ${groups.map((g) => `<div class="pga-g">${esc(g)}</div>` + items.filter((x) => x.group === g).map(row).join('')).join('')}</div>`;
       ov.querySelector('.pga-x').onclick = close;
     }
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgsync-applied', paint); document.body.appendChild(ov); seed(); paint();
   }
-  window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak };
-  window.addEventListener('pgs-change', () => { try { if (window.PGS && PGS.get().theme === 'dark') { const s = read(); if (!(s.c.dark > 0)) { s.c.dark = 1; write(s); check(); } } } catch (e) {} });
-  const boot = () => { const b = document.getElementById('pga-btn'); if (b) b.onclick = open; setTimeout(seed, 600); if (b && /[?&]achievements=1/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} open(); } };
+  // значок «сколько заданий на сегодня осталось» на кнопке «Достижения» главной страницы
+  function badge() { const b = document.getElementById('pga-btn'); if (!b) return; let i = b.querySelector('.pga-badge'); if (!i) { i = document.createElement('i'); i.className = 'pga-badge'; b.appendChild(i); } const left = 4 - pop(questBits()); i.textContent = left > 0 ? String(left) : ''; i.style.display = left > 0 ? '' : 'none'; b.title = left > 0 ? 'Заданий на сегодня осталось: ' + left : 'Все задания на сегодня выполнены'; }
+  window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak, stats: () => stats(read()), questBits, rankOf, badge };
+  let lastTheme = null;
+  window.addEventListener('pgs-change', () => { try { if (!window.PGS) return; const th = PGS.get().theme, s = read(); let ch = false; if (lastTheme !== null && th !== lastTheme) { s.c.themeSw = (s.c.themeSw || 0) + 1; ch = true; } lastTheme = th; if (th === 'dark' && !(s.c.dark > 0)) { s.c.dark = 1; ch = true; } if (ch) { write(s); check(); } } catch (e) {} });
+  const boot = () => { const b = document.getElementById('pga-btn'); if (b) b.onclick = open; try { if (window.PGS) lastTheme = PGS.get().theme; } catch (e) {} setTimeout(seed, 600);
+    if (b) { badge(); window.addEventListener('pga-changed', badge); window.addEventListener('storage', badge); document.addEventListener('visibilitychange', () => { if (!document.hidden) badge(); }); const h1 = document.querySelector('header h1'); if (h1) { let n = 0, t = 0; h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 1500 ? n + 1 : 1; t = now; if (n >= 7) { n = 0; event('secret', { id: 'logo' }); } }); } } if (b && /[?&]achievements=1/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} open(); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
@@ -1143,7 +1256,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini ngmini"><svg viewBox="0 0 250 250" class="ngm" aria-hidden="true"><rect x="64" y="64" width="170" height="170" class="ngbg"/><rect x="100" y="66" width="30" height="30" class="ngf"/><rect x="168" y="66" width="30" height="30" class="ngf"/><rect x="66" y="100" width="30" height="30" class="ngf"/><rect x="100" y="100" width="30" height="30" class="ngf"/><rect x="134" y="100" width="30" height="30" class="ngf"/><rect x="168" y="100" width="30" height="30" class="ngf"/><rect x="202" y="100" width="30" height="30" class="ngf"/><rect x="66" y="134" width="30" height="30" class="ngf ngh" style="--d:0.00s"/><rect x="100" y="134" width="30" height="30" class="ngf ngh" style="--d:0.09s"/><rect x="134" y="134" width="30" height="30" class="ngf ngh" style="--d:0.18s"/><rect x="168" y="134" width="30" height="30" class="ngf ngh" style="--d:0.27s"/><rect x="202" y="134" width="30" height="30" class="ngf ngh" style="--d:0.36s"/><rect x="100" y="168" width="30" height="30" class="ngf ngh" style="--d:0.45s"/><rect x="134" y="168" width="30" height="30" class="ngf ngh" style="--d:0.54s"/><rect x="168" y="168" width="30" height="30" class="ngf ngh" style="--d:0.63s"/><rect x="134" y="202" width="30" height="30" class="ngf ngh" style="--d:0.72s"/><path d="M64 64V234" class="ngl"/><path d="M64 64H234" class="ngl"/><path d="M98 64V234" class="ngl"/><path d="M64 98H234" class="ngl"/><path d="M132 64V234" class="ngl"/><path d="M64 132H234" class="ngl"/><path d="M166 64V234" class="ngl"/><path d="M64 166H234" class="ngl"/><path d="M200 64V234" class="ngl"/><path d="M64 200H234" class="ngl"/><path d="M234 64V234" class="ngl"/><path d="M64 234H234" class="ngl"/><text x="32" y="88" text-anchor="end" class="ngt dn">1</text><path class="ngx on" style="--l:18;--d:0.00s" d="M18 80H34"/><text x="54" y="88" text-anchor="end" class="ngt dn">1</text><path class="ngx on" style="--l:18;--d:0.00s" d="M40 80H56"/><text x="54" y="122" text-anchor="end" class="ngt dn">5</text><path class="ngx on" style="--l:18;--d:0.00s" d="M40 114H56"/><text x="54" y="156" text-anchor="end" class="ngt hd" style="--d:0.60s">5</text><path class="ngx" style="--l:18;--d:0.60s" d="M40 148H56"/><text x="54" y="190" text-anchor="end" class="ngt hd" style="--d:0.95s">3</text><path class="ngx" style="--l:18;--d:0.95s" d="M40 182H56"/><text x="54" y="224" text-anchor="end" class="ngt hd" style="--d:1.30s">1</text><path class="ngx" style="--l:18;--d:1.30s" d="M40 216H56"/><text x="81" y="54" text-anchor="middle" class="ngt hd" style="--d:1.50s">2</text><path class="ngx" style="--l:18;--d:1.50s" d="M72 46H90"/><text x="115" y="54" text-anchor="middle" class="ngt hd" style="--d:1.60s">4</text><path class="ngx" style="--l:18;--d:1.60s" d="M106 46H124"/><text x="149" y="54" text-anchor="middle" class="ngt hd" style="--d:1.70s">4</text><path class="ngx" style="--l:18;--d:1.70s" d="M140 46H158"/><text x="183" y="54" text-anchor="middle" class="ngt hd" style="--d:1.80s">4</text><path class="ngx" style="--l:18;--d:1.80s" d="M174 46H192"/><text x="217" y="54" text-anchor="middle" class="ngt hd" style="--d:1.90s">2</text><path class="ngx" style="--l:18;--d:1.90s" d="M208 46H226"/></svg></div></div>
       <div class="info">
         <h2 class="serif">Японские кроссворды</h2>
-        <p>Числа по краям подсказывают, сколько клеток подряд закрасить. Угадайте картинку: около 160 сюжетов, сцены и узоры, поля от 5 × 5 до 100 × 100, картинка дня, подсказки. Большие поля можно решать частями: всё сохраняется.</p>
+        <p>Числа по краям подсказывают, сколько клеток подряд закрасить. Угадайте картинку: около 180 сюжетов, сцены и узоры, поля от 5 × 5 до 100 × 100, картинка дня, подсказки. Большие поля можно решать частями: всё сохраняется.</p>
         <div class="chips"><b>5×5 — 100×100</b><b>Картинка дня</b><b>Подсказки</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-nonogram"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -1161,7 +1274,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 1.30 · 9 октября 2026</div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 1.33 · 9 октября 2026</div>
   </footer>
 </div>
 

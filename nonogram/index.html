@@ -234,7 +234,12 @@
     const A = parse(a) || {}, B = parse(b) || {}, u = {}, c = {};
     for (const k of new Set(Object.keys(A.u || {}).concat(Object.keys(B.u || {})))) { const x = (A.u || {})[k], y = (B.u || {})[k]; u[k] = !x ? y : !y ? x : Math.min(x, y); }
     for (const k of new Set(Object.keys(A.c || {}).concat(Object.keys(B.c || {})))) c[k] = Math.max((A.c || {})[k] || 0, (B.c || {})[k] || 0);
-    return JSON.stringify({ u, c });
+    // дни активности: игры, время суток, задания и победы объединяются, число завершённых игр — большее из двух; хранятся последние 420 дней
+    const d = {}; for (const k of new Set(Object.keys(A.d || {}).concat(Object.keys(B.d || {})))) { const x = (A.d || {})[k] || {}, y = (B.d || {})[k] || {}; d[k] = { g: (x.g | 0) | (y.g | 0), t: (x.t | 0) | (y.t | 0), q: (x.q | 0) | (y.q | 0), w: (x.w | 0) | (y.w | 0), n: Math.max(x.n | 0, y.n | 0) }; }
+    const dk = Object.keys(d).sort(); if (dk.length > 420) dk.slice(0, dk.length - 420).forEach((k) => delete d[k]);
+    // коллекция картинок: объединение без повторов
+    const p = []; for (const e of (A.p || []).concat(B.p || [])) if (p.indexOf(e) < 0) p.push(e);
+    return JSON.stringify({ u, c, d, p: p.slice(-700) });
   }
   // Решает, что делать с ключом при сравнении локальных данных с облачными
   function reconcile(k, cloud) {
@@ -451,9 +456,29 @@
   if (window.PGA) return;
   const KEY = 'pgAch';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); return o && typeof o === 'object' ? { u: o.u || {}, c: o.c || {} } : { u: {}, c: {} }; } catch (e) { return { u: {}, c: {} }; } };
-  const write = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} };
+  // u — полученные достижения; c — счётчики; d — «дни активности»: { 'ГГГГ-ММ-ДД': { g: игры (битовая маска), t: время суток, n: сколько завершено, q: задания дня, w: победы } }; p — коллекция увиденных картинок и их категорий
+  const read = () => { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); return o && typeof o === 'object' ? { u: o.u || {}, c: o.c || {}, d: o.d || {}, p: Array.isArray(o.p) ? o.p : [] } : { u: {}, c: {}, d: {}, p: [] }; } catch (e) { return { u: {}, c: {}, d: {}, p: [] }; } };
+  const write = (s) => { try { const keys = Object.keys(s.d || {}).sort(); if (keys.length > 420) keys.slice(0, keys.length - 420).forEach((k) => delete s.d[k]); if ((s.p || []).length > 700) s.p = s.p.slice(-700); localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} try { window.dispatchEvent(new Event('pga-changed')); } catch (e) {} };
   const C = (c, k) => c[k] || 0;
+  const keyOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const dnum = (k) => { const a = k.split('-').map(Number); return Math.round(Date.UTC(a[0], a[1] - 1, a[2]) / 86400000); };
+  const pop = (x) => { let n = 0; x = x | 0; while (x) { n += x & 1; x >>= 1; } return n; };
+  // Что можно вывести из дней активности: серии, число дней, игры и время суток за день, выполненные задания дня и т. п.
+  function stats(s) {
+    const keys = Object.keys(s.d || {}).sort(), nums = keys.map(dnum), today = dnum(keyOf(new Date())), X = { days: keys.length, best: 0, cur: 0, bestQ: 0, qTotal: 0, bestM: 0, maxG: 0, maxN: 0, mde: 0, nights: 0, dw: false, weekdays: 0, monthMax: 0, weekend: false, pics: 0, cats: 0 };
+    let run = 0, runQ = 0, runM = 0; const wd = new Set(), mon = {};
+    keys.forEach((k, i) => {
+      const d = s.d[k], consec = i > 0 && nums[i] === nums[i - 1] + 1, prev = consec ? s.d[keys[i - 1]] : null;
+      run = consec ? run + 1 : 1; X.best = Math.max(X.best, run);
+      const full = ((d.q | 0) & 15) === 15; runQ = full ? (prev && ((prev.q | 0) & 15) === 15 ? runQ + 1 : 1) : 0; X.bestQ = Math.max(X.bestQ, runQ); if (full) X.qTotal++;
+      const mor = !!((d.t | 0) & 1); runM = mor ? (prev && ((prev.t | 0) & 1) ? runM + 1 : 1) : 0; X.bestM = Math.max(X.bestM, runM);
+      X.maxG = Math.max(X.maxG, pop(d.g)); X.maxN = Math.max(X.maxN, d.n | 0); X.mde = Math.max(X.mde, pop((d.t | 0) & 7)); if ((d.t | 0) & 8) X.nights++; if (((d.w | 0) & 3) === 3) X.dw = true;
+      const a = k.split('-').map(Number), wday = new Date(a[0], a[1] - 1, a[2]).getDay(); wd.add(wday); mon[k.slice(0, 7)] = (mon[k.slice(0, 7)] || 0) + 1; if (wday === 6 && i + 1 < keys.length && nums[i + 1] === nums[i] + 1) X.weekend = true;
+    });
+    if (nums.length && nums[nums.length - 1] >= today - 1) X.cur = run; X.weekdays = wd.size; X.monthMax = Math.max(0, ...Object.values(mon));
+    (s.p || []).forEach((e) => { if (String(e).indexOf('cat:') === 0) X.cats++; else X.pics++; });
+    return X;
+  }
   // id, игра, значок, название, описание, цель, прогресс по счётчикам
   const DEFS = [
     ['first', 'Общие', '🌱', 'Первые шаги', 'Завершите любую партию или головоломку', 1, (c) => Math.min(1, C(c, 'done'))],
@@ -526,10 +551,65 @@
     ['jprect', 'Японские кроссворды', '▭', 'Не квадрат', 'Решите прямоугольный японский кроссворд', 1, (c) => Math.min(1, C(c, 'jprect'))],
     ['jpexp', 'Японские кроссворды', '🧠', 'Эксперт нонограмм', 'Решите японский кроссворд уровня «Эксперт» от 15 × 15', 1, (c) => Math.min(1, C(c, 'jpx'))],
     ['jpall', 'Японские кроссворды', '🪜', 'Все ступени', 'Решите по японскому кроссворду на каждом из пяти уровней сложности', 5, (c) => (C(c, 'jpl1') > 0) + (C(c, 'jpl2') > 0) + (C(c, 'jpl3') > 0) + (C(c, 'jpl4') > 0) + (C(c, 'jpl5') > 0)],
-    ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))]
-  ].map(([id, group, icon, title, desc, goal, prog]) => ({ id, group, icon, title, desc, goal, prog }));
+    ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))],
+    // ---- каждый день ----
+    ['act3', 'Каждый день', '🔥', 'Входит в привычку', 'Завершайте хотя бы одну игру 3 дня подряд', 3, (c, u, X) => X.best],
+    ['act7', 'Каждый день', '🗓️', 'Неделя без перерыва', 'Играйте 7 дней подряд', 7, (c, u, X) => X.best],
+    ['act14', 'Каждый день', '🏃', 'Две недели в строю', 'Играйте 14 дней подряд', 14, (c, u, X) => X.best],
+    ['act30', 'Каждый день', '🌙', 'Месяц в игре', 'Играйте 30 дней подряд', 30, (c, u, X) => X.best],
+    ['act100', 'Каждый день', '🏛️', 'Столетний игрок', 'Играйте 100 дней подряд', 100, (c, u, X) => X.best],
+    ['days10', 'Каждый день', '🔟', 'Десять игровых дней', 'Проведите в игре 10 разных дней', 10, (c, u, X) => X.days],
+    ['days50', 'Каждый день', '🪴', 'Полсотни дней', 'Проведите в игре 50 разных дней', 50, (c, u, X) => X.days],
+    ['days100', 'Каждый день', '🌳', 'Сотня игровых дней', 'Проведите в игре 100 разных дней', 100, (c, u, X) => X.days],
+    ['days365', 'Каждый день', '🎂', 'Год с нами', 'Проведите в игре 365 разных дней', 365, (c, u, X) => X.days],
+    ['quest1', 'Каждый день', '✅', 'Всё на сегодня', 'Выполните все четыре задания дня за один день', 1, (c, u, X) => Math.min(1, X.qTotal)],
+    ['quest3', 'Каждый день', '🎯', 'Три полных дня', 'Выполните все задания дня в 3 разных дня', 3, (c, u, X) => X.qTotal],
+    ['quest7', 'Каждый день', '🥇', 'Неделя заданий', 'Выполняйте все задания дня 7 дней подряд', 7, (c, u, X) => X.bestQ],
+    ['week7', 'Каждый день', '📅', 'Все дни недели', 'Сыграйте в каждый из семи дней недели (понедельник, вторник и так далее)', 7, (c, u, X) => X.weekdays],
+    ['weekend', 'Каждый день', '🏖️', 'Выходные в игре', 'Играйте и в субботу, и в воскресенье одних выходных', 1, (c, u, X) => (X.weekend ? 1 : 0)],
+    ['morning3', 'Каждый день', '🌅', 'Жаворонок', 'Играйте по утрам (с 5 до 12) 3 дня подряд', 3, (c, u, X) => X.bestM],
+    ['owl3', 'Каждый день', '🦉', 'Ночная сова', 'Играйте ночью (с 0 до 5) в 3 разных дня', 3, (c, u, X) => X.nights],
+    ['threetimes', 'Каждый день', '🍽️', 'Три приёма', 'Сыграйте утром, днём и вечером одного дня', 3, (c, u, X) => X.mde],
+    ['games3day', 'Каждый день', '🎭', 'Три игры за день', 'Сыграйте в три разные игры за один день', 3, (c, u, X) => X.maxG],
+    ['games5day', 'Каждый день', '🎪', 'Все пять за день', 'Сыграйте во все пять игр за один день', 5, (c, u, X) => X.maxG],
+    ['n5day', 'Каждый день', '🏁', 'Марафон дня', 'Завершите 5 игр за один день', 5, (c, u, X) => X.maxN],
+    ['n10day', 'Каждый день', '🚀', 'Десять за день', 'Завершите 10 игр за один день', 10, (c, u, X) => X.maxN],
+    ['comeback', 'Каждый день', '👋', 'Я вернулся', 'Вернитесь в игру после перерыва в две недели и больше', 1, (c) => Math.min(1, C(c, 'comeback'))],
+    ['month10', 'Каждый день', '📆', 'Десять дней в месяце', 'Играйте 10 разных дней в одном месяце', 10, (c, u, X) => X.monthMax],
+    ['month20', 'Каждый день', '🗒️', 'Двадцать дней в месяце', 'Играйте 20 разных дней в одном месяце', 20, (c, u, X) => X.monthMax],
+    ['doublewin', 'Каждый день', '⚔️', 'Дубль', 'Выиграйте и в шахматах, и в шашках в один день', 1, (c, u, X) => (X.dw ? 1 : 0)],
+    // ---- особые дни и часы ----
+    ['fri13', 'Особые дни', '🖤', 'Пятница, 13-е', 'Завершите игру в пятницу, 13-го числа', 1, (c) => Math.min(1, C(c, 'fri13'))],
+    ['ny', 'Особые дни', '🎄', 'С Новым годом!', 'Завершите игру 31 декабря или 1 января', 1, (c) => Math.min(1, C(c, 'ny'))],
+    ['leap', 'Особые дни', '🐸', 'Високосный день', 'Завершите игру 29 февраля', 1, (c) => Math.min(1, C(c, 'leap'))],
+    ['apr1', 'Особые дни', '🤡', 'Первое апреля', 'Завершите игру 1 апреля', 1, (c) => Math.min(1, C(c, 'apr1'))],
+    ['round', 'Особые дни', '🔢', 'Круглая дата', 'Завершите игру в день, когда число равно месяцу (например, 9.09 или 11.11)', 1, (c) => Math.min(1, C(c, 'round'))],
+    ['mirror', 'Особые дни', '🪞', 'Зеркальное время', 'Завершите игру, когда на часах время читается одинаково в обе стороны (12:21, 20:02)', 1, (c) => Math.min(1, C(c, 'mirror'))],
+    ['seq', 'Особые дни', '🔗', 'По порядку', 'Завершите игру ровно в 12:34, 01:23 или 23:45', 1, (c) => Math.min(1, C(c, 'seq'))],
+    ['pi', 'Особые дни', '🥧', 'Число Пи', 'Завершите игру в 3:14 (утром или дня)', 1, (c) => Math.min(1, C(c, 'pi'))],
+    ['midnight', 'Особые дни', '🕛', 'Ровно в полночь', 'Завершите игру в первые пять минут после полуночи', 1, (c) => Math.min(1, C(c, 'midnight'))],
+    // ---- коллекции и мастерство ----
+    ['pic10', 'Коллекции', '🖼️', 'Десять сюжетов', 'Решите японские кроссворды с 10 разными картинками', 10, (c, u, X) => X.pics],
+    ['pic50', 'Коллекции', '🏛️', 'Пятьдесят сюжетов', 'Решите японские кроссворды с 50 разными картинками', 50, (c, u, X) => X.pics],
+    ['pic100', 'Коллекции', '🎨', 'Музей', 'Решите японские кроссворды со 100 разными картинками', 100, (c, u, X) => X.pics],
+    ['piccat', 'Коллекции', '🗂️', 'Знаток тем', 'Решите японские кроссворды из 10 разных категорий картинок', 10, (c, u, X) => X.cats],
+    ['clean3', 'Мастерство', '🧼', 'Три чистых подряд', 'Решите три головоломки подряд без подсказок и ошибок', 3, (c) => C(c, 'cleanBest')],
+    ['clean10', 'Мастерство', '💎', 'Десять чистых подряд', 'Решите десять головоломок подряд без подсказок и ошибок', 10, (c) => C(c, 'cleanBest')],
+    // ---- секретные ----
+    ['slogo', 'Секретные', '🕵️', 'Любопытный', 'Нажмите на заголовок главной страницы 7 раз подряд', 1, (c) => Math.min(1, C(c, 'slogo')), 1],
+    ['stheme', 'Секретные', '🦎', 'Хамелеон', 'Переключите тему оформления 5 раз', 5, (c) => C(c, 'themeSw'), 1],
+    ['sresign', 'Секретные', '🏳️', 'Сдаюсь!', 'Проиграйте шахматную партию, не сделав и трёх ходов', 1, (c) => Math.min(1, C(c, 'sresign')), 1],
+    ['snightwin', 'Секретные', '🌃', 'Полуночный стратег', 'Выиграйте шахматную партию ночью (с 0 до 5)', 1, (c) => Math.min(1, C(c, 'snightwin')), 1]
+  ].map(([id, group, icon, title, desc, goal, prog, secret]) => ({ id, group, icon, title, desc, goal, prog, secret: !!secret }));
+  const RANKS = [[0, 'Новичок'], [5, 'Любитель'], [15, 'Игрок'], [30, 'Знаток'], [50, 'Мастер'], [75, 'Эксперт'], [100, 'Гроссмейстер'], [115, 'Легенда']];
+  const rankOf = (n) => { let r = RANKS[0], nx = null; for (let i = 0; i < RANKS.length; i++) if (n >= RANKS[i][0]) { r = RANKS[i]; nx = RANKS[i + 1] || null; } return { name: r[1], next: nx ? nx[0] - n : 0, nextName: nx ? nx[1] : '' }; };
 
   const css = `
+.pga-rank { display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:6px 20px 8px; font-size:13px; } .pga-rank .pga-rk b { font-size:15px; color:var(--k-gt); } .pga-rn { color:var(--k-mu); font-size:12px; }
+.pga-quests { margin:2px 16px 10px; border:1px solid var(--k-line); background:var(--k-surf); padding:8px 12px 6px; } .pga-qh { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; margin-bottom:4px; } .pga-qh span { color:var(--k-mu); font-size:12px; }
+.pga-q { display:flex; align-items:center; gap:10px; padding:5px 0; border-top:1px solid var(--k-line); font-size:13.5px; } .pga-q .pga-qi { width:22px; text-align:center; font-size:15px; } .pga-q .pga-qt { flex:1; } .pga-q a { background:#3B5D4A; color:#fff; padding:4px 10px; font-size:12px; font-weight:700; text-decoration:none; } .pga-q.ok .pga-qt { color:var(--k-mu); text-decoration:line-through; } .pga-q.ok .pga-qi { color:var(--k-gt); font-weight:700; }
+.pga-item.sec .pga-t b { color:var(--k-mu); } .pga-item.sec .pga-ic { filter:grayscale(1); opacity:.6; }
+.pga-badge { position:absolute; top:-4px; right:-4px; min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:#C0392B; color:#fff; font:700 11px/17px 'Noto Sans',system-ui,sans-serif; text-align:center; font-style:normal; pointer-events:none; } #pga-btn { position:relative; top:auto; right:auto; left:auto; bottom:auto; }
 .pga-ov { position:fixed; inset:0; z-index:420; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:14px; font-family:'Noto Sans',system-ui,sans-serif; }
 .pga-panel { position:relative; background:var(--k-panel); border:1px solid var(--k-line); width:100%; max-width:520px; max-height:calc(100dvh - 28px); overflow-y:auto; box-shadow:0 30px 80px rgba(42,46,36,.3); color:var(--k-tx); padding:22px 20px 18px; }
 .pga-panel h3 { margin:0 0 4px; font:italic 400 26px Georgia,'Times New Roman',serif; } .pga-sub { font-size:13px; color:var(--k-mu); margin:0 0 12px; } .pga-x { position:absolute; top:10px; right:12px; background:none; border:none; font-size:18px; color:var(--k-mu2); cursor:pointer; }
@@ -545,10 +625,10 @@
 @keyframes pgaIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
-  const keyOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
   function toasts(list) {
     if (!document.body) return; let box = document.getElementById('pga-toasts'); if (!box) { box = document.createElement('div'); box.id = 'pga-toasts'; document.body.appendChild(box); }
+    if (list.length > 3) { const rest = list.length - 2; list = list.slice(0, 2).concat([{ id: 'more', icon: '🏅', title: 'Ещё достижений: ' + rest, desc: 'Нажмите, чтобы посмотреть все' }]); }          // не заваливаем экран, если достижений сразу много
     list.forEach((d, i) => setTimeout(() => {
       const t = document.createElement('div'); t.className = 'pga-toast'; t.dataset.id = d.id; t.innerHTML = `<span class="i">${d.icon}</span><div><small>Достижение получено</small><b>${esc(d.title)}</b><span>${esc(d.desc)}</span></div>`;
       t.onclick = () => { t.remove(); if (document.getElementById('pga-btn')) open(); else location.href = rootUrl() + '?achievements=1'; }; box.appendChild(t); setTimeout(() => t.remove(), 7000);
@@ -558,7 +638,7 @@
     const s = read(), fresh = [];
     for (let pass = 0; pass < 4; pass++) {                   // повторяем: одно достижение может открыть другое («Коллекционер»)
       let any = false;
-      DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c, s.u) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); any = true; } });
+      const X = stats(s); DEFS.forEach((d) => { if (!s.u[d.id] && d.prog(s.c, s.u, X) >= d.goal) { s.u[d.id] = Date.now(); fresh.push(d); any = true; } });
       if (!any) break;
     }
     if (fresh.length) { write(s); toasts(fresh); window.dispatchEvent(new CustomEvent('pga-unlocked', { detail: { ids: fresh.map((x) => x.id) } })); }
@@ -576,6 +656,8 @@
     [['ch', ch], ['dr', dr]].forEach(([p, list]) => { if (Array.isArray(list)) max(p + 'D', list.filter((r) => r.result === 'draw').length); });
     try { if (window.PGS && PGS.get().theme === 'dark') max('dark', 1); } catch (e) {} try { if (window.PGS && PGS.install && PGS.install.installed()) max('install', 1); } catch (e) {}
     max('done', (c.sd || 0) + (c.cw || 0) + (c.chP || 0) + (c.drP || 0) + (c.jp || 0) ? 1 : 0);
+    // прошлые решённые задания дня уже были днями в игре: серия «дней подряд» не начинается с нуля
+    [[sd, 4, 1], [cw, 8, 2], [jp, 16, 4]].forEach(([st, gbit, qbit]) => { const res = st && st.daily && st.daily.results; if (res) Object.keys(res).forEach((k) => { if (/^\d{4}-\d{2}-\d{2}$/.test(k)) { const day = s.d[k] = s.d[k] || { g: 0, t: 0, n: 0, q: 0, w: 0 }; day.g |= gbit; day.q |= qbit | 8; day.n = Math.max(day.n | 0, 1); } }); });
     write(s); return check();
   }
   const dayNum = () => { const t = new Date(); return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate(); };
@@ -583,6 +665,13 @@
     const J = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, d = new Date(), tk = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const has = (k) => { const o = J(k); return !!(o && o.daily && o.daily.results && o.daily.results[tk] != null); };
     if (has('sudokuStats') && has('crosswordStats') && has('nonogramStats') && dayNum() > (c.dailysetLast || 0)) { c.dailyset = (c.dailyset || 0) + 1; c.dailysetLast = dayNum(); }
+  }
+  // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
+  function touchDay(s, game, d) {
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16 }[game]; if (!gbit) return;
+    const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
+    if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
+    const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
   }
   function event(game, d) {
     d = d || {}; const s = read(), c = s.c; const inc = (k, n) => { c[k] = (c[k] || 0) + (n || 1); }, max = (k, v) => { c[k] = Math.max(c[k] || 0, v || 0); };
@@ -596,28 +685,52 @@
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
     if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts';
+    if (completion) {
+      touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
+      if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
+      if (hhmm === hhmm.split('').reverse().join('')) inc('mirror'); if (hhmm === '1234' || hhmm === '0123' || hhmm === '2345') inc('seq'); if (hhmm === '0314' || hhmm === '1514') inc('pi'); if (H === 0 && M < 5) inc('midnight');
+      if (game === 'chess') { if (d.result === 'win' && H < 5) inc('snightwin'); if (d.result && d.result !== 'win' && d.result !== 'draw' && d.moves && d.moves <= 4) inc('sresign'); }
+      const clean = game === 'sudoku' ? !d.hints && !d.mistakes : (game === 'crossword' || game === 'nonogram') ? !d.hints : null;
+      if (clean !== null) { let run = 0; try { run = +localStorage.getItem('pgCleanRun') || 0; } catch (e) {} run = clean ? run + 1 : 0; try { localStorage.setItem('pgCleanRun', String(run)); } catch (e) {} max('cleanBest', run); }
+      if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
+    }
+    if (game === 'secret' && d.id === 'logo') inc('slogo');
     if (game === 'friend') inc('friend');
     if (game === 'challenge') inc('chal');
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
     write(s); return check();
   }
+  const QUESTS = [[1, '🔢', 'Судоку дня', 'sudoku/'], [2, '🔤', 'Кроссворд дня', 'crossword/'], [4, '🧩', 'Картинка дня', 'nonogram/'], [8, '🎯', 'Завершить любую игру', '']];
+  function questBits() {
+    const s = read(), k = keyOf(new Date()), d = s.d[k] || { q: 0, n: 0 }; let q = d.q | 0;
+    [['sudokuStats', 1], ['crosswordStats', 2], ['nonogramStats', 4]].forEach(([key, bit]) => { try { const o = JSON.parse(localStorage.getItem(key) || 'null'); if (o && o.daily && o.daily.results && o.daily.results[k] != null) q |= bit; } catch (e) {} });
+    if ((d.n | 0) > 0 || (q & 7)) q |= 8; return q & 15;
+  }
   const curStreak = (k) => { try { const o = JSON.parse(localStorage.getItem(k) || 'null'), d = o && o.daily; if (!d || !d.last) return 0; const today = keyOf(new Date()), y = keyOf(new Date(Date.now() - 86400000)); return d.last === today || d.last === y ? d.streak || 0 : 0; } catch (e) { return 0; } };
-  function list() { const s = read(); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, value: Math.min(d.goal, d.prog(s.c, s.u)), got: s.u[d.id] || 0 })); }
+  function list() { const s = read(), X = stats(s); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, secret: d.secret, value: Math.min(d.goal, d.prog(s.c, s.u, X)), got: s.u[d.id] || 0 })); }
   function open() {
     if (document.getElementById('pga-ov')) return; const ov = document.createElement('div'); ov.className = 'pga-ov'; ov.id = 'pga-ov';
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); window.removeEventListener('pgsync-applied', paint); }; const onKey = (e) => { if (e.key === 'Escape') close(); };
     function paint() {
-      const items = list(), got = items.filter((x) => x.got).length, groups = [...new Set(items.map((x) => x.group))], ss = curStreak('sudokuStats'), sc = curStreak('crosswordStats');
+      const items = list(), got = items.filter((x) => x.got).length, groups = [...new Set(items.map((x) => x.group))], ss = curStreak('sudokuStats'), sc = curStreak('crosswordStats'), X = stats(read()), rk = rankOf(got), q = questBits(), done = pop(q), root = rootUrl();
+      const row = (x) => { const hid = x.secret && !x.got; return `<div class="pga-item${x.got ? ' on' : ''}${hid ? ' sec' : ''}" data-id="${x.id}"><span class="pga-ic">${hid ? '❓' : x.icon}</span><div class="pga-t"><b>${hid ? 'Секретное достижение' : esc(x.title)}</b><span>${hid ? 'Подсказка: исследуйте игру, и оно найдёт вас' : esc(x.desc)}</span>${!x.got && !hid && x.goal > 1 ? `<div class="pga-bar"><i style="width:${Math.round(100 * x.value / x.goal)}%"></i></div>` : ''}</div><span class="pga-d">${x.got ? new Date(x.got).toLocaleDateString('ru-RU') : (!hid && x.goal > 1 ? x.value + ' / ' + x.goal : '')}</span></div>`; };
       ov.innerHTML = `<div class="pga-panel" role="dialog"><button class="pga-x" aria-label="Закрыть">✕</button><h3>Достижения</h3><p class="pga-sub">Получено ${got} из ${items.length}</p>
-        <div class="pga-streaks"><div class="pga-chip">Серия судоку дня<b>${ss} <i>${ss ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия кроссворда дня<b>${sc} <i>${sc ? '🔥' : ''}</i></b></div></div>
-        ${groups.map((g) => `<div class="pga-g">${esc(g)}</div>` + items.filter((x) => x.group === g).map((x) => `<div class="pga-item${x.got ? ' on' : ''}" data-id="${x.id}"><span class="pga-ic">${x.icon}</span><div class="pga-t"><b>${esc(x.title)}</b><span>${esc(x.desc)}</span>${!x.got && x.goal > 1 ? `<div class="pga-bar"><i style="width:${Math.round(100 * x.value / x.goal)}%"></i></div>` : ''}</div><span class="pga-d">${x.got ? new Date(x.got).toLocaleDateString('ru-RU') : (x.goal > 1 ? x.value + ' / ' + x.goal : '')}</span></div>`).join('')).join('')}</div>`;
+        <div class="pga-rank"><span class="pga-rk">Звание: <b>${esc(rk.name)}</b></span>${rk.next ? `<span class="pga-rn">до «${esc(rk.nextName)}»: ещё ${rk.next}</span>` : '<span class="pga-rn">высшее звание!</span>'}</div>
+        <div class="pga-quests"><div class="pga-qh"><b>Задания на сегодня</b><span>${done} из 4${done === 4 ? ' — всё выполнено 🎉' : ''}</span></div>${QUESTS.map(([bit, ic, t, href]) => `<div class="pga-q${q & bit ? ' ok' : ''}"><span class="pga-qi">${q & bit ? '✓' : ic}</span><span class="pga-qt">${esc(t)}</span>${q & bit || !href ? '' : `<a href="${root}${href}">Играть</a>`}</div>`).join('')}</div>
+        <div class="pga-streaks"><div class="pga-chip">Дней подряд в игре<b>${X.cur} <i>${X.cur ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия судоку дня<b>${ss} <i>${ss ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия кроссворда дня<b>${sc} <i>${sc ? '🔥' : ''}</i></b></div></div>
+        ${groups.map((g) => `<div class="pga-g">${esc(g)}</div>` + items.filter((x) => x.group === g).map(row).join('')).join('')}</div>`;
       ov.querySelector('.pga-x').onclick = close;
     }
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgsync-applied', paint); document.body.appendChild(ov); seed(); paint();
   }
-  window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak };
-  window.addEventListener('pgs-change', () => { try { if (window.PGS && PGS.get().theme === 'dark') { const s = read(); if (!(s.c.dark > 0)) { s.c.dark = 1; write(s); check(); } } } catch (e) {} });
-  const boot = () => { const b = document.getElementById('pga-btn'); if (b) b.onclick = open; setTimeout(seed, 600); if (b && /[?&]achievements=1/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} open(); } };
+  // значок «сколько заданий на сегодня осталось» на кнопке «Достижения» главной страницы
+  function badge() { const b = document.getElementById('pga-btn'); if (!b) return; let i = b.querySelector('.pga-badge'); if (!i) { i = document.createElement('i'); i.className = 'pga-badge'; b.appendChild(i); } const left = 4 - pop(questBits()); i.textContent = left > 0 ? String(left) : ''; i.style.display = left > 0 ? '' : 'none'; b.title = left > 0 ? 'Заданий на сегодня осталось: ' + left : 'Все задания на сегодня выполнены'; }
+  window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak, stats: () => stats(read()), questBits, rankOf, badge };
+  let lastTheme = null;
+  window.addEventListener('pgs-change', () => { try { if (!window.PGS) return; const th = PGS.get().theme, s = read(); let ch = false; if (lastTheme !== null && th !== lastTheme) { s.c.themeSw = (s.c.themeSw || 0) + 1; ch = true; } lastTheme = th; if (th === 'dark' && !(s.c.dark > 0)) { s.c.dark = 1; ch = true; } if (ch) { write(s); check(); } } catch (e) {} });
+  const boot = () => { const b = document.getElementById('pga-btn'); if (b) b.onclick = open; try { if (window.PGS) lastTheme = PGS.get().theme; } catch (e) {} setTimeout(seed, 600);
+    if (b) { badge(); window.addEventListener('pga-changed', badge); window.addEventListener('storage', badge); document.addEventListener('visibilitychange', () => { if (!document.hidden) badge(); }); const h1 = document.querySelector('header h1'); if (h1) { let n = 0, t = 0; h1.addEventListener('click', () => { const now = Date.now(); n = now - t < 1500 ? n + 1 : 1; t = now; if (n >= 7) { n = 0; event('secret', { id: 'logo' }); } }); } } if (b && /[?&]achievements=1/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} open(); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
@@ -887,6 +1000,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     <button class="tool" id="t-redo"><span class="i">↷</span>Вернуть</button>
     <button class="tool" id="t-hint"><span class="i">💡</span>Подсказка</button>
     <button class="tool" id="t-check"><span class="i">✔</span>Проверить</button>
+    <button class="tool" id="t-reset" title="Стереть все отметки (открытые клетки останутся). Можно отменить"><span class="i">⟲</span>Сначала</button>
     <button class="tool" id="t-zin"><span class="i">＋</span>Крупнее</button>
     <button class="tool" id="t-zout"><span class="i">－</span>Мельче</button>
     <button class="tool" id="t-fit"><span class="i">⤢</span>Вписать</button>
@@ -1184,6 +1298,35 @@ const NG = (function () {
     { id: 'whaletail', min: 18, name: 'Хвост кита', cat: 'Подводный мир', half: [[0.0, 0.32], [0.14, 0.22], [0.36, 0.08], [0.48, 0.04], [0.44, 0.2], [0.3, 0.4], [0.12, 0.52], [0.06, 0.7], [0.07, 0.98]], ops: [['-', 'e', 0.5, 0.24, 0.015, 0.08]] },
   ];
   PROFILES.forEach((p) => { const ops = []; if (p.half && p.half.length) ops.push(['+', 'p', mirrorProfile(p.half)]); if (p.path) ops.push(['+', 'p', flattenPath(p.path)]); (p.ops || []).forEach((o) => ops.push(o[1] === 'pa' ? [o[0], 'p', flattenPath(o[2])] : o)); SHAPES.push({ id: p.id, min: p.min, name: p.name, cat: p.cat, ops }); });
+
+  const seg = (x1, y1, x2, y2, w) => { const dx = x2 - x1, dy = y2 - y1, L = Math.sqrt(dx * dx + dy * dy), nx = -dy / L * w / 2, ny = dx / L * w / 2; return [x1 + nx, y1 + ny, x2 + nx, y2 + ny, x2 - nx, y2 - ny, x1 - nx, y1 - ny]; };      // толстый отрезок (корень квадратный точен по стандарту IEEE, поэтому одинаков на всех устройствах)
+  const P6 = { ticks: [[0.83,0.53,0.89,0.53,0.89,0.47,0.83,0.47],[0.7758,0.6823,0.8277,0.7123,0.8477,0.6777,0.7958,0.6477],[0.6477,0.7958,0.6777,0.8477,0.7123,0.8277,0.6823,0.7758],[0.47,0.83,0.47,0.89,0.53,0.89,0.53,0.83],[0.3177,0.7758,0.2877,0.8277,0.3223,0.8477,0.3523,0.7958],[0.2042,0.6477,0.1523,0.6777,0.1723,0.7123,0.2242,0.6823],[0.17,0.47,0.11,0.47,0.11,0.53,0.17,0.53],[0.2242,0.3177,0.1723,0.2877,0.1523,0.3223,0.2042,0.3523],[0.3523,0.2042,0.3223,0.1523,0.2877,0.1723,0.3177,0.2242],[0.53,0.17,0.53,0.11,0.47,0.11,0.47,0.17],[0.6823,0.2242,0.7123,0.1723,0.6777,0.1523,0.6477,0.2042],[0.7958,0.3523,0.8477,0.3223,0.8277,0.2877,0.7758,0.3177]], hands: [[0.5275,0.5,0.5275,0.22,0.4725,0.22,0.4725,0.5],[0.5,0.5275,0.68,0.5275,0.68,0.4725,0.5,0.4725]], wreath: [[0.8686, 0.5322, 0.085], [0.8637, 0.6893, 0.085], [0.7378, 0.7834, 0.085], [0.6233, 0.891, 0.085], [0.4678, 0.8686, 0.085], [0.3107, 0.8637, 0.085], [0.2166, 0.7378, 0.085], [0.109, 0.6233, 0.085], [0.1314, 0.4678, 0.085], [0.1363, 0.3107, 0.085], [0.2622, 0.2166, 0.085], [0.3767, 0.109, 0.085], [0.5322, 0.1314, 0.085], [0.6893, 0.1363, 0.085], [0.7834, 0.2622, 0.085], [0.891, 0.3767, 0.085]], wheel: [[0.6,0.525,1.0,0.525,1.0,0.475,0.6,0.475],[0.553,0.5884,0.8359,0.8713,0.8713,0.8359,0.5884,0.553],[0.475,0.6,0.475,1.0,0.525,1.0,0.525,0.6],[0.4116,0.553,0.1287,0.8359,0.1641,0.8713,0.447,0.5884],[0.4,0.475,0.0,0.475,0.0,0.525,0.4,0.525],[0.447,0.4116,0.1641,0.1287,0.1287,0.1641,0.4116,0.447],[0.525,0.4,0.525,0.0,0.475,0.0,0.475,0.4],[0.5884,0.447,0.8713,0.1641,0.8359,0.1287,0.553,0.4116],[0.7952,0.4966,0.7889,0.561,0.8585,0.5678,0.8648,0.5034],[0.7902,0.5542,0.7714,0.6161,0.8384,0.6365,0.8572,0.5746],[0.774,0.6098,0.7435,0.6668,0.8053,0.6998,0.8358,0.6428],[0.7474,0.6611,0.7063,0.7111,0.7603,0.7555,0.8014,0.7055],[0.7111,0.7063,0.6611,0.7474,0.7055,0.8014,0.7555,0.7603],[0.6668,0.7435,0.6098,0.774,0.6428,0.8358,0.6998,0.8053],[0.6161,0.7714,0.5542,0.7902,0.5746,0.8572,0.6365,0.8384],[0.561,0.7889,0.4966,0.7952,0.5034,0.8648,0.5678,0.8585],[0.5034,0.7952,0.439,0.7889,0.4322,0.8585,0.4966,0.8648],[0.4458,0.7902,0.3839,0.7714,0.3635,0.8384,0.4254,0.8572],[0.3902,0.774,0.3332,0.7435,0.3002,0.8053,0.3572,0.8358],[0.3389,0.7474,0.2889,0.7063,0.2445,0.7603,0.2945,0.8014],[0.2937,0.7111,0.2526,0.6611,0.1986,0.7055,0.2397,0.7555],[0.2565,0.6668,0.226,0.6098,0.1642,0.6428,0.1947,0.6998],[0.2286,0.6161,0.2098,0.5542,0.1428,0.5746,0.1616,0.6365],[0.2111,0.561,0.2048,0.4966,0.1352,0.5034,0.1415,0.5678],[0.2048,0.5034,0.2111,0.439,0.1415,0.4322,0.1352,0.4966],[0.2098,0.4458,0.2286,0.3839,0.1616,0.3635,0.1428,0.4254],[0.226,0.3902,0.2565,0.3332,0.1947,0.3002,0.1642,0.3572],[0.2526,0.3389,0.2937,0.2889,0.2397,0.2445,0.1986,0.2945],[0.2889,0.2937,0.3389,0.2526,0.2945,0.1986,0.2445,0.2397],[0.3332,0.2565,0.3902,0.226,0.3572,0.1642,0.3002,0.1947],[0.3839,0.2286,0.4458,0.2098,0.4254,0.1428,0.3635,0.1616],[0.439,0.2111,0.5034,0.2048,0.4966,0.1352,0.4322,0.1415],[0.4966,0.2048,0.561,0.2111,0.5678,0.1415,0.5034,0.1352],[0.5542,0.2098,0.6161,0.2286,0.6365,0.1616,0.5746,0.1428],[0.6098,0.226,0.6668,0.2565,0.6998,0.1947,0.6428,0.1642],[0.6611,0.2526,0.7111,0.2937,0.7555,0.2397,0.7055,0.1986],[0.7063,0.2889,0.7474,0.3389,0.8014,0.2945,0.7603,0.2445],[0.7435,0.3332,0.774,0.3902,0.8358,0.3572,0.8053,0.3002],[0.7714,0.3839,0.7902,0.4458,0.8572,0.4254,0.8384,0.3635],[0.7889,0.439,0.7952,0.5034,0.8648,0.4966,0.8585,0.4322]], wheelh: [[0.97, 0.5, 0.04], [0.8323, 0.8323, 0.04], [0.5, 0.97, 0.04], [0.1677, 0.8323, 0.04], [0.03, 0.5, 0.04], [0.1677, 0.1677, 0.04], [0.5, 0.03, 0.04], [0.8323, 0.1677, 0.04]], sunpet: [[0.88, 0.4, 0.085], [0.8471, 0.5546, 0.085], [0.7543, 0.6824, 0.085], [0.6174, 0.7614, 0.085], [0.4603, 0.7779, 0.085], [0.31, 0.7291, 0.085], [0.1926, 0.6234, 0.085], [0.1283, 0.479, 0.085], [0.1283, 0.321, 0.085], [0.1926, 0.1766, 0.085], [0.31, 0.0709, 0.085], [0.4603, 0.0221, 0.085], [0.6174, 0.0386, 0.085], [0.7543, 0.1176, 0.085], [0.8471, 0.2454, 0.085]], web: [[0.5,0.515,0.98,0.515,0.98,0.485,0.5,0.485],[0.4894,0.5106,0.8288,0.85,0.85,0.8288,0.5106,0.4894],[0.485,0.5,0.485,0.98,0.515,0.98,0.515,0.5],[0.4894,0.4894,0.15,0.8288,0.1712,0.85,0.5106,0.5106],[0.5,0.485,0.02,0.485,0.02,0.515,0.5,0.515],[0.5106,0.4894,0.1712,0.15,0.15,0.1712,0.4894,0.5106],[0.515,0.5,0.515,0.02,0.485,0.02,0.485,0.5],[0.5106,0.5106,0.85,0.1712,0.8288,0.15,0.4894,0.4894],[0.6461,0.4943,0.5992,0.6074,0.627,0.6188,0.6739,0.5057],[0.6074,0.5992,0.4943,0.6461,0.5057,0.6739,0.6188,0.627],[0.5057,0.6461,0.3926,0.5992,0.3812,0.627,0.4943,0.6739],[0.4008,0.6074,0.3539,0.4943,0.3261,0.5057,0.373,0.6188],[0.3539,0.5057,0.4008,0.3926,0.373,0.3812,0.3261,0.4943],[0.3926,0.4008,0.5057,0.3539,0.4943,0.3261,0.3812,0.373],[0.4943,0.3539,0.6074,0.4008,0.6188,0.373,0.5057,0.3261],[0.5992,0.3926,0.6461,0.5057,0.6739,0.4943,0.627,0.3812],[0.7861,0.4943,0.6982,0.7064,0.726,0.7178,0.8139,0.5057],[0.7064,0.6982,0.4943,0.7861,0.5057,0.8139,0.7178,0.726],[0.5057,0.7861,0.2936,0.6982,0.2822,0.726,0.4943,0.8139],[0.3018,0.7064,0.2139,0.4943,0.1861,0.5057,0.274,0.7178],[0.2139,0.5057,0.3018,0.2936,0.274,0.2822,0.1861,0.4943],[0.2936,0.3018,0.5057,0.2139,0.4943,0.1861,0.2822,0.274],[0.4943,0.2139,0.7064,0.3018,0.7178,0.274,0.5057,0.1861],[0.6982,0.2936,0.7861,0.5057,0.8139,0.4943,0.726,0.2822],[0.9261,0.4943,0.7972,0.8054,0.825,0.8168,0.9539,0.5057],[0.8054,0.7972,0.4943,0.9261,0.5057,0.9539,0.8168,0.825],[0.5057,0.9261,0.1946,0.7972,0.1832,0.825,0.4943,0.9539],[0.2028,0.8054,0.0739,0.4943,0.0461,0.5057,0.175,0.8168],[0.0739,0.5057,0.2028,0.1946,0.175,0.1832,0.0461,0.4943],[0.1946,0.2028,0.5057,0.0739,0.4943,0.0461,0.1832,0.175],[0.4943,0.0739,0.8054,0.2028,0.8168,0.175,0.5057,0.0461],[0.7972,0.1946,0.9261,0.5057,0.9539,0.4943,0.825,0.1832]], crane: [[0.2425,0.961,0.2825,0.101,0.2375,0.099,0.1975,0.959],[0.4225,0.959,0.3825,0.099,0.3375,0.101,0.3775,0.961],[0.2459,0.2138,0.3859,0.1538,0.3741,0.1262,0.2341,0.1862],[0.2459,0.3338,0.3859,0.2738,0.3741,0.2462,0.2341,0.3062],[0.2459,0.4538,0.3859,0.3938,0.3741,0.3662,0.2341,0.4262],[0.2459,0.5738,0.3859,0.5138,0.3741,0.4862,0.2341,0.5462],[0.2459,0.6938,0.3859,0.6338,0.3741,0.6062,0.2341,0.6662],[0.2459,0.8138,0.3859,0.7538,0.3741,0.7262,0.2341,0.7862],[0.2459,0.9338,0.3859,0.8738,0.3741,0.8462,0.2341,0.9062],[0.05,0.13,0.97,0.13,0.97,0.07,0.05,0.07],[0.298,0.0349,0.898,0.1149,0.902,0.0851,0.302,0.0051],[0.2949,0.0059,0.0749,0.0859,0.0851,0.1141,0.3051,0.0341],[0.83,0.1,0.83,0.46,0.85,0.46,0.85,0.1]], moto: [[0.2192,0.716,0.4192,0.476,0.3808,0.444,0.1808,0.684],[0.4,0.485,0.62,0.485,0.62,0.435,0.4,0.435],[0.3769,0.4696,0.4769,0.7096,0.5231,0.6904,0.4231,0.4504],[0.6,0.475,0.78,0.715,0.82,0.685,0.64,0.445],[0.6613,0.4671,0.7213,0.2871,0.6787,0.2729,0.6187,0.4529],[0.7,0.3025,0.82,0.3025,0.82,0.2575,0.7,0.2575],[0.5,0.68,0.2,0.68,0.2,0.72,0.5,0.72]], antl: [[0.4001,0.4499,0.3201,0.2899,0.2799,0.3101,0.3599,0.4701],[0.3183,0.2869,0.2183,0.1469,0.1817,0.1731,0.2817,0.3131],[0.2213,0.1529,0.1813,0.0329,0.1387,0.0471,0.1787,0.1671],[0.3,0.2825,0.16,0.2825,0.16,0.3175,0.3,0.3175],[0.2425,0.1827,0.1025,0.1627,0.0975,0.1973,0.2375,0.2173],[0.6401,0.4701,0.7201,0.3101,0.6799,0.2899,0.5999,0.4499],[0.7183,0.3131,0.8183,0.1731,0.7817,0.1469,0.6817,0.2869],[0.8213,0.1671,0.8613,0.0471,0.8187,0.0329,0.7787,0.1529],[0.7,0.3175,0.84,0.3175,0.84,0.2825,0.7,0.2825],[0.7625,0.2173,0.9025,0.1973,0.8975,0.1627,0.7575,0.1827]], scales: [[0.1103,0.2376,0.0303,0.5576,0.0497,0.5624,0.1297,0.2424],[0.1105,0.243,0.2105,0.563,0.2295,0.557,0.1295,0.237],[0.8705,0.237,0.7705,0.557,0.7895,0.563,0.8895,0.243],[0.8703,0.2424,0.9503,0.5624,0.9697,0.5576,0.8897,0.2376]], donut: [[0.2749,0.3341,0.3172,0.3495,0.3274,0.3213,0.2851,0.3059],[0.5096,0.2115,0.5441,0.1826,0.5249,0.1596,0.4904,0.1885],[0.6859,0.3451,0.7013,0.3874,0.7295,0.3772,0.7141,0.3349],[0.2052,0.5374,0.1974,0.5817,0.227,0.5869,0.2348,0.5426],[0.7574,0.5948,0.8017,0.6026,0.8069,0.573,0.7626,0.5652],[0.3925,0.753,0.4315,0.7755,0.4465,0.7495,0.4075,0.727],[0.607,0.7525,0.5845,0.7915,0.6105,0.8065,0.633,0.7675]] };
+  const NEW6 = [
+    { id: 'wreath', min: 20, name: 'Венок', cat: 'Праздники', ops: [['+', 'e', 0.5, 0.5, 0.4, 0.4], ['-', 'e', 0.5, 0.5, 0.26, 0.26]].concat(P6.wreath.map((c) => ['+', 'e', c[0], c[1], c[2], c[2]]), [['-', 'e', 0.5, 0.5, 0.2, 0.2], ['+', 'e', 0.4, 0.93, 0.1, 0.06], ['+', 'e', 0.6, 0.93, 0.1, 0.06], ['+', 'e', 0.5, 0.93, 0.04, 0.04], ['-', 'e', 0.3, 0.2, 0.02, 0.02], ['-', 'e', 0.74, 0.3, 0.02, 0.02], ['-', 'e', 0.2, 0.62, 0.02, 0.02], ['-', 'e', 0.8, 0.64, 0.02, 0.02]]) },
+    { id: 'clock', min: 18, name: 'Часы', cat: 'Предметы', ops: [['+', 'e', 0.5, 0.5, 0.47, 0.47], ['-', 'e', 0.5, 0.5, 0.41, 0.41]].concat(P6.ticks.map((p) => ['+', 'p', p]), P6.hands.map((p) => ['+', 'p', p]), [['+', 'e', 0.5, 0.5, 0.05, 0.05]]) },
+    { id: 'alarm', min: 18, name: 'Будильник', cat: 'Предметы', ops: [['+', 'e', 0.5, 0.56, 0.37, 0.37], ['-', 'e', 0.5, 0.56, 0.29, 0.29], ['+', 'e', 0.2, 0.2, 0.13, 0.1], ['+', 'e', 0.8, 0.2, 0.13, 0.1], ['+', 'p', [0.2, 0.22, 0.34, 0.3, 0.3, 0.36, 0.16, 0.28]], ['+', 'p', [0.8, 0.22, 0.66, 0.3, 0.7, 0.36, 0.84, 0.28]], ['+', 'r', 0.46, 0.14, 0.54, 0.22], ['+', 'p', [0.26, 0.86, 0.18, 0.98, 0.3, 0.92]], ['+', 'p', [0.74, 0.86, 0.82, 0.98, 0.7, 0.92]], ['+', 'p', seg(0.5, 0.56, 0.5, 0.34, 0.05)], ['+', 'p', seg(0.5, 0.56, 0.64, 0.56, 0.05)], ['+', 'e', 0.5, 0.56, 0.045, 0.045]] },
+    { id: 'glasses', min: 18, name: 'Очки', cat: 'Предметы', ops: [['+', 'e', 0.25, 0.54, 0.23, 0.22], ['-', 'e', 0.25, 0.54, 0.16, 0.15], ['+', 'e', 0.75, 0.54, 0.23, 0.22], ['-', 'e', 0.75, 0.54, 0.16, 0.15], ['+', 'r', 0.44, 0.46, 0.56, 0.52], ['+', 'p', [0.03, 0.46, 0.0, 0.28, 0.07, 0.3, 0.07, 0.46]], ['+', 'p', [0.97, 0.46, 1.0, 0.28, 0.93, 0.3, 0.93, 0.46]], ['+', 'p', [0.12, 0.36, 0.26, 0.28, 0.3, 0.32, 0.16, 0.4]]] },
+    { id: 'magnifier', min: 15, name: 'Лупа', cat: 'Предметы', ops: [['+', 'e', 0.4, 0.4, 0.36, 0.36], ['-', 'e', 0.4, 0.4, 0.27, 0.27], ['+', 'p', seg(0.66, 0.66, 0.94, 0.94, 0.12)], ['+', 'p', [0.22, 0.28, 0.3, 0.2, 0.34, 0.24, 0.26, 0.32]]] },
+    { id: 'compass', min: 20, name: 'Компас', cat: 'Предметы', ops: [['+', 'e', 0.5, 0.5, 0.47, 0.47], ['-', 'e', 0.5, 0.5, 0.4, 0.4], ['+', 'p', [0.5, 0.14, 0.6, 0.5, 0.4, 0.5]], ['+', 'p', [0.5, 0.86, 0.6, 0.5, 0.4, 0.5]], ['-', 'p', [0.5, 0.74, 0.55, 0.5, 0.45, 0.5]], ['+', 'e', 0.5, 0.5, 0.04, 0.04], ['+', 'r', 0.485, 0.04, 0.515, 0.12], ['+', 'r', 0.485, 0.88, 0.515, 0.96], ['+', 'r', 0.04, 0.485, 0.12, 0.515], ['+', 'r', 0.88, 0.485, 0.96, 0.515]] },
+    { id: 'kettlebell', min: 15, name: 'Гиря', cat: 'Спорт', ops: [['+', 'e', 0.5, 0.64, 0.4, 0.34], ['+', 'e', 0.5, 0.3, 0.28, 0.26], ['-', 'e', 0.5, 0.3, 0.17, 0.15], ['+', 'r', 0.24, 0.9, 0.76, 0.98], ['-', 'e', 0.5, 0.66, 0.1, 0.07]] },
+    { id: 'drum', min: 20, name: 'Барабан', cat: 'Предметы', ops: [['+', 'r', 0.14, 0.34, 0.86, 0.8], ['+', 'e', 0.5, 0.34, 0.36, 0.1], ['-', 'e', 0.5, 0.34, 0.3, 0.06], ['+', 'e', 0.5, 0.8, 0.36, 0.1], ['-', 'p', [0.2, 0.46, 0.3, 0.7, 0.4, 0.46]], ['-', 'p', [0.4, 0.46, 0.5, 0.7, 0.6, 0.46]], ['-', 'p', [0.6, 0.46, 0.7, 0.7, 0.8, 0.46]], ['+', 'p', seg(0.08, 0.04, 0.42, 0.26, 0.05)], ['+', 'p', seg(0.92, 0.04, 0.58, 0.26, 0.05)]] },
+    { id: 'scales', min: 20, name: 'Весы', cat: 'Предметы', ops: P6.scales.map((p) => ['+', 'p', p]).concat([['+', 'r', 0.485, 0.22, 0.515, 0.9], ['+', 'e', 0.5, 0.94, 0.22, 0.05], ['+', 'r', 0.1, 0.18, 0.9, 0.26], ['+', 'e', 0.5, 0.14, 0.05, 0.05], ['+', 'e', 0.13, 0.58, 0.13, 0.06], ['+', 'e', 0.87, 0.58, 0.13, 0.06]]) },
+    { id: 'spasskaya', min: 24, name: 'Спасская башня', cat: 'Здания', ops: [['+', 'r', 0.3, 0.5, 0.7, 0.98], ['+', 'r', 0.34, 0.34, 0.66, 0.5], ['+', 'p', [0.5, 0.08, 0.66, 0.34, 0.34, 0.34]], ['+', 'r', 0.485, 0.0, 0.515, 0.1], ['+', 'p', [0.5,-0.02,0.5129,0.0122,0.5476,0.0145,0.5209,0.0368,0.5294,0.0705,0.5,0.052,0.4706,0.0705,0.4791,0.0368,0.4524,0.0145,0.4871,0.0122]], ['-', 'e', 0.5, 0.66, 0.11, 0.11], ['+', 'p', seg(0.5, 0.66, 0.5, 0.6, 0.025)], ['+', 'p', seg(0.5, 0.66, 0.55, 0.66, 0.025)], ['-', 'r', 0.36, 0.82, 0.44, 0.92], ['-', 'r', 0.56, 0.82, 0.64, 0.92], ['-', 'r', 0.44, 0.38, 0.56, 0.46], ['-', 'r', 0.3, 0.5, 0.34, 0.54], ['-', 'r', 0.66, 0.5, 0.7, 0.54], ['+', 'r', 0.26, 0.46, 0.74, 0.52]] },
+    { id: 'yurt', min: 18, name: 'Юрта', cat: 'Здания', ops: [['+', 'r', 0.1, 0.54, 0.9, 0.94], ['+', 'e', 0.5, 0.54, 0.46, 0.34], ['-', 'r', 0.12, 0.54, 0.88, 0.56], ['+', 'r', 0.1, 0.56, 0.9, 0.94], ['-', 'p', [0.42, 0.94, 0.42, 0.76, 0.5, 0.7, 0.58, 0.76, 0.58, 0.94]], ['+', 'r', 0.485, 0.14, 0.515, 0.22], ['-', 'r', 0.2, 0.66, 0.3, 0.7], ['-', 'r', 0.7, 0.66, 0.8, 0.7]] },
+    { id: 'crane', min: 24, name: 'Подъёмный кран', cat: 'Транспорт', ops: P6.crane.map((p) => ['+', 'p', p]).concat([['+', 'r', 0.76, 0.46, 0.92, 0.54], ['+', 'r', 0.04, 0.06, 0.2, 0.18], ['+', 'r', 0.1, 0.94, 0.5, 0.98]]) },
+    { id: 'scooter', min: 20, name: 'Самокат', cat: 'Транспорт', ops: [['+', 'e', 0.14, 0.82, 0.13, 0.13], ['-', 'e', 0.14, 0.82, 0.07, 0.07], ['+', 'e', 0.86, 0.82, 0.13, 0.13], ['-', 'e', 0.86, 0.82, 0.07, 0.07], ['+', 'r', 0.14, 0.76, 0.86, 0.84], ['+', 'p', seg(0.84, 0.8, 0.72, 0.1, 0.06)], ['+', 'r', 0.6, 0.06, 0.88, 0.14]] },
+    { id: 'tram', min: 22, name: 'Трамвай', cat: 'Транспорт', ops: [['+', 'r', 0.06, 0.3, 0.94, 0.78], ['-', 'r', 0.12, 0.38, 0.28, 0.54], ['-', 'r', 0.34, 0.38, 0.5, 0.54], ['-', 'r', 0.56, 0.38, 0.72, 0.54], ['-', 'r', 0.78, 0.38, 0.88, 0.62], ['+', 'p', seg(0.36, 0.3, 0.5, 0.1, 0.03)], ['+', 'p', seg(0.5, 0.1, 0.64, 0.3, 0.03)], ['+', 'r', 0.3, 0.06, 0.7, 0.1], ['+', 'e', 0.24, 0.82, 0.08, 0.08], ['+', 'e', 0.76, 0.82, 0.08, 0.08], ['+', 'r', 0.0, 0.9, 1.0, 0.97], ['-', 'r', 0.1, 0.66, 0.9, 0.69]] },
+    { id: 'goal', min: 24, name: 'Футбольные ворота', cat: 'Спорт', ops: [['+', 'r', 0.04, 0.12, 0.1, 0.92], ['+', 'r', 0.9, 0.12, 0.96, 0.92], ['+', 'r', 0.04, 0.12, 0.96, 0.18]].concat([0.22, 0.34, 0.46, 0.58, 0.7, 0.82].map((x) => ['+', 'r', x, 0.18, x + 0.02, 0.9]), [0.3, 0.42, 0.54, 0.66, 0.78].map((y) => ['+', 'r', 0.1, y, 0.9, y + 0.02]), [['+', 'r', 0.04, 0.9, 0.96, 0.96]]) },
+    { id: 'bat', min: 20, name: 'Летучая мышь', cat: 'Праздники', half: [[0.0, 0.3], [0.05, 0.2], [0.09, 0.3], [0.22, 0.2], [0.38, 0.24], [0.5, 0.36], [0.45, 0.44], [0.4, 0.58], [0.31, 0.5], [0.24, 0.62], [0.16, 0.5], [0.1, 0.6], [0.07, 0.74], [0.0, 0.82]], ops: [['+', 'e', 0.5, 0.45, 0.07, 0.15], ['-', 'e', 0.46, 0.38, 0.015, 0.02], ['-', 'e', 0.54, 0.38, 0.015, 0.02]] },
+    { id: 'web', min: 20, name: 'Паутина', cat: 'Праздники', ops: P6.web.map((p) => ['+', 'p', p]).concat([['+', 'e', 0.5, 0.5, 0.025, 0.025]]) },
+    { id: 'deer', min: 24, name: 'Олень', cat: 'Животные', ops: P6.antl.map((p) => ['+', 'p', p]).concat([['+', 'e', 0.5, 0.62, 0.17, 0.27], ['+', 'e', 0.27, 0.5, 0.1, 0.05], ['+', 'e', 0.73, 0.5, 0.1, 0.05], ['-', 'e', 0.43, 0.56, 0.025, 0.03], ['-', 'e', 0.57, 0.56, 0.025, 0.03], ['-', 'e', 0.5, 0.8, 0.07, 0.06], ['+', 'e', 0.5, 0.82, 0.035, 0.03]]) },
+    { id: 'shield', min: 18, name: 'Щит', cat: 'Фантастика', half: [[0.0, 0.04], [0.38, 0.1], [0.44, 0.2], [0.44, 0.5], [0.36, 0.72], [0.2, 0.88], [0.0, 0.98]], ops: [['-', 'r', 0.485, 0.16, 0.515, 0.86], ['-', 'r', 0.22, 0.38, 0.78, 0.41], ['+', 'e', 0.5, 0.4, 0.07, 0.07]] },
+    { id: 'shipwheel', min: 24, name: 'Штурвал', cat: 'Транспорт', ops: P6.wheel.map((p) => ['+', 'p', p]).concat(P6.wheelh.map((c) => ['+', 'e', c[0], c[1], 0.06, 0.06]), [['+', 'e', 0.5, 0.5, 0.1, 0.1], ['-', 'e', 0.5, 0.5, 0.04, 0.04]]) },
+    { id: 'sunflower', min: 24, name: 'Подсолнух', cat: 'Природа', ops: [['+', 'r', 0.485, 0.55, 0.515, 0.98], ['+', 'e', 0.3, 0.8, 0.14, 0.06], ['+', 'e', 0.7, 0.72, 0.14, 0.06]].concat(P6.sunpet.map((c) => ['+', 'e', c[0], c[1], c[2], c[2]]), [['+', 'e', 0.5, 0.4, 0.26, 0.26], ['-', 'e', 0.5, 0.4, 0.2, 0.2], ['+', 'e', 0.5, 0.4, 0.17, 0.17], ['-', 'e', 0.5, 0.4, 0.04, 0.04], ['-', 'e', 0.42, 0.34, 0.025, 0.025], ['-', 'e', 0.58, 0.34, 0.025, 0.025], ['-', 'e', 0.42, 0.46, 0.025, 0.025], ['-', 'e', 0.58, 0.46, 0.025, 0.025], ['-', 'e', 0.5, 0.28, 0.025, 0.025], ['-', 'e', 0.5, 0.52, 0.025, 0.025]]) },
+    { id: 'bagel', min: 18, name: 'Баранка', cat: 'Еда', ops: [['+', 'e', 0.5, 0.5, 0.47, 0.37], ['-', 'e', 0.5, 0.5, 0.17, 0.13], ['-', 'e', 0.2, 0.42, 0.025, 0.03], ['-', 'e', 0.34, 0.3, 0.025, 0.03], ['-', 'e', 0.66, 0.3, 0.025, 0.03], ['-', 'e', 0.8, 0.42, 0.025, 0.03], ['-', 'e', 0.34, 0.72, 0.025, 0.03], ['-', 'e', 0.66, 0.72, 0.025, 0.03]] },
+    { id: 'lollipop', min: 15, name: 'Леденец', cat: 'Еда', ops: [['+', 'e', 0.5, 0.34, 0.34, 0.34], ['-', 'e', 0.5, 0.34, 0.26, 0.26], ['+', 'e', 0.5, 0.34, 0.19, 0.19], ['-', 'e', 0.5, 0.34, 0.11, 0.11], ['+', 'e', 0.5, 0.34, 0.05, 0.05], ['+', 'r', 0.47, 0.66, 0.53, 0.98], ['-', 'r', 0.3, 0.34, 0.34, 0.36]] },
+  ];
+  NEW6.forEach((s) => { const ops = []; if (s.half && s.half.length) ops.push(['+', 'p', mirrorProfile(s.half)]); (s.ops || []).forEach((o) => ops.push(o)); SHAPES.push({ id: s.id, min: s.min, name: s.name, cat: s.cat, ops }); });
   const CATS = ['Животные', 'Птицы', 'Насекомые', 'Подводный мир', 'Предметы', 'Природа', 'Еда', 'Здания', 'Транспорт', 'Праздники', 'Фантастика', 'Спорт', 'Игры', 'Сцены', 'Узоры'];
   function inside(op, u, v) {
     const t = op[1];
@@ -1327,7 +1470,7 @@ const NG = (function () {
       for (let a = 0; a < 14 && !t; a++) { if (!bag.length) bag = pool.slice(); const sh = bag.splice(Math.floor(rnd() * bag.length), 1)[0]; if ((sh.min || 8) > Math.min(h, w) || (a < 10 && !fits(sh, h, w))) continue; t = rasterFit(sh, h, w, rnd() < 0.5); if (t) names.push(sh.name); }
       if (!t) return null; for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) g[(r0 + r) * C + c0 + c] = t[r * w + c];
     }
-    return { g, name: 'Картина', names };
+    return { g, name: 'Картина', names, cat: 'Коллаж' };
   }
   // ---------- варианты оформления: контур, негатив, рамка, пейзаж ----------
   const byId = {}; SHAPES.forEach((q) => { byId[q.id] = q; });
@@ -1383,7 +1526,7 @@ const NG = (function () {
     // пустые строки (небо): добавляем звёздочки или птиц, столбцы чиним соседней клеткой
     for (let r = 0; r < R; r++) { let any = false; for (let c = 0; c < C; c++) if (g[r * C + c]) { any = true; break; } if (!any) g[r * C + Math.floor(rnd() * C)] = 1; }
     if (!linesOk(g, R, C)) patchLines(g, R, C);
-    return linesOk(g, R, C) ? { g, name: sc.name, scene: true, names: [sc.name].concat(names.filter((x, i, a) => a.indexOf(x) === i)) } : null;
+    return linesOk(g, R, C) ? { g, name: sc.name, scene: true, cat: 'Сцены', names: [sc.name].concat(names.filter((x, i, a) => a.indexOf(x) === i)) } : null;
   }
   // собирает картинку, которая заполняет всё поле: в ней нет пустых строк и столбцов
   function picture(R, C, rnd, o) {
@@ -1391,13 +1534,14 @@ const NG = (function () {
     if (o.mode === 'blobs' || o.cat === 'Узоры') {
       const gens = [skyline, forest, mountains, ornament, mandala, mandala, sweater, carpet, fractal, maze]; let res = null;
       for (let a = 0; a < 8 && !res; a++) { const f = a === 0 && o.pattern != null ? gens[o.pattern % gens.length] : gens[Math.floor(rnd() * gens.length)], r2 = (f === maze && side < 11) ? null : f(R, C, rnd); if (!r2) continue; if (!linesOk(r2.g, R, C)) patchLines(r2.g, R, C); if (linesOk(r2.g, R, C) && busy(r2.g, R, C) < (r2.name === 'Свитер' ? 0.68 : r2.name === 'Ковёр' ? 0.64 : 0.5)) res = r2; }
-      return res ? { g: res.g, name: res.name, names: [res.name] } : null;
+      return res ? { g: res.g, name: res.name, names: [res.name], cat: 'Узоры' } : null;
     }
     if (o.cat === 'Сцены' || ((!o.cat || o.cat === 'Всё') && side >= 30 && ratio <= 1.8 && rnd() < 0.16)) { const sc = sceneOf(R, C, rnd, o.scene); if (sc) return sc; if (o.cat === 'Сцены' && side < 30) o = Object.assign({}, o, { cat: 'Всё' }); }
+    if (o.shape && byId[o.shape]) { const sh = byId[o.shape], v = o.plain ? null : variant(sh, R, C, rnd); if (v && linesOk(v.g, R, C)) return { g: v.g, name: sh.name + ' · ' + v.label, names: [sh.name + ' · ' + v.label], cat: sh.cat }; const g = rasterFit(sh, R, C, rnd() < 0.5); return g ? { g, name: sh.name, names: [sh.name], cat: sh.cat } : null; }       // для проверок: конкретный силуэт
     let pool = SHAPES.filter((q) => catOk(q) && (q.min || 8) <= side); if (!pool.length) pool = SHAPES.filter((q) => (q.min || 8) <= side);
     if (ratio <= 1.6 && (side < 40 || rnd() < 0.4)) {
       const good = pool.filter((q) => fits(q, R, C)), from = good.length >= 3 ? good : pool;
-      for (let a = 0; a < 6; a++) { const sh = from[Math.floor(rnd() * from.length)], v = o.plain ? null : variant(sh, R, C, rnd); if (v && linesOk(v.g, R, C)) return { g: v.g, name: sh.name + ' · ' + v.label, names: [sh.name + ' · ' + v.label] }; const g = rasterFit(sh, R, C, rnd() < 0.5); if (g) return { g, name: sh.name, names: [sh.name] }; } return null;
+      for (let a = 0; a < 6; a++) { const sh = from[Math.floor(rnd() * from.length)], v = o.plain ? null : variant(sh, R, C, rnd); if (v && linesOk(v.g, R, C)) return { g: v.g, name: sh.name + ' · ' + v.label, names: [sh.name + ' · ' + v.label], cat: sh.cat }; const g = rasterFit(sh, R, C, rnd() < 0.5); if (g) return { g, name: sh.name, names: [sh.name], cat: sh.cat }; } return null;
     }
     return collage(R, C, rnd, pool);
   }
@@ -1452,7 +1596,7 @@ const NG = (function () {
     while (tries < maxTries && (tries === 0 || Date.now() - t0 < budget)) {
       tries++; const pic = picture(R, C, rnd0, o); if (!pic || !linesOk(pic.g, R, C)) continue; let on = 0; for (let i = 0; i < pic.g.length; i++) on += pic.g[i]; const dens = on / pic.g.length; if (dens < (pic.scene ? 0.05 : 0.12) || dens > 0.8) continue;
       const b = build(pic.g, R, C); if (!b) continue;
-      const cand = { rows: R, cols: C, sol: pic.g, rowC: b.rows, colC: b.cols, givens: b.givens, name: pic.name, names: pic.names, density: dens };
+      const cand = { rows: R, cols: C, sol: pic.g, rowC: b.rows, colC: b.cols, givens: b.givens, name: pic.name, names: pic.names, cat: pic.cat, density: dens };
       if (lv) { const an = analyze(R, C, cand.rowC, cand.colC, cand.givens, cand.sol); if (!an) continue; cand.hardness = an.hardness; cand.level = levelOf(an.hardness, R, C); cand.dist = Math.abs(an.hardness - levelCenter(lv, R, C)) + (cand.level === lv ? 0 : 0.5) + (lv >= 3 ? Math.max(0, cand.givens.length / area - 0.01) * 12 : 0); }      // на сложных уровнях лишних открытых клеток быть не должно
       const better = !best || (lv ? (cand.dist < best.dist || (cand.dist === best.dist && cand.givens.length < best.givens.length)) : cand.givens.length < best.givens.length);
       if (better) best = cand;
@@ -1468,13 +1612,33 @@ const NG = (function () {
     }
     return best;
   }
+  // ---------- проверка условия ----------
+  // Условие корректно, если: 1) подсказки точно соответствуют картинке; 2) картинка решается логикой строк и столбцов из заданных открытых клеток,
+  // то есть решение единственное. Возвращает { ok, reason }.
+  function verify(R, C, sol, rowC, colC, givens) {
+    const cl = lineClues(sol, R, C);
+    if (JSON.stringify(cl.rows) !== JSON.stringify(rowC) || JSON.stringify(cl.cols) !== JSON.stringify(colC)) return { ok: false, reason: 'подсказки не соответствуют картинке' };
+    const known = new Int8Array(R * C).fill(-1); for (const g of givens || []) known[g] = sol[g];
+    if (!propagate(R, C, rowC, colC, known)) return { ok: false, reason: 'противоречие в подсказках' };
+    for (let i = 0; i < known.length; i++) if (known[i] !== sol[i]) return { ok: false, reason: known[i] < 0 ? 'решение не единственное' : 'решение отличается от картинки' };
+    return { ok: true };
+  }
+  // Если у условия есть неоднозначность, открывает минимум дополнительных клеток, чтобы решение стало единственным
+  function ensureUnique(R, C, sol, givens) {
+    const cl = lineClues(sol, R, C), out = (givens || []).slice(), known = new Int8Array(R * C).fill(-1); for (const g of out) known[g] = sol[g];
+    if (!propagate(R, C, cl.rows, cl.cols, known)) return null; let added = 0, guard = R * C;
+    while (guard-- > 0) { let best = -1, bs = -1; const ru = new Int32Array(R), cu = new Int32Array(C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (known[r * C + c] < 0) { ru[r]++; cu[c]++; }
+      for (let r = 0; r < R; r++) if (ru[r]) for (let c = 0; c < C; c++) if (known[r * C + c] < 0 && ru[r] + cu[c] > bs) { bs = ru[r] + cu[c]; best = r * C + c; }
+      if (best < 0) break; known[best] = sol[best]; out.push(best); added++; if (!propagate(R, C, cl.rows, cl.cols, known, [(best / C) | 0, R + best % C])) return null; }
+    return { givens: out, added, rowC: cl.rows, colC: cl.cols };
+  }
   // клетка для подсказки: из строки или столбца, где осталось меньше всего неверных клеток
   function hint(sol, player, R, C) {
     let bestR = -1, bn = 1e9; const wrong = (i) => (sol[i] ? player[i] !== 1 : player[i] === 1);
     for (let r = 0; r < R; r++) { let n = 0; for (let c = 0; c < C; c++) if (wrong(r * C + c)) n++; if (n && n < bn) { bn = n; bestR = r; } }
     if (bestR < 0) return -1; for (let c = 0; c < C; c++) if (wrong(bestR * C + c)) return bestR * C + c; return -1;
   }
-  return { mulberry32, solveLine, propagate, lineClues, countUnknown, sceneOf, busy, SCENES, SHAPES, CATS, picture, stamp, rasterFit, linesOk, patchLines, skyline, forest, mountains, ornament, mandala, sweater, carpet, fractal, maze, build, generate, hint, blobs, analyze, levelOf, LEVEL_T };
+  return { mulberry32, solveLine, propagate, lineClues, countUnknown, verify, ensureUnique, sceneOf, busy, SCENES, SHAPES, CATS, picture, stamp, rasterFit, linesOk, patchLines, skyline, forest, mountains, ornament, mandala, sweater, carpet, fractal, maze, build, generate, hint, blobs, analyze, levelOf, LEVEL_T };
 })();
 if (typeof module !== 'undefined') module.exports = NG;
 
@@ -1485,7 +1649,7 @@ if (typeof module !== 'undefined') module.exports = NG;
 const $ = (id) => document.getElementById(id);
 const NGSRC = $('ng-engine').textContent;
 const NG = new Function(NGSRC + '\nreturn NG;')();
-const BUILD = '1.30 · 9 октября 2026';
+const BUILD = '1.33 · 9 октября 2026';
 const CAT = { small: 'Малые (до 10)', medium: 'Средние (11–25)', large: 'Большие (26–50)', huge: 'Огромные (51–100)' };
 const catOf = (R, C) => { const m = Math.max(R, C); return m <= 10 ? 'small' : m <= 25 ? 'medium' : m <= 50 ? 'large' : 'huge'; };
 const LS = { save: 'nonogramSave', stats: 'nonogramStats', prefs: 'nonogramPrefs' };
@@ -1529,7 +1693,7 @@ async function startNew(opts) {
 function newState(p, meta) {
   const R = p.rows, C = p.cols, cells = new Uint8Array(R * C), given = new Uint8Array(R * C);
   for (const gi of p.givens) { cells[gi] = p.sol[gi] ? 1 : 2; given[gi] = 1; }
-  S = Object.assign({ R, C, sol: p.sol, rowC: p.rowC, colC: p.colC, cells, given, name: p.name, names: p.names || [p.name], time: 0, hints: 0, checks: 0, paused: false, done: false, hist: [], redo: [], tool: 'fill', pan: false, wrong: null, hinted: new Uint8Array(R * C) }, meta);
+  S = Object.assign({ R, C, sol: p.sol, rowC: p.rowC, colC: p.colC, cells, given, name: p.name, cat: p.cat || '', names: p.names || [p.name], time: 0, hints: 0, checks: 0, paused: false, done: false, hist: [], redo: [], tool: 'fill', pan: false, wrong: null, hinted: new Uint8Array(R * C) }, meta);
   S.total = 0; for (let i = 0; i < R * C; i++) S.total += S.sol[i]; blockPositions(); countFill(); fitView(true);
 }
 // Где в решении стоит каждый блок: нужно, чтобы зачёркивать цифры подсказки, когда блок уже закрашен верно
@@ -1546,12 +1710,15 @@ function countFill() { let ok = 0, bad = 0, fill = 0; for (let i = 0; i < S.cell
 function persist() {
   if (!S || S.done) return; let sol = '', cells = ''; for (let i = 0; i < S.sol.length; i++) { sol += S.sol[i] ? '1' : '0'; cells += S.cells[i]; }
   let hinted = ''; for (let i = 0; i < S.hinted.length; i++) hinted += S.hinted[i] ? '1' : '0';
-  store(LS.save, { v: 1, R: S.R, C: S.C, sol, cells, hinted, givens: Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), []), name: S.name, names: S.names, daily: S.daily, dateKey: S.dateKey, level: S.level || 0, time: S.time, hints: S.hints, checks: S.checks, tool: S.tool });
+  store(LS.save, { v: 1, R: S.R, C: S.C, sol, cells, hinted, givens: Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), []), name: S.name, cat: S.cat || '', names: S.names, daily: S.daily, dateKey: S.dateKey, level: S.level || 0, time: S.time, hints: S.hints, checks: S.checks, tool: S.tool });
 }
 function resume() {
   const d = load(LS.save, null); if (!d || !d.sol) return false; const R = d.R, C = d.C, sol = new Uint8Array(R * C); for (let i = 0; i < sol.length; i++) sol[i] = d.sol[i] === '1' ? 1 : 0;
-  const cl = NG.lineClues(sol, R, C); newState({ rows: R, cols: C, sol, rowC: cl.rows, colC: cl.cols, givens: d.givens || [], name: d.name, names: d.names }, { daily: d.daily, dateKey: d.dateKey, level: d.level || 0 });
-  for (let i = 0; i < S.cells.length; i++) { S.cells[i] = +d.cells[i] || 0; S.hinted[i] = d.hinted && d.hinted[i] === '1' ? 1 : 0; } S.time = d.time || 0; S.hints = d.hints || 0; S.checks = d.checks || 0; S.tool = d.tool || 'fill'; countFill(); openGame(); return true;
+  const cl = NG.lineClues(sol, R, C); let givens = d.givens || [], fixed = 0; const chk = NG.verify(R, C, sol, cl.rows, cl.cols, givens);
+  if (!chk.ok) { const rp = NG.ensureUnique(R, C, sol, givens); if (rp) { givens = rp.givens; fixed = rp.added; } }          // сохранение из старой версии или с другого устройства: проверяем условие заново
+  newState({ rows: R, cols: C, sol, rowC: cl.rows, colC: cl.cols, givens, name: d.name, cat: d.cat, names: d.names }, { daily: d.daily, dateKey: d.dateKey, level: d.level || 0 });
+  for (let i = 0; i < S.cells.length; i++) { S.cells[i] = +d.cells[i] || 0; S.hinted[i] = d.hinted && d.hinted[i] === '1' ? 1 : 0; } for (const gi of givens) S.cells[gi] = S.sol[gi] ? 1 : 2;       /* открытые клетки (в том числе добавленные при перепроверке) всегда на месте */
+  S.time = d.time || 0; S.hints = d.hints || 0; S.checks = d.checks || 0; S.tool = d.tool || 'fill'; countFill(); openGame(); if (fixed) setTimeout(() => toast('Условие перепроверено и уточнено: открыто ещё клеток — ' + fixed), 600); return true;
 }
 
 /* ---------- цвета и холст ---------- */
@@ -1585,10 +1752,9 @@ function resize() {
 new ResizeObserver(() => { if (!$('game').classList.contains('hidden')) resize(); }).observe(stage); addEventListener('resize', () => { if (!$('game').classList.contains('hidden')) resize(); });
 let raf = 0; const draw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); };
 let hover = { r: -1, c: -1 };
+// Линия готова, только если закрашенные клетки совпадают с решением (а не просто «похожи» по длинам групп): иначе автокрестики портили бы верные клетки
 const lineDone = (isRow, idx) => {
-  const clue = isRow ? S.rowC[idx] : S.colC[idx], n = isRow ? S.C : S.R, runs = []; let run = 0;
-  for (let i = 0; i < n; i++) { const v = isRow ? S.cells[idx * S.C + i] : S.cells[i * S.C + idx]; if (v === 1) run++; else if (run) { runs.push(run); run = 0; } } if (run) runs.push(run);
-  if (runs.length !== clue.length) return false; for (let i = 0; i < runs.length; i++) if (runs[i] !== clue[i]) return false; return true;
+  const n = isRow ? S.C : S.R; for (let i = 0; i < n; i++) { const k = isRow ? idx * S.C + i : i * S.C + idx; if ((S.cells[k] === 1) !== (S.sol[k] === 1)) return false; } return true;
 };
 function render() {
   if (!S || !COL) return; const m = metrics(); clampView(m); const { R, C, cell, LW, TH, fs, slot, lh } = m;
@@ -1653,7 +1819,7 @@ function zoomAt(px, py, factor) { const m = metrics(), old = view.cell, nc = Mat
 function beginStroke(cellPos, tool) {
   const i = cellPos.r * S.C + cellPos.c, cur = S.cells[i]; let act;
   if (tool === 'fill') act = cur === 1 ? 0 : 1; else act = cur === 2 ? 0 : 2;
-  stroke = { act, from: cur, r0: cellPos.r, c0: cellPos.c, axis: null, last: cellPos, changes: [], lines: new Set() }; applyStroke(cellPos);
+  stroke = { act, from: cur, r0: cellPos.r, c0: cellPos.c, axis: null, last: cellPos, changes: [], lines: new Set(), t0: Date.now() }; applyStroke(cellPos);
 }
 function applyOne(r, c) {
   const i = r * S.C + c, v = S.cells[i], st = stroke; if (S.given[i]) return;
@@ -1666,11 +1832,13 @@ function applyStroke(pos) {
   if (st.axis === 'col') c = st.c0; else if (st.axis === 'row') r = st.r0;
   const a = st.last, steps = Math.max(Math.abs(r - a.r), Math.abs(c - a.c)); for (let k = 1; k <= Math.max(1, steps); k++) { const rr = steps ? Math.round(a.r + (r - a.r) * k / steps) : r, cc = steps ? Math.round(a.c + (c - a.c) * k / steps) : c; applyOne(rr, cc); } st.last = { r, c }; hover = { r, c }; draw();
 }
+// Второй палец лёг почти сразу после первого — это масштабирование, а не рисование: случайная точка от первого пальца откатывается
+function cancelTinyStroke() { const st = stroke; if (!st) return; if (Date.now() - st.t0 < 300 && st.changes.length <= 1) { for (let k = st.changes.length - 1; k >= 0; k--) S.cells[st.changes[k][0]] = st.changes[k][1]; stroke = null; countFill(); draw(); } else endStroke(); }
 function endStroke() { if (!stroke) return; const st = stroke; stroke = null; commit(st.changes, st.lines); persist(); }
 stage.addEventListener('contextmenu', (e) => e.preventDefault());
 stage.addEventListener('pointerdown', (e) => {
   if (!S || S.paused || S.done || e.target === mm) return; stage.setPointerCapture(e.pointerId); const p = evPos(e); ptrs.set(e.pointerId, { x: p.x, y: p.y, type: e.pointerType });
-  if (ptrs.size >= 2) { if (stroke) endStroke(); const [a, b] = [...ptrs.values()]; gesture = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return; }
+  if (ptrs.size >= 2) { if (stroke) cancelTinyStroke(); const [a, b] = [...ptrs.values()]; gesture = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return; }
   const cp = cellAt(p.x, p.y); const panning = S.pan || e.button === 1 || spaceDown || !cp || (e.pointerType === 'mouse' && e.button === 1);
   if (panning) { gesture = { pan: true, sx: p.x, sy: p.y, vx: view.x, vy: view.y }; return; }
   if (e.button === 2) beginStroke(cp, 'cross'); else beginStroke(cp, S.tool);
@@ -1693,6 +1861,8 @@ function hint() { if (!S || S.paused || S.done) return; const pl = new Int8Array
   const ch = [], to = S.sol[i] ? 1 : 2; S.given[i] = 0; setCell(i, to, ch); S.hinted[i] = 1; S.given[i] = 0; S.hints++; commit(ch, [(i / S.C) | 0, S.R + i % S.C]); const r = (i / S.C) | 0, c = i % S.C; view.x += 0; hover = { r, c }; toast(S.sol[i] ? 'Эту клетку нужно закрасить' : 'Тут должна быть пустая клетка'); persist(); }
 function check() { if (!S || S.paused || S.done) return; const w = new Uint8Array(S.cells.length); let n = 0; for (let i = 0; i < w.length; i++) if (S.cells[i] === 1 && !S.sol[i]) { w[i] = 1; n++; } if (!n) { toast('Ошибок нет — всё закрашенное верно'); return; } S.wrong = w; S.checks++; S.hints++; draw(); toast('Неверно закрашено клеток: ' + n); persist(); }
 $('t-hint').onclick = hint; $('t-check').onclick = check;
+function resetField() { if (!S || S.paused || S.done) return; const ch = []; for (let i = 0; i < S.cells.length; i++) if (!S.given[i] && S.cells[i] !== 0) setCell(i, 0, ch); if (!ch.length) { toast('Поле уже чистое'); return; } if (!confirm('Стереть все отметки на поле? Открытые заранее клетки останутся. Действие можно отменить.')) { for (let k = ch.length - 1; k >= 0; k--) S.cells[ch[k][0]] = ch[k][1]; countFill(); draw(); return; } commit(ch); toast('Поле очищено: кнопка «Отмена» вернёт всё как было'); persist(); }
+$('t-reset').onclick = resetField;
 function checkWin() { if (!S || S.done) return; if (S.ok === S.total && S.bad === 0) win(); }
 function pictureCanvas() { const c = document.createElement('canvas'), k = Math.max(2, Math.min(8, Math.floor(260 / Math.max(S.R, S.C)))); c.width = S.C * k; c.height = S.R * k; const x = c.getContext('2d'); x.fillStyle = COL.surf; x.fillRect(0, 0, c.width, c.height); x.fillStyle = COL.nt; for (let r = 0; r < S.R; r++) for (let q = 0; q < S.C; q++) if (S.sol[r * S.C + q]) x.fillRect(q * k, r * k, k, k); return c; }
 function win() {
@@ -1704,7 +1874,7 @@ function win() {
     <button class="big" id="w-again">Ещё одну</button><button class="big light" id="w-menu">В меню</button></div>`;
   document.body.appendChild(ov); $('win-pic').appendChild(pictureCanvas());
   $('w-again').onclick = () => { ov.remove(); startNew(S.daily ? currentOpts() : { rows: S.R, cols: S.C, cat: catFilter(), mode: modeFilter(), level: S.level || prefs.level }); }; $('w-menu').onclick = () => { ov.remove(); showMenu(); };
-  if (window.PGA) PGA.event('nonogram', { rows: S.R, cols: S.C, time: t, hints: S.hints, daily: S.daily, streak: stats.daily.streak, level: S.level || 0 });
+  if (window.PGA) PGA.event('nonogram', { rows: S.R, cols: S.C, time: t, hints: S.hints, daily: S.daily, streak: stats.daily.streak, level: S.level || 0, name: String(S.name || '').split(' · ')[0], cat: S.cat || '' });
   if (first && window.PGRec) PGRec.winLine(document.getElementById('pgr-win'), 'jd_' + S.dateKey, { time: t, hints: S.hints });
 }
 
@@ -1770,7 +1940,7 @@ if (window.PGRec) PGRec.config({
   boards: () => { const tk = todayKey(), yk = dayBefore(tk); return [{ id: 'jd_' + tk, title: 'Сегодня', sub: 'Кроссворд дня · ' + tk }, { id: 'jd_' + yk, title: 'Вчера', sub: 'Кроссворд дня · ' + yk }]; },
   pending: () => { const d = stats.daily, out = [], lim = keyOf(new Date(Date.now() - 14 * 86400000)); for (const k of Object.keys(d.results || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'jd_' + k, time: d.results[k], hints: d.hints[k] }); return out; },
   local: (id) => { const k = id.slice(3), d = stats.daily; return d && d.results[k] != null && d.hints && d.hints[k] != null ? { time: d.results[k], hints: d.hints[k] } : null; } });
-window.__ng = { get S() { return S; }, NG, startNew, resume, undo, redo, hint, check, get prefs() { return prefs; }, get stats() { return stats; }, get view() { return view; }, todayKey, showMenu, setPause, fitView, zoomAt, render, metrics, cellAt, blockDone, get size() { return { VW, VH }; } };
+window.__ng = { get S() { return S; }, NG, startNew, resume, undo, redo, hint, check, get prefs() { return prefs; }, get stats() { return stats; }, get view() { return view; }, todayKey, showMenu, setPause, fitView, zoomAt, render, metrics, cellAt, blockDone, lineDone, commit, verifyNow: () => (S ? NG.verify(S.R, S.C, S.sol, S.rowC, S.colC, Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), [])) : null), get size() { return { VW, VH }; } };
 readColors(); renderMenu();
 })();
 </script>
