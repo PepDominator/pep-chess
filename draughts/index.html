@@ -771,6 +771,8 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     ['jpall', 'Японские кроссворды', '🪜', 'Все ступени', 'Решите по японскому кроссворду на каждом из пяти уровней сложности', 5, (c) => (C(c, 'jpl1') > 0) + (C(c, 'jpl2') > 0) + (C(c, 'jpl3') > 0) + (C(c, 'jpl4') > 0) + (C(c, 'jpl5') > 0)],
     ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))],
     // ---- каждый день ----
+    ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
+    ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
     ['act3', 'Каждый день', '🔥', 'Входит в привычку', 'Завершайте хотя бы одну игру 3 дня подряд', 3, (c, u, X) => X.best],
     ['act7', 'Каждый день', '🗓️', 'Неделя без перерыва', 'Играйте 7 дней подряд', 7, (c, u, X) => X.best],
     ['act14', 'Каждый день', '🏃', 'Две недели в строю', 'Играйте 14 дней подряд', 14, (c, u, X) => X.best],
@@ -914,6 +916,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
     if (game === 'challenge') inc('chal');
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
@@ -1067,6 +1070,79 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   window.PGRules = { open, content: R };
   const boot = () => document.querySelectorAll('[data-rules]').forEach((b) => { b.onclick = () => open(b.dataset.rules); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+
+// ============ Интерактивное обучение: общий «движок» уроков для всех игр ============
+// Урок — список шагов. Шаг: { text, target() → прямоугольник {x,y,w,h} на экране или null, done() → true, когда игрок сделал нужное,
+// demo(hand) — «Покажи»: анимированная рука делает действие за игрока; button — подпись кнопки, если шаг завершается нажатием «Дальше» }.
+(function () {
+  if (window.PGTutor) return;
+  const KEY = 'pgTutorDone';
+  const doneMap = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } };
+  const css = `
+#pgt { position:fixed; inset:0; z-index:380; pointer-events:none; font-family:'Noto Sans',system-ui,sans-serif; }
+#pgt .pgt-shade { position:fixed; border-radius:6px; box-shadow:0 0 0 9999px rgba(20,24,18,.5); outline:3px solid #F2C14E; outline-offset:2px; transition:all .25s ease; pointer-events:none; }
+#pgt .pgt-shade.none { left:50%; top:50%; width:0; height:0; outline:none; }
+#pgt .pgt-b { position:fixed; max-width:min(380px, calc(100vw - 24px)); background:var(--k-panel); color:var(--k-tx); border:1px solid var(--k-line); box-shadow:0 18px 50px rgba(0,0,0,.3); padding:14px 16px 12px; pointer-events:auto; transition:top .25s ease, left .25s ease; }
+#pgt .pgt-b .pgt-st { font-size:11.5px; color:var(--k-mu); letter-spacing:.5px; text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between; gap:10px; }
+#pgt .pgt-b .pgt-x { background:none; border:none; color:var(--k-mu); font-size:12px; cursor:pointer; padding:0; text-transform:none; letter-spacing:0; text-decoration:underline; }
+#pgt .pgt-b .pgt-t { font-size:15px; line-height:1.5; } #pgt .pgt-b .pgt-t b { color:var(--k-gt); }
+#pgt .pgt-b .pgt-ok { color:var(--k-gt); font-weight:700; margin-top:6px; min-height:1.2em; font-size:14px; }
+#pgt .pgt-b .pgt-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap; }
+#pgt .pgt-b button.pgt-go { background:#3B5D4A; color:#fff; border:none; padding:8px 14px; font-weight:700; font-size:13.5px; cursor:pointer; }
+#pgt .pgt-b button.pgt-show { background:var(--k-surf); color:var(--k-tx); border:1px solid var(--k-line); padding:8px 12px; font-size:13px; cursor:pointer; }
+#pgt .pgt-dots { display:flex; gap:4px; margin-top:8px; } #pgt .pgt-dots i { width:7px; height:7px; border-radius:50%; background:var(--k-line); } #pgt .pgt-dots i.on { background:#3B5D4A; }
+#pgt .pgt-hand { position:fixed; font-size:34px; line-height:1; pointer-events:none; transition:left .6s ease, top .6s ease, opacity .3s; opacity:0; filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); transform:translate(-30%, -10%); }
+@media (prefers-reduced-motion:reduce) { #pgt .pgt-shade, #pgt .pgt-b, #pgt .pgt-hand { transition:none; } }
+`;
+  let cur = null;
+  function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  // Рука для «Покажи»: двигается по точкам; в каждой точке может выполнить действие
+  const hand = {
+    async path(points, onPoint) { const h = cur && cur.hand; if (!h) return; h.style.opacity = '1'; for (let i = 0; i < points.length; i++) { const p = points[i]; h.style.left = p.x + 'px'; h.style.top = p.y + 'px'; await wait(i === 0 ? 350 : 260); if (onPoint) onPoint(i, p); } await wait(500); h.style.opacity = '0'; },
+  };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  function place() {
+    if (!cur) return; const st = cur.lesson.steps[cur.i], r = st.target ? st.target() : null, sh = cur.shade, b = cur.bubble, av = st.avoid ? st.avoid() : r;
+    if (r) { sh.classList.remove('none'); Object.assign(sh.style, { left: (r.x - 4) + 'px', top: (r.y - 4) + 'px', width: (r.w + 8) + 'px', height: (r.h + 8) + 'px' }); } else { sh.classList.add('none'); sh.removeAttribute('style'); }
+    const vw = innerWidth, vh = innerHeight; b.style.width = ''; let bw = b.offsetWidth, bh = b.offsetHeight, x, y;
+    if (!av) { x = (vw - bw) / 2; y = Math.max(12, vh * 0.18); }
+    else {
+      const right = vw - (av.x + av.w) - 28, left = av.x - 28, below = vh - (av.y + av.h) - 22, above = av.y - 22;
+      if (right >= 250) { const w = Math.min(380, right); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x + av.w + 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }          // сбоку от поля, если есть место
+      else if (left >= 250) { const w = Math.min(380, left); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x - w - 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }
+      else if (below >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y + av.h + 14; }
+      else if (above >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y - bh - 14; }
+      else { const t = r || av; x = Math.min(vw - bw - 12, Math.max(12, t.x + t.w / 2 - bw / 2)); const bl = t.y + t.h + 14, ab = t.y - bh - 14; y = bl + bh < vh - 8 ? bl : ab > 8 ? ab : Math.max(8, vh - bh - 8); }       // места нет — хотя бы не закрываем подсвеченное
+    }
+    b.style.left = x + 'px'; b.style.top = y + 'px';
+  }
+  function show() {
+    const L = cur.lesson, st = L.steps[cur.i], b = cur.bubble; cur.shownAt = Date.now(); cur.okShown = false;
+    b.innerHTML = `<div class="pgt-st"><span>${L.title} · шаг ${cur.i + 1} из ${L.steps.length}</span><button class="pgt-x" type="button">Выйти из обучения</button></div><div class="pgt-t">${st.text}</div><div class="pgt-ok"></div>
+      <div class="pgt-btns">${st.demo ? '<button class="pgt-show" type="button">👆 Покажи</button>' : ''}${st.button ? `<button class="pgt-go" type="button">${st.button}</button>` : ''}</div><div class="pgt-dots">${L.steps.map((_, k) => `<i class="${k <= cur.i ? 'on' : ''}"></i>`).join('')}</div>`;
+    b.querySelector('.pgt-x').onclick = () => stop(false);
+    const sb = b.querySelector('.pgt-show'); if (sb) sb.onclick = async () => { sb.disabled = true; try { await st.demo(hand); } catch (e) {} sb.disabled = false; };
+    const gb = b.querySelector('.pgt-go'); if (gb) gb.onclick = () => next();
+    if (st.enter) try { st.enter(); } catch (e) {}
+    place();
+  }
+  function next() { if (!cur) return; const L = cur.lesson; if (cur.i + 1 >= L.steps.length) { finish(); return; } cur.i++; show(); }
+  function tick() {
+    if (!cur) return; place(); const st = cur.lesson.steps[cur.i];
+    if (st.done && !cur.okShown) { let ok = false; try { ok = st.done(); } catch (e) {} if (ok) { cur.okShown = true; const o = cur.bubble.querySelector('.pgt-ok'); if (o) o.textContent = st.praise || ['Отлично!', 'Верно!', 'Так держать!', 'Здорово!'][cur.i % 4]; setTimeout(next, 900); } }
+  }
+  function finish() { const L = cur.lesson; const m = doneMap(); m[L.id] = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {} if (window.PGA) try { PGA.event('tutor', { id: L.id }); } catch (e) {} stop(true); }
+  function stop(completed) { if (!cur) return; const L = cur.lesson; clearInterval(cur.timer); removeEventListener('resize', place); removeEventListener('keydown', cur.onKey); cur.root.remove(); cur = null; if (completed && L.onFinish) L.onFinish(); if (!completed && L.onExit) L.onExit(); }
+  function run(lesson) {
+    if (cur) stop(false); if (!document.getElementById('pgt-css')) { const s = el('style'); s.id = 'pgt-css'; s.textContent = css; document.head.appendChild(s); }
+    const root = el('div'); root.id = 'pgt'; const shade = el('div', 'pgt-shade none'), bubble = el('div', 'pgt-b'), h = el('div', 'pgt-hand', '👆'); root.append(shade, bubble, h); document.body.appendChild(root);
+    cur = { lesson, i: 0, root, shade, bubble, hand: h, timer: setInterval(tick, 150), onKey: (e) => { if (e.key === 'Escape') stop(false); } };
+    addEventListener('resize', place); addEventListener('keydown', cur.onKey); show();
+  }
+  // короткая реплика в подсказке (например, «Не тот ход»), не меняя шаг
+  function say(msg) { if (!cur) return; const o = cur.bubble.querySelector('.pgt-ok'); if (o) { o.textContent = msg; o.style.color = '#A23B33'; setTimeout(() => { if (o.textContent === msg) { o.textContent = ''; o.style.color = ''; } }, 2200); } }
+  window.PGTutor = { run, say, stop: () => stop(false), next, active: () => (cur ? { id: cur.lesson.id, step: cur.i } : null), isDone: (id) => !!doneMap()[id], hand };
 })();
 
 </script>
@@ -1242,6 +1318,10 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 .resume-card.hidden { display:none; } .resume-card b { display:block; font-size:14px; } .resume-card span { display:block; font-size:12px; color:var(--k-mu); margin-top:2px; line-height:1.35; }
 .resume-card .rc-btns { display:flex; gap:6px; flex-shrink:0; flex-direction:column; } .resume-card button { cursor:pointer; font:700 13px inherit; padding:8px 12px; border:1px solid #3B5D4A; background:#3B5D4A; color:#fff; }
 .resume-card button.rc-x { background:transparent; color:var(--k-mu); border-color:var(--k-line); font-weight:600; font-size:12px; padding:5px 10px; }
+
+.tut-offer { border:1px solid #D9C58E; background:#FBF3D6; padding:10px 12px; margin:6px 0 10px; font-size:13px; line-height:1.45; display:flex; flex-direction:column; gap:4px; }
+.tut-offer span { color:var(--k-mu); } .tut-offer div { display:flex; gap:8px; margin-top:4px; } .tut-offer button { border:1px solid var(--k-line); background:var(--k-panel); padding:6px 10px; font-weight:600; cursor:pointer; } .tut-offer button#tut-start { background:#3B5D4A; color:#fff; border-color:#3B5D4A; }
+.tut-offer.hidden { display:none; } :root[data-theme="dark"] .tut-offer { background:#33301F; border-color:#6B5E33; }
 </style>
 </head>
 <body>
@@ -1671,14 +1751,15 @@ let turn = 'w', viewIndex = -1, gameOver = false, busy = false, replayMode = fal
 let timers = { w: 600, b: 600 }, incSec = 0, timed = true, lastTick = null, tickHandle = null;
 let sel = null, candidates = [], stepIdx = 1, chosen = [];
 let premove = null, pmSel = null, quietPlies = 0, suppressClick = false;
-let posCounts = {}, egKind = null, egPlies = 0;   // повторения позиции и счётчик правил 16/5 ходов
+let posCounts = {}, egKind = null, egPlies = 0;
+let tutor = null;   // идёт интерактивное обучение: компьютер не отвечает, партия не сохраняется и не считается   // повторения позиции и счётчик правил 16/5 ходов
 let curGameId = null, curTakenOver = false, curLastSavedAt = 0;   // сохранение идущей партии с компьютером (синхронизируется между устройствами)
 let replayFrom = null;  // откуда открыт просмотр: 'profile' (из общего меню), 'history' (из списка партий) или null
 let histKind = 'local'; // какой список партий открыт: 'local' или 'cloud'
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '1.35 · 14 октября 2026';
+const BUILD = '1.37 · 15 октября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -1837,7 +1918,7 @@ function flashStatus(t) { setStatus(t, '#e0a800'); setTimeout(updateStatus, 1800
 let pendingMove = null;
 function clearPending() { pendingMove = null; if (window.pgConfirm) window.pgConfirm.hide(); }
 function userMove(mv, opts) {
-  if (!PGS.get().confirm) return playMove(mv, true, opts);
+  if (!PGS.get().confirm || tutor) return playMove(mv, true, opts);
   pendingMove = mv; resetSel();
   window.pgConfirm.show('Ход ' + displayNotation(mv), () => { const m = pendingMove; clearPending(); if (m && !gameOver && turn === userColor && !busy) playMove(m, true); else paintMarks(); }, () => { clearPending(); renderPieces(); paintMarks(); });
   renderPieces(); paintMarks();
@@ -1951,7 +2032,9 @@ async function playMove(move, byUser, opts = {}) {
   lastTick = null; turn = other(turn); viewIndex = -1;
   { const k = posKey(after, turn); posCounts[k] = (posCounts[k] || 0) + 1; const kind = endgameKind(after); egPlies = kind && kind === egKind ? egPlies + 1 : (kind ? 1 : 0); egKind = kind; }
   renderPieces(); renderMoves(); playSnd(move.captures.length ? 'capture' : 'move');
-  busy = false; curSave();
+  busy = false;
+  if (tutor) { tutor.moves++; tutor.last = move; paintMarks(); return; }
+  curSave();
   if (mode === 'online' && byUser) sendOnlineMove();
   if (checkEnd()) return;
   paintMarks(); updateStatus(); updateClocks(); updateButtons();
@@ -2329,7 +2412,7 @@ $('n-last').onclick = () => gotoView(positions.length - 1);
 /* ================= запуск партии ================= */
 // cfg: { mode:'bot'|'online', color, minutes, inc, oppName, data }
 function startGame(cfg = { mode: 'bot' }) {
-  mode = cfg.mode; level = settings.level; const R = cfg.resume || null; curTakenOver = false;
+  mode = cfg.mode; level = cfg.level || settings.level; const R = cfg.resume || null; curTakenOver = false; if (cfg.mode !== 'tutor') tutor = null;
   if (R) { level = R.level; userColor = R.userColor; timed = !!R.timed; incSec = R.incSec || 0; timers = { w: R.timers.w, b: R.timers.b }; curGameId = R.id; }
   else if (mode === 'bot') {
     userColor = settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
@@ -2364,6 +2447,7 @@ function startGame(cfg = { mode: 'bot' }) {
   if (mode === 'bot' && turn !== userColor) botMove();
 }
 function toMenu() {
+  if (tutor) { tutor = null; if (window.PGTutor && PGTutor.active()) PGTutor.stop(); }
   stopWatch(); if (window.PGChat) PGChat.detach();
   stopClock(); gameOver = true; leaveOnline(); dropAna(); stopSearch();
   ['game', 'history'].forEach((id) => show(id, false)); show('setup', true); showView('config'); paintMenu();
@@ -2767,7 +2851,48 @@ async function checkResume() {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
 }
-window.__draughts = { watchGame, openPublicRecord, get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+
+/* ================= интерактивное обучение ================= */
+const emptyBoard = () => Array.from({ length: 10 }, () => Array(10).fill(null));
+function tBoard(list) { const b = emptyBoard(); for (const [r, c, color, king] of list) b[r][c] = { color, king: !!king }; return b; }
+const count = (color) => { let n = 0; for (const row of lastBoard()) for (const p of row) if (p && p.color === color) n++; return n; };
+const hasKing = () => lastBoard().some((row) => row.some((p) => p && p.color === 'w' && p.king));
+function sqBox(r, c) { const el = document.querySelector(`#board .sq[data-r="${r}"][data-c="${c}"]`); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; }
+function sqsBox(list) { const bs = list.map(([r, c]) => sqBox(r, c)).filter(Boolean); if (!bs.length) return null; const x = Math.min(...bs.map((b) => b.x)), y = Math.min(...bs.map((b) => b.y)), r = Math.max(...bs.map((b) => b.x + b.w)), bt = Math.max(...bs.map((b) => b.y + b.h)); return { x, y, w: r - x, h: bt - y }; }
+function boardBox() { const el = document.getElementById('board'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; }
+// «Покажи»: выбираем подходящий ход из разрешённых и «нажимаем» его клетки
+async function demoMove(hand, pick) {
+  const legal = getLegalMoves(lastBoard(), 'w'); const mv = pick ? legal.filter(pick).sort((a, b) => b.captures.length - a.captures.length)[0] : legal[0]; if (!mv) return;
+  const pts = [[mv.fromRow, mv.fromCol]].concat(mv.path.slice(1).map((p) => [p.row, p.col])); resetSel();
+  await hand.path(pts.map(([r, c]) => { const b = sqBox(r, c); return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; }), (i) => onSquare(pts[i][0], pts[i][1]));
+}
+function startTutor() {
+  if (window.PGTutor && PGTutor.active()) PGTutor.stop();
+  startGame({ mode: 'tutor', color: 'w', minutes: 0, inc: 0 }); tutor = { moves: 0, last: null, base: 0 };
+  $('name-top').textContent = 'Обучение'; setStatus('Обучение: делайте ходы за белых', '#3B5D4A');
+  const pos = (list) => () => { window.__draughts.setBoard(tBoard(list), 'w'); tutor.base = tutor.moves; tutor.bCount = count('b'); resetSel(); paintMarks(); };
+  const moved = () => tutor.moves > tutor.base, took = (n) => tutor.bCount - count('b') >= n;
+  PGTutor.run({ id: 'draughts', title: 'Обучение шашкам', steps: [
+    { text: 'Это <b>международные шашки</b>: доска 10 × 10, у каждого по 20 шашек. Шашки стоят и ходят <b>только по тёмным клеткам</b>. Вы играете <b>белыми</b>, они внизу.', target: boardBox, button: 'Понятно', enter: pos([[6, 3, 'w'], [1, 0, 'b']]) },
+    { text: 'Простая шашка ходит <b>по диагонали вперёд на одну клетку</b>. Нажмите на белую шашку, а потом на одну из подсвеченных клеток.', target: () => sqsBox([[6, 3], [5, 2], [5, 4]]), done: moved, demo: (h) => demoMove(h), enter: pos([[6, 3, 'w'], [1, 0, 'b']]) },
+    { text: 'Рядом чёрная шашка, а за ней пусто — её можно <b>побить</b>: перепрыгнуть через неё. Бить <b>обязательно</b>: если есть взятие, обычный ход сделать нельзя.', target: () => sqsBox([[6, 3], [5, 4], [4, 5]]), done: () => took(1), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[6, 3, 'w'], [5, 4, 'b'], [0, 1, 'b']]) },
+    { text: 'В международных шашках простая шашка бьёт <b>и назад</b>. Побейте чёрную шашку позади белой.', target: () => sqsBox([[4, 5], [5, 4], [6, 3]]), done: () => took(1), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[4, 5, 'w'], [5, 4, 'b'], [0, 1, 'b']]) },
+    { text: 'Если после взятия можно бить ещё — бьют <b>дальше в тот же ход</b>. Побейте обе чёрные шашки: нажимайте клетки по очереди.', target: () => sqsBox([[7, 2], [6, 3], [5, 4], [4, 3], [3, 2]]), done: () => took(2), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[7, 2, 'w'], [6, 3, 'b'], [4, 3, 'b'], [0, 1, 'b']]) },
+    { text: '<b>Правило большинства:</b> если побить можно по-разному, обязательно выбрать путь, где берётся <b>больше</b> шашек. Здесь налево — одна шашка, направо — две. Какой ход разрешён?', target: () => sqsBox([[6, 3], [5, 2], [5, 4], [3, 4], [2, 3], [4, 1]]), done: () => took(2), praise: 'Верно: только путь, где берутся две шашки!', demo: (h) => demoMove(h, (m) => m.captures.length >= 2), enter: pos([[6, 3, 'w'], [5, 2, 'b'], [5, 4, 'b'], [3, 4, 'b'], [0, 9, 'b']]) },
+    { text: 'Дойдя до последней (верхней) линии, шашка становится <b>дамкой</b>. Проведите шашку в дамки.', target: () => sqsBox([[1, 2], [0, 1], [0, 3]]), done: hasKing, praise: 'Это дамка!', demo: (h) => demoMove(h), enter: pos([[1, 2, 'w'], [9, 8, 'b']]) },
+    { text: '<b>Дамка</b> ходит по диагонали <b>на любое число клеток</b>, вперёд и назад. Сделайте дамкой ход подальше — хотя бы через две клетки.', target: boardBox, done: () => moved() && tutor.last && Math.abs(tutor.last.finalRow - tutor.last.fromRow) >= 2, demo: (h) => demoMove(h, (m) => Math.abs(m.finalRow - m.fromRow) >= 3), enter: pos([[9, 0, 'w', 1], [0, 9, 'b']]) },
+    { text: 'Дамка бьёт <b>издалека</b> и может остановиться на любой свободной клетке за побитой шашкой. Побейте чёрную шашку дамкой.', target: () => sqsBox([[9, 0], [5, 4], [4, 5]]), done: () => took(1), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[9, 0, 'w', 1], [5, 4, 'b'], [0, 1, 'b']]) },
+    { text: 'Вы знаете все правила! 🎉 Выигрывает тот, кто <b>забрал или запер</b> все шашки соперника. Если ошибётесь с ходом, игра подскажет, что нужно бить.', target: boardBox, button: 'Сыграть с компьютером (уровень 1)' }
+  ].map((st) => Object.assign({ avoid: boardBox }, st)), onFinish: () => { tutor = null; startGame({ mode: 'bot', level: 1 }); }, onExit: () => { if (tutor) { tutor = null; toMenu(); } } });
+}
+(function tutorMenu() {
+  const sb = $('start-btn'); if (!sb) return; const b = document.createElement('button'); b.className = 'start alt'; b.id = 'tut-btn'; b.type = 'button'; b.textContent = '🎓 Обучение: правила за 3 минуты'; b.onclick = startTutor; sb.insertAdjacentElement('afterend', b);
+  const off = document.createElement('div'); off.id = 'tut-offer'; off.className = 'tut-offer hidden'; off.innerHTML = '<b>Впервые играете в международные шашки?</b><span>Правила отличаются от русских: бить можно назад, а брать нужно больше шашек. Обучение — 3 минуты.</span><div><button type="button" id="tut-start">Начать обучение</button><button type="button" id="tut-later">Не сейчас</button></div>';
+  sb.insertAdjacentElement('beforebegin', off); $('tut-start').onclick = () => { off.classList.add('hidden'); startTutor(); }; $('tut-later').onclick = () => { try { localStorage.setItem('drTutorLater', '1'); } catch (e) {} off.classList.add('hidden'); };
+  let hist = []; try { hist = JSON.parse(localStorage.getItem('draughtsHistory') || '[]'); } catch (e) {} let later = false; try { later = !!localStorage.getItem('drTutorLater'); } catch (e) {}
+  if (!(window.PGTutor && PGTutor.isDone('draughts')) && !later && !(hist && hist.length) && !localStorage.getItem(CUR_KEY)) off.classList.remove('hidden');
+})();
+window.__draughts = { startTutor, get tutor() { return tutor; },  watchGame, openPublicRecord, get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
 checkInvite();
 
 // ----- публичные партии и наблюдение за идущей партией -----

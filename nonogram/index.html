@@ -553,6 +553,8 @@
     ['jpall', 'Японские кроссворды', '🪜', 'Все ступени', 'Решите по японскому кроссворду на каждом из пяти уровней сложности', 5, (c) => (C(c, 'jpl1') > 0) + (C(c, 'jpl2') > 0) + (C(c, 'jpl3') > 0) + (C(c, 'jpl4') > 0) + (C(c, 'jpl5') > 0)],
     ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))],
     // ---- каждый день ----
+    ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
+    ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
     ['act3', 'Каждый день', '🔥', 'Входит в привычку', 'Завершайте хотя бы одну игру 3 дня подряд', 3, (c, u, X) => X.best],
     ['act7', 'Каждый день', '🗓️', 'Неделя без перерыва', 'Играйте 7 дней подряд', 7, (c, u, X) => X.best],
     ['act14', 'Каждый день', '🏃', 'Две недели в строю', 'Играйте 14 дней подряд', 14, (c, u, X) => X.best],
@@ -696,6 +698,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
     if (game === 'challenge') inc('chal');
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
@@ -851,6 +854,79 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
+// ============ Интерактивное обучение: общий «движок» уроков для всех игр ============
+// Урок — список шагов. Шаг: { text, target() → прямоугольник {x,y,w,h} на экране или null, done() → true, когда игрок сделал нужное,
+// demo(hand) — «Покажи»: анимированная рука делает действие за игрока; button — подпись кнопки, если шаг завершается нажатием «Дальше» }.
+(function () {
+  if (window.PGTutor) return;
+  const KEY = 'pgTutorDone';
+  const doneMap = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } };
+  const css = `
+#pgt { position:fixed; inset:0; z-index:380; pointer-events:none; font-family:'Noto Sans',system-ui,sans-serif; }
+#pgt .pgt-shade { position:fixed; border-radius:6px; box-shadow:0 0 0 9999px rgba(20,24,18,.5); outline:3px solid #F2C14E; outline-offset:2px; transition:all .25s ease; pointer-events:none; }
+#pgt .pgt-shade.none { left:50%; top:50%; width:0; height:0; outline:none; }
+#pgt .pgt-b { position:fixed; max-width:min(380px, calc(100vw - 24px)); background:var(--k-panel); color:var(--k-tx); border:1px solid var(--k-line); box-shadow:0 18px 50px rgba(0,0,0,.3); padding:14px 16px 12px; pointer-events:auto; transition:top .25s ease, left .25s ease; }
+#pgt .pgt-b .pgt-st { font-size:11.5px; color:var(--k-mu); letter-spacing:.5px; text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between; gap:10px; }
+#pgt .pgt-b .pgt-x { background:none; border:none; color:var(--k-mu); font-size:12px; cursor:pointer; padding:0; text-transform:none; letter-spacing:0; text-decoration:underline; }
+#pgt .pgt-b .pgt-t { font-size:15px; line-height:1.5; } #pgt .pgt-b .pgt-t b { color:var(--k-gt); }
+#pgt .pgt-b .pgt-ok { color:var(--k-gt); font-weight:700; margin-top:6px; min-height:1.2em; font-size:14px; }
+#pgt .pgt-b .pgt-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap; }
+#pgt .pgt-b button.pgt-go { background:#3B5D4A; color:#fff; border:none; padding:8px 14px; font-weight:700; font-size:13.5px; cursor:pointer; }
+#pgt .pgt-b button.pgt-show { background:var(--k-surf); color:var(--k-tx); border:1px solid var(--k-line); padding:8px 12px; font-size:13px; cursor:pointer; }
+#pgt .pgt-dots { display:flex; gap:4px; margin-top:8px; } #pgt .pgt-dots i { width:7px; height:7px; border-radius:50%; background:var(--k-line); } #pgt .pgt-dots i.on { background:#3B5D4A; }
+#pgt .pgt-hand { position:fixed; font-size:34px; line-height:1; pointer-events:none; transition:left .6s ease, top .6s ease, opacity .3s; opacity:0; filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); transform:translate(-30%, -10%); }
+@media (prefers-reduced-motion:reduce) { #pgt .pgt-shade, #pgt .pgt-b, #pgt .pgt-hand { transition:none; } }
+`;
+  let cur = null;
+  function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  // Рука для «Покажи»: двигается по точкам; в каждой точке может выполнить действие
+  const hand = {
+    async path(points, onPoint) { const h = cur && cur.hand; if (!h) return; h.style.opacity = '1'; for (let i = 0; i < points.length; i++) { const p = points[i]; h.style.left = p.x + 'px'; h.style.top = p.y + 'px'; await wait(i === 0 ? 350 : 260); if (onPoint) onPoint(i, p); } await wait(500); h.style.opacity = '0'; },
+  };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  function place() {
+    if (!cur) return; const st = cur.lesson.steps[cur.i], r = st.target ? st.target() : null, sh = cur.shade, b = cur.bubble, av = st.avoid ? st.avoid() : r;
+    if (r) { sh.classList.remove('none'); Object.assign(sh.style, { left: (r.x - 4) + 'px', top: (r.y - 4) + 'px', width: (r.w + 8) + 'px', height: (r.h + 8) + 'px' }); } else { sh.classList.add('none'); sh.removeAttribute('style'); }
+    const vw = innerWidth, vh = innerHeight; b.style.width = ''; let bw = b.offsetWidth, bh = b.offsetHeight, x, y;
+    if (!av) { x = (vw - bw) / 2; y = Math.max(12, vh * 0.18); }
+    else {
+      const right = vw - (av.x + av.w) - 28, left = av.x - 28, below = vh - (av.y + av.h) - 22, above = av.y - 22;
+      if (right >= 250) { const w = Math.min(380, right); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x + av.w + 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }          // сбоку от поля, если есть место
+      else if (left >= 250) { const w = Math.min(380, left); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x - w - 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }
+      else if (below >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y + av.h + 14; }
+      else if (above >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y - bh - 14; }
+      else { const t = r || av; x = Math.min(vw - bw - 12, Math.max(12, t.x + t.w / 2 - bw / 2)); const bl = t.y + t.h + 14, ab = t.y - bh - 14; y = bl + bh < vh - 8 ? bl : ab > 8 ? ab : Math.max(8, vh - bh - 8); }       // места нет — хотя бы не закрываем подсвеченное
+    }
+    b.style.left = x + 'px'; b.style.top = y + 'px';
+  }
+  function show() {
+    const L = cur.lesson, st = L.steps[cur.i], b = cur.bubble; cur.shownAt = Date.now(); cur.okShown = false;
+    b.innerHTML = `<div class="pgt-st"><span>${L.title} · шаг ${cur.i + 1} из ${L.steps.length}</span><button class="pgt-x" type="button">Выйти из обучения</button></div><div class="pgt-t">${st.text}</div><div class="pgt-ok"></div>
+      <div class="pgt-btns">${st.demo ? '<button class="pgt-show" type="button">👆 Покажи</button>' : ''}${st.button ? `<button class="pgt-go" type="button">${st.button}</button>` : ''}</div><div class="pgt-dots">${L.steps.map((_, k) => `<i class="${k <= cur.i ? 'on' : ''}"></i>`).join('')}</div>`;
+    b.querySelector('.pgt-x').onclick = () => stop(false);
+    const sb = b.querySelector('.pgt-show'); if (sb) sb.onclick = async () => { sb.disabled = true; try { await st.demo(hand); } catch (e) {} sb.disabled = false; };
+    const gb = b.querySelector('.pgt-go'); if (gb) gb.onclick = () => next();
+    if (st.enter) try { st.enter(); } catch (e) {}
+    place();
+  }
+  function next() { if (!cur) return; const L = cur.lesson; if (cur.i + 1 >= L.steps.length) { finish(); return; } cur.i++; show(); }
+  function tick() {
+    if (!cur) return; place(); const st = cur.lesson.steps[cur.i];
+    if (st.done && !cur.okShown) { let ok = false; try { ok = st.done(); } catch (e) {} if (ok) { cur.okShown = true; const o = cur.bubble.querySelector('.pgt-ok'); if (o) o.textContent = st.praise || ['Отлично!', 'Верно!', 'Так держать!', 'Здорово!'][cur.i % 4]; setTimeout(next, 900); } }
+  }
+  function finish() { const L = cur.lesson; const m = doneMap(); m[L.id] = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {} if (window.PGA) try { PGA.event('tutor', { id: L.id }); } catch (e) {} stop(true); }
+  function stop(completed) { if (!cur) return; const L = cur.lesson; clearInterval(cur.timer); removeEventListener('resize', place); removeEventListener('keydown', cur.onKey); cur.root.remove(); cur = null; if (completed && L.onFinish) L.onFinish(); if (!completed && L.onExit) L.onExit(); }
+  function run(lesson) {
+    if (cur) stop(false); if (!document.getElementById('pgt-css')) { const s = el('style'); s.id = 'pgt-css'; s.textContent = css; document.head.appendChild(s); }
+    const root = el('div'); root.id = 'pgt'; const shade = el('div', 'pgt-shade none'), bubble = el('div', 'pgt-b'), h = el('div', 'pgt-hand', '👆'); root.append(shade, bubble, h); document.body.appendChild(root);
+    cur = { lesson, i: 0, root, shade, bubble, hand: h, timer: setInterval(tick, 150), onKey: (e) => { if (e.key === 'Escape') stop(false); } };
+    addEventListener('resize', place); addEventListener('keydown', cur.onKey); show();
+  }
+  // короткая реплика в подсказке (например, «Не тот ход»), не меняя шаг
+  function say(msg) { if (!cur) return; const o = cur.bubble.querySelector('.pgt-ok'); if (o) { o.textContent = msg; o.style.color = '#A23B33'; setTimeout(() => { if (o.textContent === msg) { o.textContent = ''; o.style.color = ''; } }, 2200); } }
+  window.PGTutor = { run, say, stop: () => stop(false), next, active: () => (cur ? { id: cur.lesson.id, step: cur.i } : null), isDone: (id) => !!doneMap()[id], hand };
+})();
+
 </script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png?v=4">
@@ -901,6 +977,7 @@ select { width:100%; padding:11px 12px; border:1px solid var(--border); backgrou
 .tools { display:flex; gap:6px; padding-top:8px; flex-shrink:0; flex-wrap:wrap; justify-content:center; }
 .tool { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:58px; padding:6px 8px; border:1px solid var(--border); background:var(--k-panel); font-size:11.5px; font-weight:600; color:var(--text); cursor:pointer; } .tool .i { font-size:18px; line-height:1.1; } .tool:hover:not(:disabled) { background:var(--k-hover); } .tool:disabled { opacity:.35; cursor:default; } .tool.on { background:var(--green); color:#fff; border-color:var(--green); }
 .stat-row { display:flex; gap:14px; justify-content:center; font-size:13px; color:var(--muted); padding-top:6px; flex-shrink:0; } .stat-row b { color:var(--text); }
+.card.offer { background:#FBF3D6; border-color:#D9C58E; } :root[data-theme="dark"] .card.offer { background:#33301F; border-color:#6B5E33; }
 #toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#2F3A56; color:#fff; padding:10px 18px; font-size:14px; font-weight:600; box-shadow:0 10px 30px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:opacity .2s; z-index:300; } #toast.on { opacity:1; }
 .ov { position:fixed; inset:0; z-index:200; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:16px; }
 .win { background:var(--k-panel); border:1px solid var(--border); width:100%; max-width:400px; text-align:center; padding:26px 26px 22px; box-shadow:0 30px 80px rgba(42,46,36,.3); animation:pop .35s cubic-bezier(.3,1.4,.5,1); } @keyframes pop { from { transform:scale(.88); opacity:0; } to { transform:none; opacity:1; } }
@@ -961,6 +1038,8 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     <div id="daily-card" class="card"><div><b>Кроссворд дня</b><small id="daily-info"></small></div><button id="daily-btn">Играть</button></div>
     <button class="rec-btn" id="pgr-btn" type="button">🏆 Таблица рекордов</button>
     <button class="rec-btn" data-rules="nonogram" type="button" style="margin-top:-8px">📖 Правила и советы</button>
+    <button class="rec-btn" id="tut-btn" type="button" style="margin-top:-8px">🎓 Обучение: как решать (2 минуты)</button>
+    <div id="tut-offer" class="card offer hidden"><div><b>Впервые решаете японские кроссворды?</b><small>Короткое обучение на маленькой картинке — 2 минуты, всё по шагам</small></div><div style="display:flex;gap:6px"><button id="tut-start">Начать</button><button id="tut-later" style="background:none;color:var(--k-mu);border:1px solid var(--k-line)">Не сейчас</button></div></div>
     <div class="title">Размер поля</div>
     <div class="sbox">
       <div class="shead"><b id="size-name">15 × 15</b><span id="size-info"></span></div>
@@ -1699,7 +1778,7 @@ if (typeof module !== 'undefined') module.exports = NG;
 const $ = (id) => document.getElementById(id);
 const NGSRC = $('ng-engine').textContent;
 const NG = new Function(NGSRC + '\nreturn NG;')();
-const BUILD = '1.35 · 14 октября 2026';
+const BUILD = '1.37 · 15 октября 2026';
 const CAT = { small: 'Малые (до 10)', medium: 'Средние (11–25)', large: 'Большие (26–50)', huge: 'Огромные (51–100)' };
 const catOf = (R, C) => { const m = Math.max(R, C); return m <= 10 ? 'small' : m <= 25 ? 'medium' : m <= 50 ? 'large' : 'huge'; };
 const LS = { save: 'nonogramSave', stats: 'nonogramStats', prefs: 'nonogramPrefs' };
@@ -1758,7 +1837,7 @@ function blockDone(isRow, idx) {
 }
 function countFill() { let ok = 0, bad = 0, fill = 0; for (let i = 0; i < S.cells.length; i++) if (S.cells[i] === 1) { fill++; if (S.sol[i]) ok++; else bad++; } S.ok = ok; S.bad = bad; S.fill = fill; }
 function persist() {
-  if (!S || S.done) return; let sol = '', cells = ''; for (let i = 0; i < S.sol.length; i++) { sol += S.sol[i] ? '1' : '0'; cells += S.cells[i]; }
+  if (!S || S.done || S.tutorial) return; let sol = '', cells = ''; for (let i = 0; i < S.sol.length; i++) { sol += S.sol[i] ? '1' : '0'; cells += S.cells[i]; }
   let hinted = ''; for (let i = 0; i < S.hinted.length; i++) hinted += S.hinted[i] ? '1' : '0';
   store(LS.save, { v: 1, R: S.R, C: S.C, sol, cells, hinted, givens: Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), []), name: S.name, cat: S.cat || '', names: S.names, daily: S.daily, dateKey: S.dateKey, level: S.level || 0, time: S.time, hints: S.hints, checks: S.checks, tool: S.tool });
 }
@@ -1789,7 +1868,8 @@ function metrics() {
 function clampView(m) { const aw = VW - m.LW, ah = VH - m.TH, gw = m.C * m.cell, gh = m.R * m.cell; view.x = gw <= aw ? 0 : Math.min(0, Math.max(aw - gw, view.x)); view.y = gh <= ah ? 0 : Math.min(0, Math.max(ah - gh, view.y)); }
 function fitView(initial) {
   if (!S) return; const o = view.cell; let cell = Math.min(40, 30);
-  for (let k = 0; k < 6; k++) { view.cell = cell; const m = metrics(); cell = Math.max(CELL_MIN, Math.min(40, Math.floor(Math.min((VW - m.LW - 4) / S.C, (VH - m.TH - 4) / S.R)))); }
+  const cap = S.tutorial ? 52 : 40;            /* в обучении поле 5 × 5 крупнее, чтобы было удобно попадать пальцем */
+  for (let k = 0; k < 6; k++) { view.cell = cell; const m = metrics(); cell = Math.max(CELL_MIN, Math.min(cap, Math.floor(Math.min((VW - m.LW - 4) / S.C, (VH - m.TH - 4) / S.R)))); }
   // размер подсказок зависит от масштаба, поэтому уменьшаем клетку, пока поле не поместится целиком
   for (let k = 0; k < 40 && cell > CELL_MIN; k++) { view.cell = cell; const m = metrics(); if (S.C * cell <= VW - m.LW - 2 && S.R * cell <= VH - m.TH - 2) break; cell--; }
   if (initial && cell < 14) cell = 14;           // большое поле: начинаем с читаемого масштаба, общий вид — кнопка «Вписать»
@@ -1819,7 +1899,7 @@ function render() {
     if (prefs.hlLine && (r === hover.r || c === hover.c)) { ctx.fillStyle = 'rgba(76,140,100,.16)'; ctx.fillRect(x, y, cell, cell); }
     if (v === 1) { ctx.fillStyle = S.given[i] ? COL.mu : COL.nt; if (S.hinted[i]) ctx.fillStyle = '#C49A36'; ctx.fillRect(x + 1, y + 1, cell - 1, cell - 1); }
     else if (v === 2) { ctx.strokeStyle = S.given[i] ? COL.mu : COL.mu2; ctx.lineWidth = Math.max(1, cell / 12); const q = cell * 0.28; ctx.beginPath(); ctx.moveTo(x + q, y + q); ctx.lineTo(x + cell - q, y + cell - q); ctx.moveTo(x + cell - q, y + q); ctx.lineTo(x + q, y + cell - q); ctx.stroke(); }
-    const bad = (v === 1 && !S.sol[i]) ? (S.wrong || prefs.showErr) : (v === 2 && S.sol[i] && prefs.showErr);
+    const bad = (v === 1 && !S.sol[i]) ? (S.wrong || prefs.showErr || S.tutorial) : (v === 2 && S.sol[i] && (prefs.showErr || S.tutorial));
     if (bad || (S.wrong && S.wrong[i])) { ctx.strokeStyle = COL.rt; ctx.lineWidth = Math.max(2, cell / 8); ctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4); }
   }
   // линии сетки
@@ -1852,7 +1932,7 @@ mm.addEventListener('pointerdown', (e) => { mmDown = true; mm.setPointerCapture(
 /* ---------- правки клеток, отмена, автокрестики ---------- */
 function setCell(i, to, changes) { const from = S.cells[i]; if (from === to || S.given[i]) return false; S.cells[i] = to; changes.push([i, from, to]); if (from === 1) { S.fill--; if (S.sol[i]) S.ok--; else S.bad--; } if (to === 1) { S.fill++; if (S.sol[i]) S.ok++; else S.bad++; } return true; }
 function autoCross(lines, changes) {
-  if (!prefs.autoX) return; for (const l of lines) { const isRow = l < S.R, idx = isRow ? l : l - S.R; if (!lineDone(isRow, idx)) continue; const n = isRow ? S.C : S.R; for (let k = 0; k < n; k++) { const i = isRow ? idx * S.C + k : k * S.C + idx; if (S.cells[i] === 0) setCell(i, 2, changes); } }
+  if (!prefs.autoX && !S.tutorial) return; for (const l of lines) { const isRow = l < S.R, idx = isRow ? l : l - S.R; if (!lineDone(isRow, idx)) continue; const n = isRow ? S.C : S.R; for (let k = 0; k < n; k++) { const i = isRow ? idx * S.C + k : k * S.C + idx; if (S.cells[i] === 0) setCell(i, 2, changes); } }
 }
 function commit(changes, lines) {
   if (!changes.length) return; if (lines) autoCross(lines, changes); S.hist.push(changes); if (S.hist.length > 500) S.hist.shift(); S.redo = []; S.wrong = null; draw(); checkWin();
@@ -1916,6 +1996,7 @@ $('t-reset').onclick = resetField;
 function checkWin() { if (!S || S.done) return; if (S.ok === S.total && S.bad === 0) win(); }
 function pictureCanvas() { const c = document.createElement('canvas'), k = Math.max(2, Math.min(8, Math.floor(260 / Math.max(S.R, S.C)))); c.width = S.C * k; c.height = S.R * k; const x = c.getContext('2d'); x.fillStyle = COL.surf; x.fillRect(0, 0, c.width, c.height); x.fillStyle = COL.nt; for (let r = 0; r < S.R; r++) for (let q = 0; q < S.C; q++) if (S.sol[r * S.C + q]) x.fillRect(q * k, r * k, k, k); return c; }
 function win() {
+  if (S.tutorial) { S.done = true; draw(); return; }          // обучение: без статистики и окна победы, урок сам скажет «Готово»
   S.done = true; localStorage.removeItem(LS.save); const t = S.time, cat = catOf(S.R, S.C); stats.solved[cat] = (stats.solved[cat] || 0) + 1; const newBest = !stats.best[cat] || t < stats.best[cat]; if (newBest) stats.best[cat] = t;
   let extra = '', first = false; if (S.daily) { const d = stats.daily; d.hints = d.hints || {}; if (!d.results[S.dateKey]) { first = true; d.hints[S.dateKey] = S.hints; d.streak = d.last === dayBefore(S.dateKey) ? d.streak + 1 : 1; d.last = S.dateKey; d.results[S.dateKey] = t; } extra = `<br>Серия дней подряд: <b>${d.streak}</b>` + (first ? '<div class="pgr-line" id="pgr-win"></div>' : ''); }
   store(LS.stats, stats); fitView(); draw();
@@ -1952,6 +2033,8 @@ function showMenu() { if (S && !S.done) persist(); document.body.classList.remov
 $('menu-btn').onclick = showMenu;
 function renderMenu() {
   const sv = load(LS.save, null), rc = $('resume-card'); rc.classList.toggle('hidden', !sv);
+  const solvedAny = Object.values(stats.solved || {}).some((v) => v > 0) || Object.keys((stats.daily || {}).results || {}).length > 0; let later = false; try { later = !!localStorage.getItem('ngTutorLater'); } catch (e) {}
+  $('tut-offer').classList.toggle('hidden', !!(sv || solvedAny || later || (window.PGTutor && PGTutor.isDone('nonogram'))));
   if (sv) { let f = 0; for (let i = 0; i < sv.cells.length; i++) if (sv.cells[i] === '1') f++; $('resume-info').textContent = `${sv.daily ? 'Кроссворд дня' : sv.C + ' × ' + sv.R} · ${fmt(sv.time)} · закрашено ${f}`; }
   const tk = todayKey(), d = stats.daily; $('daily-info').innerHTML = d.results[tk] != null ? `Решён сегодня за ${fmt(d.results[tk])} ✓ · серия: ${d.streak}` : (d.streak && d.last === dayBefore(tk) ? `Не прерывайте серию: ${d.streak} дн. подряд` : 'Одна и та же картинка для всех, 15 × 15, каждый день новая'); $('daily-btn').textContent = d.results[tk] != null ? 'Ещё раз' : 'Играть';
   $('lv-name').textContent = LV_NAMES[prefs.level - 1]; $('lv-info').textContent = LV_INFO[prefs.level - 1]; document.querySelectorAll('#lv-chips button').forEach((b) => b.classList.toggle('on', +b.dataset.l === prefs.level));
@@ -1984,13 +2067,40 @@ $('open-prefs').onclick = () => {
   ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); }); document.body.appendChild(ov); paint();
 };
 
+
+/* ---------- интерактивное обучение ---------- */
+const TUT_SOL = ['.###.', '#####', '#.#.#', '#####', '.#.#.'];
+function stageBox() { return stage.getBoundingClientRect(); }
+function cellBox(r, c) { const m = metrics(), b = stageBox(); return { x: b.left + m.ox + m.LW + view.x + c * m.cell, y: b.top + m.oy + m.TH + view.y + r * m.cell, w: m.cell, h: m.cell }; }
+function rowBox(r) { const m = metrics(), b = stageBox(), a = cellBox(r, 0); return { x: b.left + m.ox, y: a.y, w: m.LW + S.C * m.cell, h: m.cell }; }
+function colBox(c) { const m = metrics(), b = stageBox(), a = cellBox(0, c); return { x: a.x, y: b.top + m.oy, w: m.cell, h: m.TH + S.R * m.cell }; }
+function boardBox() { const m = metrics(), b = stageBox(); return { x: b.left + m.ox, y: b.top + m.oy, w: m.LW + S.C * m.cell, h: m.TH + S.R * m.cell }; }
+const filled = (list) => list.every(([r, c]) => S.cells[r * S.C + c] === 1);
+async function demoFill(hand, list) { const pts = list.map(([r, c]) => { const b = cellBox(r, c); return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; }); await hand.path(pts, (i) => { const [r, c] = list[i], k = r * S.C + c; if (S.cells[k] !== 1) { const ch = []; setCell(k, 1, ch); commit(ch, [r, S.R + c]); } }); }
+function startTutorial() {
+  const R = 5, C = 5, sol = new Uint8Array(R * C); TUT_SOL.forEach((row, r) => { for (let c = 0; c < C; c++) sol[r * C + c] = row[c] === '#' ? 1 : 0; });
+  const cl = NG.lineClues(sol, R, C); newState({ rows: R, cols: C, sol, rowC: cl.rows, colC: cl.cols, givens: [], name: 'Жучок', names: ['Жучок'], cat: 'Обучение' }, { tutorial: true, level: 0 }); openGame();
+  const row = (r) => Array.from({ length: C }, (_, c) => [r, c]);
+  setTimeout(() => window.PGTutor && PGTutor.run({ id: 'nonogram', title: 'Обучение', steps: [
+    { text: 'Это японский кроссворд. Закрашивая клетки, вы откроете картинку.<br><b>Числа слева</b> — подсказки для строк, <b>числа сверху</b> — для столбцов. Каждое число — это сколько клеток <b>подряд</b> закрашено в этой линии.', target: boardBox, button: 'Понятно' },
+    { text: 'Во второй строке подсказка <b>5</b>, а клеток в строке тоже 5. Значит, закрашены <b>все</b>. Проведите пальцем или мышью по всей строке.', target: () => rowBox(1), done: () => filled(row(1)), demo: (h) => demoFill(h, row(1)) },
+    { text: 'В четвёртой строке тоже <b>5</b>. Закрасьте её так же.', target: () => rowBox(3), done: () => filled(row(3)), demo: (h) => demoFill(h, row(3)) },
+    { text: 'В средней строке <b>1 1 1</b>: три группы по одной клетке. Между группами <b>всегда</b> есть пустая клетка, поэтому 1 + 1 + 1 и два промежутка — ровно 5 клеток. Закрасьте <b>первую, третью и пятую</b> клетки.', target: () => rowBox(2), done: () => filled([[2, 0], [2, 2], [2, 4]]) && S.cells[2 * C + 1] !== 1 && S.cells[2 * C + 3] !== 1, praise: 'Верно! Видите крестики? Игра сама отметила пустые клетки, потому что строка собрана правильно.', demo: (h) => demoFill(h, [[2, 0], [2, 2], [2, 4]]) },
+    { text: 'Теперь столбцы. Во втором столбце <b>2 2</b>: две клетки, промежуток и ещё две — снова вся длина. Закрасьте <b>две верхние и две нижние</b> клетки.', target: () => colBox(1), done: () => filled([[0, 1], [1, 1], [3, 1], [4, 1]]), demo: (h) => demoFill(h, [[0, 1], [4, 1]]) },
+    { text: 'В четвёртом столбце то же самое: <b>2 2</b>.', target: () => colBox(3), done: () => filled([[0, 3], [1, 3], [3, 3], [4, 3]]), demo: (h) => demoFill(h, [[0, 3], [4, 3]]) },
+    { text: 'Вернёмся к первой строке: <b>3</b>. Вторая и четвёртая клетки уже закрашены, а группа <b>одна</b> — значит, клетка между ними тоже закрашена. Закрасьте её.', target: () => rowBox(0), done: () => S.done, praise: 'Картинка готова!', demo: (h) => demoFill(h, [[0, 2]]) },
+    { text: 'Получился жучок! 🐞 Так решаются все японские кроссворды: начинайте с линий, где числа занимают почти всю длину, и двигайтесь от них.<br><br>Ещё полезно: <b>правая кнопка мыши</b> или режим <b>«Крестик»</b> ставят крестик; <b>«Подсказка»</b> откроет верную клетку; на телефоне масштаб меняется <b>двумя пальцами</b>.', target: boardBox, button: 'Решить первую головоломку' }
+  ].map((st) => Object.assign({ avoid: boardBox }, st)), onFinish: () => { renderMenu(); startNew({ rows: 10, cols: 10, level: 1, cat: 'Всё' }); }, onExit: () => { if (S && S.tutorial) showMenu(); } }), 350);
+}
+$('tut-btn').onclick = startTutorial; $('tut-start').onclick = () => { $('tut-offer').classList.add('hidden'); startTutorial(); };
+$('tut-later').onclick = () => { try { localStorage.setItem('ngTutorLater', '1'); } catch (e) {} $('tut-offer').classList.add('hidden'); };
 /* ---------- PWA и тестовые хуки ---------- */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('service-worker.js').catch(() => {});
 if (window.PGRec) PGRec.config({
   boards: () => { const tk = todayKey(), yk = dayBefore(tk); return [{ id: 'jd_' + tk, title: 'Сегодня', sub: 'Кроссворд дня · ' + tk }, { id: 'jd_' + yk, title: 'Вчера', sub: 'Кроссворд дня · ' + yk }]; },
   pending: () => { const d = stats.daily, out = [], lim = keyOf(new Date(Date.now() - 14 * 86400000)); for (const k of Object.keys(d.results || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'jd_' + k, time: d.results[k], hints: d.hints[k] }); return out; },
   local: (id) => { const k = id.slice(3), d = stats.daily; return d && d.results[k] != null && d.hints && d.hints[k] != null ? { time: d.results[k], hints: d.hints[k] } : null; } });
-window.__ng = { get S() { return S; }, NG, startNew, resume, undo, redo, hint, check, get prefs() { return prefs; }, get stats() { return stats; }, get view() { return view; }, todayKey, showMenu, setPause, fitView, zoomAt, render, metrics, cellAt, blockDone, lineDone, commit, verifyNow: () => (S ? NG.verify(S.R, S.C, S.sol, S.rowC, S.colC, Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), [])) : null), get size() { return { VW, VH }; } };
+window.__ng = { get S() { return S; }, NG, startNew, resume, undo, redo, hint, check, get prefs() { return prefs; }, get stats() { return stats; }, get view() { return view; }, todayKey, showMenu, setPause, startTutorial, cellBox, fitView, zoomAt, render, metrics, cellAt, blockDone, lineDone, commit, verifyNow: () => (S ? NG.verify(S.R, S.C, S.sol, S.rowC, S.colC, Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), [])) : null), get size() { return { VW, VH }; } };
 readColors(); renderMenu();
 })();
 </script>

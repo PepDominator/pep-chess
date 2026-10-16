@@ -553,6 +553,8 @@
     ['jpall', 'Японские кроссворды', '🪜', 'Все ступени', 'Решите по японскому кроссворду на каждом из пяти уровней сложности', 5, (c) => (C(c, 'jpl1') > 0) + (C(c, 'jpl2') > 0) + (C(c, 'jpl3') > 0) + (C(c, 'jpl4') > 0) + (C(c, 'jpl5') > 0)],
     ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))],
     // ---- каждый день ----
+    ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
+    ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
     ['act3', 'Каждый день', '🔥', 'Входит в привычку', 'Завершайте хотя бы одну игру 3 дня подряд', 3, (c, u, X) => X.best],
     ['act7', 'Каждый день', '🗓️', 'Неделя без перерыва', 'Играйте 7 дней подряд', 7, (c, u, X) => X.best],
     ['act14', 'Каждый день', '🏃', 'Две недели в строю', 'Играйте 14 дней подряд', 14, (c, u, X) => X.best],
@@ -696,6 +698,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
     if (game === 'challenge') inc('chal');
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
@@ -851,6 +854,79 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
+// ============ Интерактивное обучение: общий «движок» уроков для всех игр ============
+// Урок — список шагов. Шаг: { text, target() → прямоугольник {x,y,w,h} на экране или null, done() → true, когда игрок сделал нужное,
+// demo(hand) — «Покажи»: анимированная рука делает действие за игрока; button — подпись кнопки, если шаг завершается нажатием «Дальше» }.
+(function () {
+  if (window.PGTutor) return;
+  const KEY = 'pgTutorDone';
+  const doneMap = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } };
+  const css = `
+#pgt { position:fixed; inset:0; z-index:380; pointer-events:none; font-family:'Noto Sans',system-ui,sans-serif; }
+#pgt .pgt-shade { position:fixed; border-radius:6px; box-shadow:0 0 0 9999px rgba(20,24,18,.5); outline:3px solid #F2C14E; outline-offset:2px; transition:all .25s ease; pointer-events:none; }
+#pgt .pgt-shade.none { left:50%; top:50%; width:0; height:0; outline:none; }
+#pgt .pgt-b { position:fixed; max-width:min(380px, calc(100vw - 24px)); background:var(--k-panel); color:var(--k-tx); border:1px solid var(--k-line); box-shadow:0 18px 50px rgba(0,0,0,.3); padding:14px 16px 12px; pointer-events:auto; transition:top .25s ease, left .25s ease; }
+#pgt .pgt-b .pgt-st { font-size:11.5px; color:var(--k-mu); letter-spacing:.5px; text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between; gap:10px; }
+#pgt .pgt-b .pgt-x { background:none; border:none; color:var(--k-mu); font-size:12px; cursor:pointer; padding:0; text-transform:none; letter-spacing:0; text-decoration:underline; }
+#pgt .pgt-b .pgt-t { font-size:15px; line-height:1.5; } #pgt .pgt-b .pgt-t b { color:var(--k-gt); }
+#pgt .pgt-b .pgt-ok { color:var(--k-gt); font-weight:700; margin-top:6px; min-height:1.2em; font-size:14px; }
+#pgt .pgt-b .pgt-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap; }
+#pgt .pgt-b button.pgt-go { background:#3B5D4A; color:#fff; border:none; padding:8px 14px; font-weight:700; font-size:13.5px; cursor:pointer; }
+#pgt .pgt-b button.pgt-show { background:var(--k-surf); color:var(--k-tx); border:1px solid var(--k-line); padding:8px 12px; font-size:13px; cursor:pointer; }
+#pgt .pgt-dots { display:flex; gap:4px; margin-top:8px; } #pgt .pgt-dots i { width:7px; height:7px; border-radius:50%; background:var(--k-line); } #pgt .pgt-dots i.on { background:#3B5D4A; }
+#pgt .pgt-hand { position:fixed; font-size:34px; line-height:1; pointer-events:none; transition:left .6s ease, top .6s ease, opacity .3s; opacity:0; filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); transform:translate(-30%, -10%); }
+@media (prefers-reduced-motion:reduce) { #pgt .pgt-shade, #pgt .pgt-b, #pgt .pgt-hand { transition:none; } }
+`;
+  let cur = null;
+  function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  // Рука для «Покажи»: двигается по точкам; в каждой точке может выполнить действие
+  const hand = {
+    async path(points, onPoint) { const h = cur && cur.hand; if (!h) return; h.style.opacity = '1'; for (let i = 0; i < points.length; i++) { const p = points[i]; h.style.left = p.x + 'px'; h.style.top = p.y + 'px'; await wait(i === 0 ? 350 : 260); if (onPoint) onPoint(i, p); } await wait(500); h.style.opacity = '0'; },
+  };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  function place() {
+    if (!cur) return; const st = cur.lesson.steps[cur.i], r = st.target ? st.target() : null, sh = cur.shade, b = cur.bubble, av = st.avoid ? st.avoid() : r;
+    if (r) { sh.classList.remove('none'); Object.assign(sh.style, { left: (r.x - 4) + 'px', top: (r.y - 4) + 'px', width: (r.w + 8) + 'px', height: (r.h + 8) + 'px' }); } else { sh.classList.add('none'); sh.removeAttribute('style'); }
+    const vw = innerWidth, vh = innerHeight; b.style.width = ''; let bw = b.offsetWidth, bh = b.offsetHeight, x, y;
+    if (!av) { x = (vw - bw) / 2; y = Math.max(12, vh * 0.18); }
+    else {
+      const right = vw - (av.x + av.w) - 28, left = av.x - 28, below = vh - (av.y + av.h) - 22, above = av.y - 22;
+      if (right >= 250) { const w = Math.min(380, right); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x + av.w + 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }          // сбоку от поля, если есть место
+      else if (left >= 250) { const w = Math.min(380, left); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x - w - 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }
+      else if (below >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y + av.h + 14; }
+      else if (above >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y - bh - 14; }
+      else { const t = r || av; x = Math.min(vw - bw - 12, Math.max(12, t.x + t.w / 2 - bw / 2)); const bl = t.y + t.h + 14, ab = t.y - bh - 14; y = bl + bh < vh - 8 ? bl : ab > 8 ? ab : Math.max(8, vh - bh - 8); }       // места нет — хотя бы не закрываем подсвеченное
+    }
+    b.style.left = x + 'px'; b.style.top = y + 'px';
+  }
+  function show() {
+    const L = cur.lesson, st = L.steps[cur.i], b = cur.bubble; cur.shownAt = Date.now(); cur.okShown = false;
+    b.innerHTML = `<div class="pgt-st"><span>${L.title} · шаг ${cur.i + 1} из ${L.steps.length}</span><button class="pgt-x" type="button">Выйти из обучения</button></div><div class="pgt-t">${st.text}</div><div class="pgt-ok"></div>
+      <div class="pgt-btns">${st.demo ? '<button class="pgt-show" type="button">👆 Покажи</button>' : ''}${st.button ? `<button class="pgt-go" type="button">${st.button}</button>` : ''}</div><div class="pgt-dots">${L.steps.map((_, k) => `<i class="${k <= cur.i ? 'on' : ''}"></i>`).join('')}</div>`;
+    b.querySelector('.pgt-x').onclick = () => stop(false);
+    const sb = b.querySelector('.pgt-show'); if (sb) sb.onclick = async () => { sb.disabled = true; try { await st.demo(hand); } catch (e) {} sb.disabled = false; };
+    const gb = b.querySelector('.pgt-go'); if (gb) gb.onclick = () => next();
+    if (st.enter) try { st.enter(); } catch (e) {}
+    place();
+  }
+  function next() { if (!cur) return; const L = cur.lesson; if (cur.i + 1 >= L.steps.length) { finish(); return; } cur.i++; show(); }
+  function tick() {
+    if (!cur) return; place(); const st = cur.lesson.steps[cur.i];
+    if (st.done && !cur.okShown) { let ok = false; try { ok = st.done(); } catch (e) {} if (ok) { cur.okShown = true; const o = cur.bubble.querySelector('.pgt-ok'); if (o) o.textContent = st.praise || ['Отлично!', 'Верно!', 'Так держать!', 'Здорово!'][cur.i % 4]; setTimeout(next, 900); } }
+  }
+  function finish() { const L = cur.lesson; const m = doneMap(); m[L.id] = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {} if (window.PGA) try { PGA.event('tutor', { id: L.id }); } catch (e) {} stop(true); }
+  function stop(completed) { if (!cur) return; const L = cur.lesson; clearInterval(cur.timer); removeEventListener('resize', place); removeEventListener('keydown', cur.onKey); cur.root.remove(); cur = null; if (completed && L.onFinish) L.onFinish(); if (!completed && L.onExit) L.onExit(); }
+  function run(lesson) {
+    if (cur) stop(false); if (!document.getElementById('pgt-css')) { const s = el('style'); s.id = 'pgt-css'; s.textContent = css; document.head.appendChild(s); }
+    const root = el('div'); root.id = 'pgt'; const shade = el('div', 'pgt-shade none'), bubble = el('div', 'pgt-b'), h = el('div', 'pgt-hand', '👆'); root.append(shade, bubble, h); document.body.appendChild(root);
+    cur = { lesson, i: 0, root, shade, bubble, hand: h, timer: setInterval(tick, 150), onKey: (e) => { if (e.key === 'Escape') stop(false); } };
+    addEventListener('resize', place); addEventListener('keydown', cur.onKey); show();
+  }
+  // короткая реплика в подсказке (например, «Не тот ход»), не меняя шаг
+  function say(msg) { if (!cur) return; const o = cur.bubble.querySelector('.pgt-ok'); if (o) { o.textContent = msg; o.style.color = '#A23B33'; setTimeout(() => { if (o.textContent === msg) { o.textContent = ''; o.style.color = ''; } }, 2200); } }
+  window.PGTutor = { run, say, stop: () => stop(false), next, active: () => (cur ? { id: cur.lesson.id, step: cur.i } : null), isDone: (id) => !!doneMap()[id], hand };
+})();
+
 </script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png?v=4">
@@ -922,6 +998,7 @@ h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0
 #pad button small { position:absolute; bottom:1px; right:3px; font-size:10px; color:var(--muted); font-weight:600; }
 #pad.notes button { background:#FBF3D6; border-color:#D9C58E; font-size:calc(var(--cell)*.4); font-style:italic; } .tool { line-height:1.15; text-align:center; }
 #t-view.on { background:var(--k-warm); border-color:#C49A36; color:var(--text); }
+.card.offer { background:#FBF3D6; border-color:#D9C58E; } :root[data-theme="dark"] .card.offer { background:#33301F; border-color:#6B5E33; }
 #toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#2F3A56; color:#fff; padding:10px 18px; font-size:14px; font-weight:600; box-shadow:0 10px 30px rgba(0,0,0,.3); opacity:0; pointer-events:none; transition:opacity .25s; z-index:300; } #toast.on { opacity:1; }
 .ov { position:fixed; inset:0; z-index:200; background:rgba(42,46,36,.4); display:flex; align-items:center; justify-content:center; padding:16px; }
 .win { background:var(--k-panel); border:1px solid var(--border); width:100%; max-width:380px; text-align:center; padding:28px 26px 24px; box-shadow:0 30px 80px rgba(42,46,36,.3); animation:pop .35s cubic-bezier(.3,1.4,.5,1) both; } @keyframes pop { from { transform:scale(.85); opacity:0; } }
@@ -990,6 +1067,8 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     <div id="daily-card" class="card"><div><b>Судоку дня</b><small id="daily-info"></small></div><button id="daily-btn">Играть</button></div>
     <button class="rec-btn" id="pgr-btn" type="button">🏆 Таблица рекордов</button>
     <button class="rec-btn" data-rules="sudoku" type="button" style="margin-top:-8px">📖 Правила и советы</button>
+    <button class="rec-btn" id="tut-btn" type="button" style="margin-top:-8px">🎓 Обучение: как решать (3 минуты)</button>
+    <div id="tut-offer" class="card offer hidden"><div><b>Впервые решаете судоку?</b><small>Короткое обучение на почти готовом поле — 3 минуты, всё по шагам</small></div><div style="display:flex;gap:6px"><button id="tut-start">Начать</button><button id="tut-later" style="background:none;color:var(--k-mu);border:1px solid var(--k-line)">Не сейчас</button></div></div>
     <div class="title">Новая игра — сложность</div>
     <div class="levels" id="levels"><button data-d="easy">Легко</button><button data-d="medium" class="on">Средне</button><button data-d="hard">Сложно</button><button data-d="expert">Эксперт</button></div>
     <div class="title" id="level-hint" style="margin-top:8px;font-size:12.5px"></div>
@@ -1158,7 +1237,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const SDK = new Function($('sdk-engine').textContent + '\nreturn SDK;')();
-const BUILD = '1.35 · 14 октября 2026';
+const BUILD = '1.37 · 15 октября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
@@ -1224,7 +1303,7 @@ async function startNew(diff, daily) {
 }
 
 /* ---------- сохранение ---------- */
-function persist() { if (!S || S.done) return; store(LS.save, { v: 1, diff: S.diff, daily: S.daily, dateKey: S.dateKey, puz: S.puz, sol: S.sol, val: S.val, notes: S.notes, hinted: S.hinted, time: S.time, mistakes: S.mistakes, hints: S.hints }); }
+function persist() { if (!S || S.done || S.tutorial) return; store(LS.save, { v: 1, diff: S.diff, daily: S.daily, dateKey: S.dateKey, puz: S.puz, sol: S.sol, val: S.val, notes: S.notes, hinted: S.hinted, time: S.time, mistakes: S.mistakes, hints: S.hints }); }
 function resume() {
   const d = load(LS.save, null); if (!d || !d.puz) return false;
   S = Object.assign({ sel: -1, notesMode: false, hist: [], redo: [], paused: false, done: false, checked: false }, d); openGame(); return true;
@@ -1273,6 +1352,7 @@ function check() { if (!S || S.done || S.paused) return; S.checked = true; rende
 
 /* ---------- победа ---------- */
 function win() {
+  if (S.tutorial) { S.done = true; render(); return; }          // обучение: без статистики и окна победы
   S.done = true; localStorage.removeItem(LS.save); const t = S.time; render();
   stats.solved[S.diff] = (stats.solved[S.diff] || 0) + 1; const noAid = S.hints === 0;
   if (!stats.best[S.diff] || t < stats.best[S.diff]) stats.best[S.diff] = t;
@@ -1340,6 +1420,7 @@ $('menu-btn').onclick = showMenu;
 function renderMenu() {
   const sv = load(LS.save, null), rc = $('resume-card');
   rc.classList.toggle('hidden', !sv);
+  { const any = Object.values(stats.solved || {}).some((v) => v > 0) || Object.keys((stats.daily || {}).results || {}).length > 0; let later = false; try { later = !!localStorage.getItem('sdTutorLater'); } catch (e) {} $('tut-offer').classList.toggle('hidden', !!(sv || any || later || (window.PGTutor && PGTutor.isDone('sudoku')))); }
   if (sv) { const filled = sv.val.filter(Boolean).length; $('resume-info').textContent = `${sv.daily ? 'Судоку дня' : DIFF[sv.diff]} · ${fmt(sv.time)} · заполнено ${filled} из 81`; }
   const tk = todayKey(), d = stats.daily;
   $('daily-info').innerHTML = d.results[tk] != null ? `Решено сегодня за ${fmt(d.results[tk])} ✓ · серия: ${d.streak}` : (d.streak && d.last === dayBefore(tk) ? `Не прерывайте серию: ${d.streak} дн. подряд` : 'Одна и та же головоломка для всех, каждый день новая');
@@ -1384,7 +1465,35 @@ if (window.PGRec) PGRec.config({
   boards: () => { const tk = todayKey(), yk = dayBefore(tk); return [{ id: 'sd_' + tk, title: 'Сегодня', sub: 'Судоку дня · ' + tk }, { id: 'sd_' + yk, title: 'Вчера', sub: 'Судоку дня · ' + yk }]; },
   pending: () => { const d = stats.daily, out = [], lim = keyOf(new Date(Date.now() - 14 * 86400000)); for (const k of Object.keys(d.results || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'sd_' + k, time: d.results[k], hints: d.hints[k] }); return out; },
   local: (id) => { const k = id.slice(3), d = stats.daily; return d && d.results[k] != null && d.hints && d.hints[k] != null ? { time: d.results[k], hints: d.hints[k] } : null; } });
-window.__sdk = { get S() { return S; }, SDK, startNew, select, setDigit, erase, undo, redo, hint, check, fillNotes, toggleNotes, get prefs() { return prefs; }, get stats() { return stats; }, todayKey, showMenu, setPause };
+
+/* ---------- интерактивное обучение ---------- */
+const TUT_SOL = '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
+const TUT_HOLES = [[0, 4], [5, 8], [7, 1], [3, 0], [3, 4], [4, 4], [6, 6], [2, 2]];
+const rectOf = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; };
+const unionRect = (els) => { const bs = els.map(rectOf), x = Math.min(...bs.map((b) => b.x)), y = Math.min(...bs.map((b) => b.y)); return { x, y, w: Math.max(...bs.map((b) => b.x + b.w)) - x, h: Math.max(...bs.map((b) => b.y + b.h)) - y }; };
+const idx = (r, c) => r * 9 + c, rowCells = (r) => Array.from({ length: 9 }, (_, c) => cells[idx(r, c)]), colCells = (c) => Array.from({ length: 9 }, (_, r) => cells[idx(r, c)]);
+const boxCells = (br, bc) => { const out = []; for (let r = br; r < br + 3; r++) for (let c = bc; c < bc + 3; c++) out.push(cells[idx(r, c)]); return out; };
+const centerOf = (el) => { const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; };
+const padBtn = (d) => document.querySelector(`#pad button[data-n="${d}"]`);
+async function demoDigit(hand, i, d) { await hand.path([centerOf(cells[i]), centerOf(padBtn(d))], (k) => { if (k === 0) select(i); else setDigit(d); }); }
+function startTutorial() {
+  const sol = TUT_SOL.split('').map(Number), puz = sol.slice(); for (const [r, c] of TUT_HOLES) puz[idx(r, c)] = 0;
+  S = { diff: 'easy', daily: false, dateKey: null, puz, sol, val: puz.slice(), notes: new Array(81).fill(0), hinted: new Array(81).fill(false), sel: -1, notesMode: false, time: 0, mistakes: 0, hints: 0, hist: [], redo: [], paused: false, done: false, checked: false, tutorial: true };
+  openGame(); const grid = () => rectOf($('sboard')), keep = () => unionRect([$('sboard'), $('pad')]);
+  setTimeout(() => window.PGTutor && PGTutor.run({ id: 'sudoku', title: 'Обучение судоку', steps: [
+    { text: 'Судоку — это поле 9 × 9 из девяти квадратов 3 × 3. Нужно расставить цифры от 1 до 9 так, чтобы в <b>каждой строке</b>, <b>каждом столбце</b> и <b>каждом квадрате</b> каждая цифра встречалась ровно один раз.', target: grid, button: 'Понятно' },
+    { text: 'В первой строке не хватает <b>одной</b> цифры. Какой? Нажмите на пустую клетку, а потом на цифру на панели.', target: () => unionRect(rowCells(0)), done: () => S.val[idx(0, 4)] === 7, demo: (h) => demoDigit(h, idx(0, 4), 7) },
+    { text: 'В последнем <b>столбце</b> тоже не хватает одной цифры. Найдите её.', target: () => unionRect(colCells(8)), done: () => S.val[idx(5, 8)] === 6, demo: (h) => demoDigit(h, idx(5, 8), 6) },
+    { text: 'А теперь <b>квадрат 3 × 3</b> слева внизу: в нём тоже ровно одна пустая клетка.', target: () => unionRect(boxCells(6, 0)), done: () => S.val[idx(7, 1)] === 8, demo: (h) => demoDigit(h, idx(7, 1), 8) },
+    { text: 'В этой строке не хватает <b>двух</b> цифр: 6 и 8. Посмотрите на первый столбец: там <b>уже есть 6</b>. Значит, в первую пустую клетку подходит только <b>8</b>, а во вторую — <b>6</b>. Поставьте обе. (Неверная цифра покраснеет.)', target: () => unionRect(rowCells(3).concat(colCells(0))), done: () => S.val[idx(3, 0)] === 8 && S.val[idx(3, 4)] === 6, demo: async (h) => { await demoDigit(h, idx(3, 0), 8); await demoDigit(h, idx(3, 4), 6); } },
+    { text: 'Когда не уверены, пишите <b>заметки</b>: нажмите «Писать заметки», выберите пустую клетку в центре и отметьте цифры, которые туда подходят. Это не ход, а пометка для себя.', target: () => unionRect([$('t-notes'), cells[idx(4, 4)]]), done: () => S.notes[idx(4, 4)] !== 0, demo: async (h) => { await h.path([centerOf($('t-notes')), centerOf(cells[idx(4, 4)]), centerOf(padBtn(5))], (k) => { if (k === 0 && !S.notesMode) toggleNotes(); if (k === 1) select(idx(4, 4)); if (k === 2) setDigit(5); }); } },
+    { text: 'Осталось три клетки — в каждой строке не хватает одной цифры. Выключите режим заметок и решите их сами. Если застряли, нажмите «Подсказка».', target: grid, done: () => S.done, enter: () => { if (S.notesMode) toggleNotes(); }, praise: 'Судоку решено!', demo: async (h) => { if (S.notesMode) toggleNotes(); for (const [r, c] of [[4, 4], [6, 6], [2, 2]]) if (S.val[idx(r, c)] !== S.sol[idx(r, c)]) await demoDigit(h, idx(r, c), S.sol[idx(r, c)]); } },
+    { text: 'Готово! 🎉 Так решается любое судоку: ищите строку, столбец или квадрат, где не хватает одной-двух цифр, и проверяйте, какие цифры уже стоят рядом. На трудных уровнях помогут заметки и кнопка «Все заметки».', target: grid, button: 'Решить первое судоку (лёгкое)' }
+  ].map((st) => Object.assign({ avoid: keep }, st)), onFinish: () => { startNew('easy', false); }, onExit: () => { if (S && S.tutorial) { S = null; showMenu(); } } }), 300);
+}
+$('tut-btn').onclick = startTutorial; $('tut-start').onclick = () => { $('tut-offer').classList.add('hidden'); startTutorial(); };
+$('tut-later').onclick = () => { try { localStorage.setItem('sdTutorLater', '1'); } catch (e) {} $('tut-offer').classList.add('hidden'); };
+window.__sdk = { startTutorial, cells,  get S() { return S; }, SDK, startNew, select, setDigit, erase, undo, redo, hint, check, fillNotes, toggleNotes, get prefs() { return prefs; }, get stats() { return stats; }, todayKey, showMenu, setPause };
 renderMenu();
 })();
 </script>
