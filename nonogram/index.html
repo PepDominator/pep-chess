@@ -1054,7 +1054,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="chips" id="lv-chips"><button data-l="1">1</button><button data-l="2">2</button><button data-l="3">3</button><button data-l="4">4</button><button data-l="5">5</button></div>
     </div>
     <div class="title">Картинки</div>
-    <select id="cat"><option value="Всё вперемешку">Всё вперемешку</option><option>Животные</option><option>Птицы</option><option>Насекомые</option><option>Подводный мир</option><option>Предметы</option><option>Природа</option><option>Еда</option><option>Здания</option><option>Транспорт</option><option>Праздники</option><option>Фантастика</option><option>Спорт</option><option>Игры</option><option value="Сказки">Сказки и традиции</option><option value="Профессии">Профессии и инструменты</option><option value="Знаки зодиака">Знаки зодиака</option><option value="Космос">Космос</option><option value="Музыка">Музыка</option><option value="Город">Город</option><option value="Дом">Дом и мебель</option><option value="Одежда">Одежда</option><option value="Сад и огород">Сад и огород</option><option value="Погода и символы">Погода и символы</option><option value="Пираты и море">Пираты и море</option><option value="Достопримечательности">Достопримечательности</option><option value="Сцены">Сцены (деревня, порт, космос, сад)</option><option value="Узоры">Узоры и пейзажи (мандалы, свитера, лабиринты)</option></select>
+    <select id="cat"><option value="Всё вперемешку">Всё вперемешку</option><option>Животные</option><option>Птицы</option><option>Насекомые</option><option>Подводный мир</option><option>Предметы</option><option>Природа</option><option>Еда</option><option>Здания</option><option>Транспорт</option><option>Праздники</option><option>Фантастика</option><option>Спорт</option><option>Игры</option><option value="Сказки">Сказки и традиции</option><option value="Профессии">Профессии и инструменты</option><option value="Знаки зодиака">Знаки зодиака</option><option value="Космос">Космос</option><option value="Музыка">Музыка</option><option value="Город">Город</option><option value="Дом">Дом и мебель</option><option value="Одежда">Одежда</option><option value="Сад и огород">Сад и огород</option><option value="Погода и символы">Погода и символы</option><option value="Пираты и море">Пираты и море</option><option value="Достопримечательности">Достопримечательности</option><option value="Сюжетные">Сюжетные картинки (большие, нарисованы по клеткам)</option><option value="Сцены">Сцены (деревня, порт, космос, сад)</option><option value="Узоры">Узоры и пейзажи (мандалы, свитера, лабиринты)</option></select><small id="cat-note" class="hidden" style="display:block;margin-top:4px;color:var(--k-mu)">Размер поля задаёт сама картинка — от 24 до 40 клеток по стороне</small>
     <button class="big" id="new-btn" style="margin-top:14px">Новая головоломка</button>
     <div class="title">Ваша статистика</div>
     <table class="stats" id="stats"></table>
@@ -1578,7 +1578,7 @@ const NG = (function () {
     { id: 'tajmahal', min: 24, name: 'Тадж-Махал', cat: 'Достопримечательности', ops: [['+', 'r', 0.2, 0.5, 0.8, 0.96], ['+', 'e', 0.5, 0.42, 0.18, 0.18], ['+', 'r', 0.32, 0.42, 0.68, 0.52], ['+', 'p', [0.46,0.25,0.5,0.12,0.54,0.25]], ['+', 'r', 0.04, 0.3, 0.1, 0.96], ['+', 'r', 0.9, 0.3, 0.96, 0.96], ['+', 'e', 0.07, 0.29, 0.04, 0.04], ['+', 'e', 0.93, 0.29, 0.04, 0.04], ['-', 'p', [0.42, 0.96, 0.42, 0.68, 0.5, 0.58, 0.58, 0.68, 0.58, 0.96]], ['-', 'r', 0.26, 0.62, 0.34, 0.8], ['-', 'r', 0.66, 0.62, 0.74, 0.8], ['+', 'r', 0.0, 0.94, 1.0, 0.98]] }
   ];
   NEW13.forEach((s) => SHAPES.push({ id: s.id, min: s.min, name: s.name, cat: s.cat, ops: s.ops }));
-  const CATS = ['Животные', 'Птицы', 'Насекомые', 'Подводный мир', 'Предметы', 'Природа', 'Еда', 'Здания', 'Транспорт', 'Праздники', 'Фантастика', 'Спорт', 'Игры', 'Сказки', 'Профессии', 'Знаки зодиака', 'Космос', 'Музыка', 'Город', 'Дом', 'Одежда', 'Сад и огород', 'Погода и символы', 'Пираты и море', 'Достопримечательности', 'Сцены', 'Узоры'];
+  const CATS = ['Животные', 'Птицы', 'Насекомые', 'Подводный мир', 'Предметы', 'Природа', 'Еда', 'Здания', 'Транспорт', 'Праздники', 'Фантастика', 'Спорт', 'Игры', 'Сказки', 'Профессии', 'Знаки зодиака', 'Космос', 'Музыка', 'Город', 'Дом', 'Одежда', 'Сад и огород', 'Погода и символы', 'Пираты и море', 'Достопримечательности', 'Сюжетные', 'Сцены', 'Узоры'];
   function inside(op, u, v) {
     const t = op[1];
     if (t === 'e') { const dx = (u - op[2]) / op[4], dy = (v - op[3]) / op[5]; return op[4] > 0 && dx * dx + dy * dy <= 1; }     // ['+','e', cx, cy, rx, ry]
@@ -1797,6 +1797,79 @@ const NG = (function () {
     return collage(R, C, rnd, pool);
   }
 
+  // ---------- сюжетные картинки: нарисованы по клеткам для своего поля, не масштабируются ----------
+  // [id, название, ширина, высота, клетки построчно (по битам, base64)]
+  const SCENE_PICS = [
+    ['sc_cafe', 'Кофе у окна', 30, 35, 'f///+f///+YAMAGYAMAGYAMIGYgMYGYAMYGYAMYGYAMemYCMPGYAMAGYAMAGYAMAGYIMQGYAMAGYAMAGYAMAGYAMAGf///+f///+////+////+AkAAAAmAAAAkAAAB/AAABBwAAB/IPgB/IbAB/w3YB/A+4H/5/8H/4AA//////////A'],
+    ['sc_camera', 'Старый фотоаппарат', 32, 27, 'A///wAwAADAwAAAMIAAABEA//AJeP/z6Xj/8ip4//Im////9/////3////5//v/+QHAcAn/nz/5/z+cGf973Bn+eMwZ/mDP+f5gz/n+YM/5/3vf+f8/n/n/nz/5/8B/+f/7//n////4////8'],
+    ['sc_towtruck', 'Эвакуатор', 40, 24, 'AAAAA/wAAAAP/gAAAB/+AAYAH/wABwAPAAAHgAMAAAfgAwAABnAf+AB/uB/4AYRcGBgDhG8YGAeEc5gYD//52BgAAADf+D/////4P/////g/////+D/////4D8Afh+AMwBmGYA/AH4fgB4APA8D/////////////'],
+    ['sc_camel', 'Верблюд в пустыне', 40, 26, 'D8FAAAAf4IAAAB/gCgAAH+AEBsAf4cAHwB/j4A4AH+fwDgAPz/gcAAAf/hwAAD//+AAAf//4AAB///AAAP//4AAA///AAAC8AoAAACQCgAAAJAKAAAAkAsAAACQD8AAD9D//Bz//////////AA/wAP///////////////////////w=='],
+    ['sc_catbranch', 'Кошка на подоконнике', 30, 35, 'f///+f///+YAMAGYAMAGYAMQGYgMwGYAMwGYAMwGYGM4GYH8eGYH8AGYH8AGf///+f///+YH8AGYD8AGYH8AGYP8AmYf+AGYf+YGYf+YGYf+MGYf+MGYf+YGf///+f///+///////////////P///8DAAAwDAAAwDAAAwDAAAwDAAAwA'],
+    ['sc_cyclist', 'Велосипедист', 40, 30, 'AAAAABAAAAAAfAAAA8D+GwADwP4EAAfA/gAAD8D+ACgfAHwAED8AEAAA/YAAAAH44AAAA+D4AAADwCAAAAfAIAAAA//gAAAH8OAAAMe5tgAH/Zs/wA4dtnjgGBe8yDAYN7jMMBBj8IwQMP/hhhgw/8GGGBACAIAQGAYAwDAYBgDAMA4cAHDgB/gAP8D/////////////'],
+    ['sc_surfer', 'Сёрфер на волне', 36, 29, 'AgAAAAAAIAAAIAAEAACAAAAAAAAABwAABAH8AOAAP+AOQAZ+DvwAx/A/ABx/AMADwPAMAHQPAMQOQPAMAOwPAMAd4fAeAZ//ASA7//AzS3//Avx3//D8Bv//CAHv//AADf//AATf//AAG///AAG/////////gH////////////////A='],
+    ['sc_hiker', 'Турист в горах', 32, 31, 'AAD4AAAB+AAAA+ABA4PgBwfP+Q8P48G/D+PB/x/jwf8f4b//P+f//3/n4/9/5+P//+///wgv/gAIN/4ACDf+CAgn/ggIJ/4IHGf+CBxH4BwcR+AcHEZAHD5GQBwcRGA+HExgHD5MYD4+TGA+CEggCAhceAj//////////w=='],
+    ['sc_lighthouse', 'Маяк у моря', 30, 40, 'AAMAA8AeAeDw/DwAe/8AABsgAABsgAAeg8ADw/jw8B/weAA/AAAA/AAAA/AAAA/AAAAgAAGxggABB/goAB/gQAB/gAAB/gAAB/gAABAAAABAAAAB/gAAB/gAAB/gAAD/wAADAQAADAQAAD/wAAD/wAAP/+AAf//AA///AA///g////gB///gB////B///w//////////'],
+    ['sc_train', 'Паровоз с вагонами', 40, 25, 'AAAAA/AAAAAH+AAAAH/4AAAA//AAAAb8AAAAD39+AAAGB0IAAAAHQgAAAA//AAAAD/8//f/v/z/9/+8PMk2Sbw8yTZJvDzJNkm//P/////8//f/v/z/9/+//P/3/7/800aaNNDzx5488/////////////0kkkkkkSSSSSSQ='],
+    ['sc_winterfox', 'Лиса в зимнем лесу', 38, 29, 'BgAAgAB+EAACAfgAAAgP8AQAID/AAACAfgAAAgH4AAAcAYAAAHAAAIARwAAAIEcAAAChHAQAB4T4DwAdEcB/fn/vgf//474P//wO+AD/8D/wAf+A74AF+gf+ABQoD/wAUKB/8AEigf/ABIoH/7/////////////A//wH/wP/8B/////////////8'],
+    ['sc_deer', 'Олень на закате', 40, 28, 'ACgAMAAAEAJUAA2AAZgAAgAAkAAAAACQ2AAAAGAgAAAAYAAAAABwAAAAAOAAAAB+wAAAA//AAAAHAeAAAAD/gAAAGf8YAAAx/wwAACP/AAAAIKMEAABgooYAAGC/wgAAf//+AAP////AP/////z///////////////////////////////////////8='],
+    ['sc_fisherman', 'Рыбак в лодке', 40, 26, 'AAAAARgAAAADMAAAAANAAAAAA4AAAfADgAAD+A3gAAHgGAAAAeAgAAAB4MAAGAABgAAYAf4AAFGB8AAAVYHwAABVAfAAAFUB8AAAVQHwAABVf//gAFU//8AAVR//gABVD/8AAP////////////8PwAAB8A/AD+AAAAAP4AD//////w=='],
+    ['sc_village', 'Деревенский двор', 40, 30, 'AAAMAAAAAH4A8AAA8AH4AABgAfgADAAB+AAe4AH4AD/gAPAAc+AHgADh4B/gAeHgH+AD8/A/8Af/+D/wD//8P/AD//h/8AP/+H/gA0/4n+AD/DkPgANMOQuAA0w5/4AD/Dj7gAP8OPuA2/2+++3b/b777f//////2/2+++3bbbbbbdtttttt////////////////////'],
+    ['sc_owlnight', 'Сова ночью', 30, 37, 'AEAAAAAAPwEAAf4AAI/8AEA/8AGB/8AH//8AH//8AEY/8BBCf4ABCPwAEYgAAHngAAH/gAAH/gAAP/wEIP/wAAOlwAAP/wAAP/wAAOlwAAH/gAAH/gAACl//P///////////jAPAAAAPAAAAPAAAAPAAAAPAAAAPAAAAPAAAAPAAAAP//////////A=='],
+    ['sc_balloon', 'Воздушный шар над горами', 30, 39, 'ABtgAAHM4AAPe8UMeeeI/+efA/+efAM+efAB+efgB+efgB+efgB+efgB+efgB+efgAgAAAA+efAA+efAAeeeAAPe8AAHM4AAHtwAAD/w/AB/g/AB/gAAA/AAAAhAAAAhAAAAgAAAAngADx/wBH5f4DP9/8Hf//+P////f//////////////////////////////A'],
+    ['sc_aquarium', 'Аквариум', 36, 27, '////////////QABgACQABhgCQAAxgCQEewACQG9AwCQG/AwCQEeAACQAAAACQiAPACQiAXoCQiAfoCQiAPACQq8ACCQv6APiRN+APiRM8APiREAAPiREAAMiREAAMiREAAMif///8+f////+f////+f////+f////+A='],
+    ['sc_stilllife', 'Натюрморт с чайником', 36, 28, '////////////4AAAAH4AAAAH4AAAAH4AAAAH4AAAAH4DAAAH4DAAAH4PwMAH4PwcAH4/8wBH//9gCHP//APgJwGAPgJ/+A/gP/+B/4H/8B/4A/8B/8A/+f/8A/+f/4A/+c/wAAAcAA////////////MAAAAMMAAAAMMAAAAM'],
+    ['sc_rocketlaunch', 'Старт ракеты', 30, 39, 'AAMCAEAeAAAAeAQAAeAAAI/AAAA/AAAA/AAAA/AwAAfA0AAfAwAATAwIAT/wAAfAwAAfAwAAfAwAAfAwAAAAwAAfAwAAfAwAA/AwAA/AwAB/gwAD/wwADfwwAEfIwAAMAwAAMAwAAMAwAAAAwAeMewB///wB///gP///8f///+f///+PA/A8///////////////A'],
+    ['sc_windmill', 'Ветряная мельница', 36, 33, 'AEGwAAAPBFcAALgC2AAMwAsAAGoBMAABMC4AAAuEQAAAcPgAAAN/AAAAHyAAAADwAAAAH4AAAAX4AAAA/8AAAB/+AAACP9AAAHWcgAAMmdYAANH7MAAbP90AAOP88AAAP8IAAAP8AAAAMEAAAAMEAAAAMEAAAAcGAAAAcGAA//////wA//ADwA//AD/AAAA//AAAA/A='],
+    ['sc_tram', 'Трамвай на улице', 40, 30, 'AoAAAAAPAAAAAP//////P4BCAAA/wGYAAD/AJAAAMMAYA/4wwH8DBjDf//8GP9///wY/+IiP/jD4iI/+MPiIjwYw+IiPBj/4iI8GP/////4w/////jDwAAcGMP/j/wY//+P/Bj/f4//+P9/j//4/3////gAPAPAAAAYAYAD/////////////RERERET/////////////'],
+    ['sc_sailboat', 'Парусник в море', 34, 35, 'AAHgAAAKeB4AAQgPwGwDA/AEAMD8AAC4PwAAbweAABvAAAAO+AAAA74AAAHvwAAA+/gAAD7+AAAfv8AAB+/wAAP7/gAB/v/AAH+/8AA/7/4AD/v/gAf+//AD/7/+AP/v/AB/+8AAAACAAAAAIAAA////wB+c5+AD5znwAH//+AAf//4A8PDw+MPDw8Hf+Af/j/////w='],
+    ['sc_airplane', 'Самолёт над облаками', 40, 24, 'HgAAAAA/AAAA4D8AAAHgPwAAAeA/AAAB4B4AAAPgAP///+AD////4AO222/gD////+AH////4ADg/wOAAAH8AwAAAfgAAAAB+AAAAAHwAAAAA+AAAAD/wAAAD//w/wB//////P////////////9//////3//////'],
+    ['sc_castle', 'Замок на холме', 36, 34, 'AMAAGAB8AAOAH+AAfAH/AA/gP+AAVAP+AAV2H/FUfoH/FUfgB/H8fgA/GMfgAzuO5gAzv+5gAz//5gA////gA////gA////gA/+//gA/8f/gA/4P/gA/4H/gA/4H/gA/4H/gA/4H/gA/4H/gA/37/gD/37/wf/37/+//37////37////v9////v9////v9////v9////v9//'],
+    ['sc_church', 'Храм с куполами', 34, 36, 'AABAAAAAOAAAAAQAAAABAAAAAEAAAAB4AAAAPwAAAh/ggAHH+HAAIf4IAAh/ggACH/CAAYccYADxxzwAfnHfgB+cd+ADx/zwAf///wB////AP///8A////4D////gP///+A5/fz4Dj4/HgOPB8eA48Dx4DjwPHgOPA8eA/8D/4D/wP/gP/A/+A/8D/4/////////////////'],
+    ['sc_bridge', 'Мост через реку', 40, 27, 'AA2AAeAAAgAD8AKAAAPwAQAAB/gAAAoD8AAABAPwAAAAAeD//////5JJJJJJ/////////////////////gB+AD/+A//AP/4H5+A//h4AeD/+PAA8P/44ABw//nAADj/+4AAHP/7gAAc//sAAAz//////v//AAAO//4AAAb//gAABv//8AP//'],
+    ['sc_watermill', 'Водяная мельница', 36, 30, 'AAAAD/ABgAD/ADwAAMAH4AAMAP8AAMA//AAMB//gAMD//wAMH//4AcD//4AQD//4AAD//5/gDk/7/wDk//h4D//+hcDk//S8Dkw8tMD/w/+MD/w/+MD/w8tMD/w/S8D/w+hcD/w/h4D/w7/wD/w5/g//////4A/8AP4A/8AP////////////'],
+    ['sc_moonbase', 'Посадка на Луну', 36, 31, 'AAEAAAEAAAfgAADA0wAAAAuQAAAAvQAEAAmQAAAAgQAAHowwAAMQfgAAMQAAAAf4AABA/+AAAA/+AAAAwGACAAwGAAAA/+AAAA/+AAAB/+AAADITAAACIRAAAGIRgAAEIQgAAMIQwAAIIQQAA+AA+A////////////4f////4f//wP//4fwP//////A='],
+    ['sc_desk', 'Будильник и книги', 34, 30, 'AgBAAAPnfAAA+98AAD//wAAHmeAAAMYwAAAhhAAAGGGAAAYfYAABg9gAAGAGAAAIAQAAAwDAAABgYAAAL/QAABjx//4EACAAgAAP/+CgA//4KAA//wAACABAAAP/8/4A//z/Qf/8P9BAAQ/4H//D/Af/8/////////////////A='],
+    ['sc_desklamp', 'Настольная лампа', 32, 27, 'AAABAAAAD4AAAB+AAAAPwAAAD8AAAB/gAAB/8AAB5/AAB4P4AAYDoAAEAAAADAAAAAgAAAAYACAAGAEAADAAEAAwAIAAIAAIAGAAQABAH/4A4BACA/Af/h/+EAIf/h/+//////////8wAAAY'],
+    ['sc_gramophone', 'Граммофон', 28, 32, 'AAAA8AAAHwAAB/AAAPsAAB4wAAODAABxMAAOMwABxzAAHPMAA4hwADg/AAM/wAD/gAB8AAAGAAAAQAAB//4A/DD8D8MPwB//4A////7////sAAAGwAAAbP//4s///iz//+bAAABsAAAG////7////g=='],
+    ['sc_bike_fence', 'Велосипед у фонаря', 40, 29, 'AAAAADwACgAAfAAEAAB8DYAAAP4CACgA/gAAEAAAAAAAABgAAAAAGAAAD8AYAAACABgAH4IAGAAf/wAYAA//ABgBjg/gGA/7H/wYHnsfnhg4fz7HGDBvfMMYMc3s4xhj/9jxmGP/mPGYMYwMYxgwDAwDGDgcDgcYHngHnhgP8AP8GAGAAGAY/////////////w=='],
+    ['sc_retrocar', 'Ретроавтомобиль', 40, 18, 'AA//AAAAGBAAAAA4EEAAADgQQAAAeBBgAAD4EHAAB////4A//+P//CP////wI/////A//////j8///z+BtgAG2AG2AAbYAc4ABzgA/AAD8AB4AAHgP//////'],
+    ['sc_firetruck', 'Пожарная машина', 40, 24, 'AAAAQAAAAAfgAAAAfGAAAA/H4OAA+Hxg4A+PwA/+HvgAD/4fgAAMBj////wGP////AYwwww8BjDDDDwGMMMMP/4wwww//jDDDD/+P/////4//////j/////+Pn/5/z4GYBmDMAfgH4PwA8APAeD/////////////'],
+    ['sc_tractor', 'Трактор в поле', 40, 27, 'AAAAAPAKAAAB+AQAAAH4AMD/8fgB4P/x+ADAwDDwAODAMAAA4MAwAADgwDAAAODAMAAA4MAwAA////gAD///+AAP///4AA//+fgAD//geAAP/+B4AA//xjgADn/GOAAMMOBwAAww4HAABmD58AAH4H/gAAGAP8AA/////yT////8kv//////'],
+    ['sc_campfire', 'Палатка и костёр', 38, 29, 'AAEAAgBAAAAwAAAAAMAAAAEHAABAABwAAAAAOAAAAAD8AAAAAMAAAACAABDAAAAAAwAAAAAeAABAAPwAAQAD8AAPAB3gALwAc4AD+APPAB/gHj4Ae4B4eADOA+HwAzAPB8BszHwPgfPz8D8A/A+A/B8/fgH4YA///////gB////////////////8'],
+    ['sc_snowman', 'Снеговик у дома', 36, 33, 'APiAAAIPgAAgAfwAAAAfwCAAAIAAMAAPAAe4AfgA/4AagB/4BcAD/6YPAH/4MPDP/8Cfmf/+B94P/+A/wP/+A/wOR+A9wOR+AfgP/+APAOR+A/wOR+B/4OQGB94P+GB/4P+GD/8P+GB94P+GB/4P+GB/4P+GA/wP+G////////////wAf4AH//////////////////A='],
+    ['sc_xmastree', 'Ёлка с подарками', 30, 37, 'AAMAAAAMAAAA/AAAAeAAAAeAAAASAAAAMAAAAeAAAA/AAABngAADnwAAH/4AAP/8AAB/AAAD+AAAH+QAAM/4AAc/8AA//+AB///AAD5wAAP54AAf/+AAn/zABnPzgD/P/wH///4AAeAAAAeCAOeeFAOeAc8AAAc8OeAAAOeAc8OeAc8OeAc8/////A=='],
+    ['sc_samovar', 'Самовар и чашки', 36, 31, 'AADgAAAADgAAAAHgAAAAPwAAAAHgAAAA/8AAAB/+AAAD//AAB///+ABP//yACGAAhACGAAhABP//yAB///+AAGAAgAAH//gAAH///gAH//BgAD/+BgAB/8DwAAf4H4PwPwDwP8HgP8P8/+P4Pw/+H4f4AAAA////////////MAAAAMMAAAAMMAAAAMA='],
+    ['sc_submarine', 'Подводная лодка в море', 40, 26, '///////////////////+AAA+AAAAADAAAAAAMAAAAAH/BeAAAf8F4AAB/wAAAAH/AAwAP//8DEH///+AY////9h3znOf+HfOc5/gY/////BB////sAA///wAAAJ+gAAAAiCAAAvEQQAAC8zDLwAABEEvAA/0T/AP/////////////w=='],
+    ['sc_helicopter', 'Вертолёт над горами', 40, 26, 'D////+QAADgABAAAOAAOAAH4AA4ACj8ADgASP4AOACI///4AIj///gA////+AD//wAAAH/+AAAAP/wAAAAH4AAAADAMAAAAMMwAAAP//8AADAPwAAAeB/gDAH8P/AeA/5/+H8H///8/8//////7//////////////////////////w=='],
+    ['sc_kite', 'Воздушный змей', 30, 37, 'AAAwAAAB4AAAD8AAAH+AAAP/AAAf/gAA//wAB//4AA//wAAf/gAAP/AAAH+AAAH+AAAD8AAAB4AAAAwAAAAwAAAAwAAAAgAAAAgAAACgAAACgAAAAgAAAAgAAAAoAAAAoADAAgAHgBB4PwJD8P4KD8P+ED8M44D8M4AB4M4AAwM4AAw//////////A=='],
+    ['sc_orbit', 'Ракета у планеты', 34, 29, 'AIAAAAAAAgAEAAgAEAAEAIAAAwAAAAHgAAAA4AAAAHgAAAA+AAAAGYAAAA/AAAAP4AAAB/AB+AH4AeeA/AHAOH4Az/M/ACf+T7Ab/9fMBZ/74INn/nAA3/+gACf/4AAJ//gAA3/OAADf84AIF//gAAbz9AAAnPkAADP8wA=='],
+    ['sc_bus', 'Городской автобус', 40, 22, 'f/////4//////D/////8MEEEHAwwQQQcDDBBBBwMMEEEHAwwQQQcDDBBBBwMP/////w////x/CAAABH8P///8fA////x8D////f8P/////w/P//8/AMwAAzAA/AAD8AB4AAHgP////////////8='],
+    ['sc_ferriswheel', 'Колесо обозрения', 36, 36, 'AAP8AAAA//AAAD3jwAAPHg8AA+BgeAA+BgeAA9Bg+AAwhhDAAwRiDABgL0BgBgH4BgBgP8BgB////gB////gHgP8B4HgH4B4HgL0B4AwX6DAAwn5DAAZNsmAAeNseAAOJkcAAPZm8AA/xj+AA8//eAA8//eAABgBgAABjxgAABDwgAADDwwAACAAQAAGAAYAA////gA////g////////////'],
+    ['sc_carousel', 'Карусель', 36, 34, 'AABwAAAABwAAAAH4AAAAP8AAAA//AAAD//wAAP//8AA////AB////gP////4f////4NztzswBAhwgQBAhwgQBAhwgQBApwoQBB9x8QBX534UD/534+Pxhxj8PwBwD8DABwAwAABwAAAABwAAAABwAAAABwAAAABwAAf/////f/////f/////////////////////////////'],
+    ['sc_circus', 'Цирк-шапито', 38, 32, 'AAA4AAAAAOAAAAADAAAAAAwAAAAA/AAAgAHgAOIAR4gDiAIeEAIgNv2wCIEz8yAiGd/uYIjO/9zCLnP/Ocjz3/7zov////6KZmZmYimZmZmIpmbmZiKZn5mYimZzZmIpmYeZiKZkHmYimZB5mIpmQeZiKZkHmYimZB5mIpmQeZiKZkHmYi/////r//////////////////8='],
+    ['sc_fountain', 'Фонтан', 36, 29, 'AAQCAAAA8PAAABH4gAACBgQAAEDwIAAMBwMAAIJ0EAAYf+GAAYxzGAARhxiAAxDwzAADwDwAADwDwAACDwQAACBwQAAGBwYAAABwAAAghwggAABwAAP////+P////+D////4DAAAAYDAAAAYD////4D////4//////////////////A='],
+    ['sc_gazebo', 'Беседка в саду', 38, 32, 'AAA4AAAAAOAAAAAPwAAAAH+AAAAH/4AAAH//gAAH//+AAD///wAD////AD////+A/////gDBgBgwAwYAYMGMGAGDbzBgBg/8wYAYP/MGAGD/7BgBg/+wYAYP/P/////zrqrq/866q6v2OuqurZjrqrq2Y66q6tm/////5v////+////////8AP////AD//////////////8='],
+    ['sc_sewing', 'Швейная машинка', 38, 26, 'ABwAAAAAMAAAAADAAAAAAwAAAA////6AP////4D8AB/3A////4wP///+sD////rA+AAD4wPgAA/cD4AAP+A+AAD6APgAA+ABwAAPgAc/4D4AHAAA+AAgAAPgAIAAD4B/////+f/////n/////7//////////////////8A=='],
+    ['sc_typewriter', 'Пишущая машинка', 38, 25, 'AP///gACf/+IAAn//iAAJ/8AgACf/AIAAgAACAYP///hv////////////f/////h/////gf////4G22222DAAAAAw7bbbbcPbbbbfDgAAADw9tttt8PttttvHwAAAB5+2222+f8AAB/v//////////////////w='],
+    ['sc_phone', 'Дисковый телефон', 34, 27, 'Af//wAD///gAf///AD///+Af8AP8B/gAf4H8/+/gAD/4AAAP/gAA///8AD///wAf///gB///+AH/W/4Af7d/gD/bb/AP9ev8A/x6/wH/Db/gf+Df+B/8L/8H////4/////j////+AAAAAb/////wAAAAGA=='],
+    ['sc_radio', 'Радиоприёмник', 30, 28, 'AAAABAAAACAAAAEAAIAID///wf///8///////////////wAAADwMAADw/B/zxehETyARETz/x/z2AYAD3/4ADyAQxjz/x7zxAh7zw/AxjwMAADwAAADwAAAD//////////OAAAcOAAAc'],
+    ['sc_tv', 'Ламповый телевизор', 28, 31, 'AQAIAAwDAABgYAADDAAAGYAAAPAAAA8AD/////////wAAH/f//b9AAFH0AAUfQwhb9HkF/0egW/Q8BR9BAFH0IAW/RABf9AAF/0AAUPQABQ9//9/wAAH//////////EAAAgQAACCAAAEIAAAQA=='],
+    ['sc_coffeepot', 'Кофейник и чашки', 36, 27, 'AAwAAAAAwAAAAP/gAAAP/gAAEH+AAAHH+AAAD3+AAAA/+cAAAP/+AAAP/iQgAP/igQAIAigQAP/igQAP/+AAAP/cAAAP/B98Af/h/+Af/h99Af/h/+Af/h98AAAD/+////////////MAAAAMMAAAAMMAAAAMMAAAAMA='],
+    ['sc_vase', 'Ваза с цветами', 30, 35, 'AAeAAAAeAAAAzAAAezeAAeeeAAzezAAzAzAAeAeAAfx+AAHx4AAGbMAAGbcAADx4AADx4AABgngB4hHgB4xAAAASAAAASAAAAMAAAAMAAAB/gAAD/wAAD/wAAH/4AAH/4AAMAEAAP/8AAH/4AAH/4AAH/4AAD/wA///////////////A'],
+    ['sc_fruitbasket', 'Корзина с фруктами', 38, 26, 'AFhAcAABYwf4AAQ/f/AAeP/B4Af//gHAH//wxwB//4eMAf78PwAH///+AB////4B/////gf////4H973v8A/e97/APgAADwD973v4Afe97+AHgAADgB973vwAPe978ADgAADAA973vgAHe974D//////////////////8A=='],
+    ['sc_kettle', 'Чайник на плите', 31, 34, 'ABCAAAAQgAAAIQAAAIQAAAH8AAAHngAAGMYAAGfmAACPxAwD//w4A//w4A//84Af/+4Af//4AP//4AH//8AD//+ABgADAA///gAf//wAP//4AH//8D8885/+eec//////n////D////hgAAAwz//+YZ///MM///mGAAADD////h////w'],
+    ['sc_pier', 'Лодка у причала', 40, 24, 'AoAAAAABAAAB4AADYAPwAACAA/AAAAAD8AAAAoPwAAABA/AAAAAMwP//4A4A///gD4AwYNgPwDBgzAgAMGDCCAAwYMf/+DBgw//wMGDB/+AwYMD/wDBgwAAA//////8wYMAAADBgwAAAP/zA/8A//MD/wDBgwAAA'],
+    ['sc_hourglass', 'Песочные часы и свеча', 34, 30, 'D//gAAP/+AAAX+QAABQJAAAEAEAAASEQGABIRAYAE+ECQAR4QJABHhAYAEeEAgAQwQCABDBA+AEEED4AQwQPgBDBA+AEWED4ARYQPgBFhA+AEkED4AS0QPgBPxA+AEeED4AX+QPgBf5A+AEAED4A//5/4D//n/j///////////A='],
+    ['sc_globebooks', 'Глобус и книги', 36, 29, 'AAwAAAAP/AAAAb9gAAAuHQAABYBoAAChAUAAHngeAAFPwKAAHPgOAAGPAGAAOGBHAAOAHHAAGAPmAAHwPv/+FwPKACHgOf/+CgEX/+BYBv/8AuHUAEAb9n/8AP/H/8AA4B//AA4B//AA4BABAA4B//Af/x//Af/x//////////////A='],
+    ['sc_chess', 'Шахматная доска', 34, 30, 'AACAAAAAcAAAGAgEAA8CA4ADw8DQAGH4fgAAfh+AD48H8APDwPgA8PA8ADx+DwAfH4PAB+fh+AH7/H4Afv8fg///////////4eHh4fh4eHh+Hh4eH/h4eHh+Hh4eH4eHh4YeHh4fh4eHh+Hh4eH/h4eHh+Hh4eH4eHh4f/////A='],
+    ['sc_chalet', 'Домик в горах', 40, 27, 'AAAeAAAAAD8AAAAAf4BAAeB/wOAB8P/h8AP5//PwB/////gH/////A/////8D/////4f/////z//P///ABzOAQAIOecBAAhz84EECOf5w4QIP/+DhBw0w4OOHD/Dg44cNMOHzhw0w4OOHD/Dh84+P8OH3wg/w4EE////////////////////'],
+    ['sc_windfarm', 'Ветряки в поле', 40, 29, 'AMFAADwAwIAAfgDAAAB+AMAAAH4AwAAAfgDAAEA8AMAAwAAAwACAAADAAYAAAeABAQAHOAMBABwP/gEAMAP+AYBAwIMAgADAAQDAAMAHgP4AwAaBggDABsOAAMAGRsAAwAYEwADABgDAAMAGAMAAwAYAwADABgDAA//mAP////////AA/wAP8AD/AA///////w=='],
+    ['sc_streetclock', 'Уличные часы', 30, 38, 'AAOAAAA/AAAD/wAAHp4AAOMcAAMMMAAcMOAAYMGAAYPmAAcPuAAYAGAAcAOAAMAMAAOAcAAHl4AAD/wAAA/AAAAfAAAAfAAAAOAAAAOAAAAOAAAB/wAAB/wAAAOAAAAOAAAAOA8PAOB+fgOB+fgOB+fgOB+fgOA8PAOAYGAOAYGD/4YGD/4Y//////////A=']
+  ];
+  const b64 = (s) => { const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', out = []; let buf = 0, bits = 0; for (const ch of s) { if (ch === '=') break; buf = (buf << 6) | A.indexOf(ch); bits += 6; if (bits >= 8) { bits -= 8; out.push((buf >> bits) & 255); } } return out; };
+  const PICS = SCENE_PICS.map(([id, name, W, H, data]) => { const bytes = b64(data), g = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) g[i] = (bytes[i >> 3] >> (7 - (i & 7))) & 1; return { id, name, W, H, g }; });
+  // подходит ли поле для сюжетной картинки «в общей куче»: размеры около 25–50 клеток
+  const picFits = (R, C) => Math.max(R, C) >= 25 && Math.max(R, C) <= 50;
   // ---------- трудность и уровни ----------
   // «Раунд рассуждения»: каждая линия решается один раз по состоянию на начало раунда. Чем больше раундов нужно и чем меньше клеток видно сразу, тем сложнее.
   function analyze(R, C, rowC, colC, givens, sol) {
@@ -1842,6 +1915,19 @@ const NG = (function () {
   function generate(o) {
     const R = o.rows, C = o.cols, t0 = Date.now(), area = R * C, lv = o.level >= 1 && o.level <= 5 ? o.level | 0 : 0;
     const budget = o.deterministic ? Infinity : (o.budgetMs || (area > 2500 ? 5000 : area > 600 ? 2500 : 1200) * (lv ? 1.6 : 1)), rnd0 = o.seed != null ? mulberry32(o.seed >>> 0) : Math.random;
+    // сюжетная картинка: категория «Сюжетные» — всегда, «Всё вперемешку» — иногда, если поле около 25–50 клеток
+    if (!o.daily && !o.noPics && (o.cat === 'Сюжетные' || (o.cat === 'Всё' && !o.mode && picFits(o.rows, o.cols) && rnd0() < 0.25))) {
+      const order = PICS.map((_, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd0() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      if (o.pic) { const k = PICS.findIndex((q) => q.id === o.pic); if (k >= 0) order.splice(0, order.length, k); }          // заказанная картинка — только она
+      let bestP = null; const lvP = o.level >= 1 && o.level <= 5 ? o.level | 0 : 0;
+      for (let t = 0; t < (lvP ? 6 : 1) && t < order.length; t++) {
+        const P = PICS[order[t]], b = build(P.g, P.H, P.W); if (!b) continue;
+        const cand = { rows: P.H, cols: P.W, sol: P.g.slice(), rowC: b.rows, colC: b.cols, givens: b.givens, name: P.name, names: [P.name], cat: 'Сюжетные картинки', pic: P.id, density: 0 };
+        if (lvP) { const an = analyze(P.H, P.W, cand.rowC, cand.colC, cand.givens, cand.sol); cand.hardness = an ? an.hardness : 0.5; cand.dist = Math.abs(cand.hardness - levelCenter(lvP, P.H, P.W)); }
+        if (!bestP || (lvP && cand.dist < bestP.dist)) bestP = cand;
+      }
+      if (bestP) { if (lvP) { bestP.level = lvP; const extra = Math.round(bestP.rows * bestP.cols * EXTRA[lvP]); if (extra > 0) { const have = new Set(bestP.givens), pool = []; for (let i = 0; i < bestP.rows * bestP.cols; i++) if (!have.has(i)) pool.push(i); for (let k = 0; k < extra && pool.length; k++) { const j = Math.floor(rnd0() * pool.length); bestP.givens.push(pool[j]); pool[j] = pool[pool.length - 1]; pool.pop(); } } } return bestP; }
+    }
     if ((o.cat === 'Узоры' || o.mode === 'blobs') && o.pattern == null) o = Object.assign({}, o, { pattern: Math.floor(rnd0() * 10) });       // вид узора выбирается один раз, а не заново в каждой попытке
     let best = null, tries = 0; const maxTries = o.tries || (lv ? (area <= 625 ? 24 : area <= 2500 ? 12 : area <= 6400 ? 6 : 3) : 12);
     while (tries < maxTries && (tries === 0 || Date.now() - t0 < budget)) {
@@ -1889,7 +1975,7 @@ const NG = (function () {
     for (let r = 0; r < R; r++) { let n = 0; for (let c = 0; c < C; c++) if (wrong(r * C + c)) n++; if (n && n < bn) { bn = n; bestR = r; } }
     if (bestR < 0) return -1; for (let c = 0; c < C; c++) if (wrong(bestR * C + c)) return bestR * C + c; return -1;
   }
-  return { mulberry32, solveLine, propagate, lineClues, countUnknown, verify, ensureUnique, sceneOf, busy, SCENES, SHAPES, CATS, picture, stamp, rasterFit, linesOk, patchLines, skyline, forest, mountains, ornament, mandala, sweater, carpet, fractal, maze, build, generate, hint, blobs, analyze, levelOf, LEVEL_T };
+  return { mulberry32, solveLine, propagate, lineClues, countUnknown, verify, ensureUnique, PICS, sceneOf, busy, SCENES, SHAPES, CATS, picture, stamp, rasterFit, linesOk, patchLines, skyline, forest, mountains, ornament, mandala, sweater, carpet, fractal, maze, build, generate, hint, blobs, analyze, levelOf, LEVEL_T };
 })();
 if (typeof module !== 'undefined') module.exports = NG;
 
@@ -1900,7 +1986,7 @@ if (typeof module !== 'undefined') module.exports = NG;
 const $ = (id) => document.getElementById(id);
 const NGSRC = $('ng-engine').textContent;
 const NG = new Function(NGSRC + '\nreturn NG;')();
-const BUILD = '1.38 · 21 октября 2026';
+const BUILD = '1.39 · 21 октября 2026';
 const CAT = { small: 'Малые (до 10)', medium: 'Средние (11–25)', large: 'Большие (26–50)', huge: 'Огромные (51–100)' };
 const catOf = (R, C) => { const m = Math.max(R, C); return m <= 10 ? 'small' : m <= 25 ? 'medium' : m <= 50 ? 'large' : 'huge'; };
 const LS = { save: 'nonogramSave', stats: 'nonogramStats', prefs: 'nonogramPrefs' };
@@ -2146,7 +2232,7 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceDown = false; });
 
 /* ---------- меню ---------- */
-const catFilter = () => (['Животные', 'Птицы', 'Насекомые', 'Подводный мир', 'Предметы', 'Природа', 'Еда', 'Здания', 'Транспорт', 'Праздники', 'Фантастика', 'Спорт', 'Игры', 'Сказки', 'Профессии', 'Знаки зодиака', 'Космос', 'Музыка', 'Город', 'Дом', 'Одежда', 'Сад и огород', 'Погода и символы', 'Пираты и море', 'Достопримечательности', 'Сцены'].includes(prefs.cat) ? prefs.cat : 'Всё'), modeFilter = () => (prefs.cat === 'Узоры' ? 'blobs' : undefined);
+const catFilter = () => (['Животные', 'Птицы', 'Насекомые', 'Подводный мир', 'Предметы', 'Природа', 'Еда', 'Здания', 'Транспорт', 'Праздники', 'Фантастика', 'Спорт', 'Игры', 'Сказки', 'Профессии', 'Знаки зодиака', 'Космос', 'Музыка', 'Город', 'Дом', 'Одежда', 'Сад и огород', 'Погода и символы', 'Пираты и море', 'Достопримечательности', 'Сюжетные', 'Сцены'].includes(prefs.cat) ? prefs.cat : 'Всё'), modeFilter = () => (prefs.cat === 'Узоры' ? 'blobs' : undefined);
 const currentOpts = () => ({ rows: prefs.h, cols: prefs.w, cat: catFilter(), mode: modeFilter(), level: prefs.level });
 function openGame() { document.body.classList.add('playing'); $('menu').classList.add('hidden'); $('game').classList.remove('hidden'); $('pause-ov').style.display = S.paused ? 'flex' : 'none'; $('pause-btn').textContent = S.paused ? 'Играть' : 'Пауза'; $('timer').textContent = fmt(S.time); lastTick = performance.now(); readColors(); hover = { r: -1, c: -1 };
   if (S.R * S.C >= 2500 && !S.hintShown && !S.time) { S.hintShown = true; setTimeout(() => toast('Большое поле: Ctrl + колесо или два пальца меняют масштаб, карта в углу помогает не заблудиться'), 600); }
@@ -2159,6 +2245,7 @@ function renderMenu() {
   $('tut-offer').classList.toggle('hidden', !!(sv || solvedAny || later || (window.PGTutor && PGTutor.isDone('nonogram'))));
   if (sv) { let f = 0; for (let i = 0; i < sv.cells.length; i++) if (sv.cells[i] === '1') f++; $('resume-info').textContent = `${sv.daily ? 'Кроссворд дня' : sv.C + ' × ' + sv.R} · ${fmt(sv.time)} · закрашено ${f}`; }
   const tk = todayKey(), d = stats.daily; $('daily-info').innerHTML = d.results[tk] != null ? `Решён сегодня за ${fmt(d.results[tk])} ✓ · серия: ${d.streak}` : (d.streak && d.last === dayBefore(tk) ? `Не прерывайте серию: ${d.streak} дн. подряд` : 'Одна и та же картинка для всех, 15 × 15, каждый день новая'); $('daily-btn').textContent = d.results[tk] != null ? 'Ещё раз' : 'Играть';
+  $('cat-note').classList.toggle('hidden', prefs.cat !== 'Сюжетные');
   $('lv-name').textContent = LV_NAMES[prefs.level - 1]; $('lv-info').textContent = LV_INFO[prefs.level - 1]; document.querySelectorAll('#lv-chips button').forEach((b) => b.classList.toggle('on', +b.dataset.l === prefs.level));
   $('w-range').value = prefs.w; $('h-range').value = prefs.h; $('w-out').textContent = prefs.w; $('h-out').textContent = prefs.h; $('square').checked = prefs.square; $('cat').value = prefs.cat;
   const cells = prefs.w * prefs.h; $('size-name').textContent = prefs.w + ' × ' + prefs.h; $('size-info').textContent = cells <= 100 ? 'для разминки' : cells <= 625 ? 'на 5–20 минут' : cells <= 2500 ? 'на час и больше' : cells <= 6400 ? 'на несколько часов' : 'марафон: сохраняется, решайте частями';
@@ -2169,7 +2256,7 @@ const setSize = (w, h) => { prefs.w = w; prefs.h = h; store(LS.prefs, prefs); re
 $('w-range').oninput = () => { const v = +$('w-range').value; setSize(v, prefs.square ? v : prefs.h); }; $('h-range').oninput = () => { const v = +$('h-range').value; setSize(prefs.square ? v : prefs.w, v); };
 $('square').onchange = () => { prefs.square = $('square').checked; if (prefs.square) prefs.h = prefs.w; store(LS.prefs, prefs); renderMenu(); };
 document.querySelectorAll('#size-presets button').forEach((b) => { b.onclick = () => { prefs.square = true; setSize(+b.dataset.n, +b.dataset.n); }; });
-$('cat').onchange = () => { prefs.cat = $('cat').value; store(LS.prefs, prefs); };
+$('cat').onchange = () => { prefs.cat = $('cat').value; store(LS.prefs, prefs); $('cat-note').classList.toggle('hidden', prefs.cat !== 'Сюжетные'); };
 document.querySelectorAll('#lv-chips button').forEach((b) => { b.onclick = () => { prefs.level = +b.dataset.l; store(LS.prefs, prefs); renderMenu(); }; });
 $('new-btn').onclick = () => startNew(currentOpts());
 $('daily-btn').onclick = () => { const dk = todayKey(); startNew({ rows: 15, cols: 15, seed: (Number(dk.replace(/-/g, '')) ^ 0x4e6f6e6f) >>> 0, tries: 10, deterministic: true, daily: true, dateKey: dk, level: 3 }); };
@@ -2222,7 +2309,7 @@ if (window.PGRec) PGRec.config({
   boards: () => { const tk = todayKey(), yk = dayBefore(tk); return [{ id: 'jd_' + tk, title: 'Сегодня', sub: 'Кроссворд дня · ' + tk }, { id: 'jd_' + yk, title: 'Вчера', sub: 'Кроссворд дня · ' + yk }]; },
   pending: () => { const d = stats.daily, out = [], lim = keyOf(new Date(Date.now() - 14 * 86400000)); for (const k of Object.keys(d.results || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'jd_' + k, time: d.results[k], hints: d.hints[k] }); return out; },
   local: (id) => { const k = id.slice(3), d = stats.daily; return d && d.results[k] != null && d.hints && d.hints[k] != null ? { time: d.results[k], hints: d.hints[k] } : null; } });
-window.__ng = { get S() { return S; }, NG, startNew, resume, undo, redo, hint, check, get prefs() { return prefs; }, get stats() { return stats; }, get view() { return view; }, todayKey, showMenu, setPause, startTutorial, cellBox, fitView, zoomAt, render, metrics, cellAt, blockDone, lineDone, commit, verifyNow: () => (S ? NG.verify(S.R, S.C, S.sol, S.rowC, S.colC, Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), [])) : null), get size() { return { VW, VH }; } };
+window.__ng = { get S() { return S; }, NG, startNew, resume, undo, redo, hint, check, get prefs() { return prefs; }, get stats() { return stats; }, get view() { return view; }, todayKey, showMenu, setPause, startTutorial, cellBox, NG, fitView, zoomAt, render, metrics, cellAt, blockDone, lineDone, commit, verifyNow: () => (S ? NG.verify(S.R, S.C, S.sol, S.rowC, S.colC, Array.from(S.given).reduce((a, g, i) => (g ? a.concat(i) : a), [])) : null), get size() { return { VW, VH }; } };
 readColors(); renderMenu();
 })();
 </script>
