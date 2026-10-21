@@ -5628,7 +5628,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '1.37 · 15 октября 2026';
+        const BUILD = '1.38 · 21 октября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
