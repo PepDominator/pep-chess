@@ -788,6 +788,12 @@
     ] },
     sudoku: { title: 'Правила судоку', icon: '🔢', sections: [
       ['Цель игры', ['Заполнить сетку 9×9 цифрами от 1 до 9 так, чтобы в <b>каждой строке</b>, <b>каждом столбце</b> и <b>каждом блоке 3×3</b> каждая цифра встречалась ровно один раз. У каждой головоломки одно-единственное решение — угадывать не нужно.']],
+      ['Как решать без угадывания', [
+        '<b>Приём 1. «Куда встанет цифра».</b> Возьмите квадрат 3×3, где не хватает, например, цифры 5. Каждая пятёрка на поле запрещает 5 в своей строке и своём столбце. Отметьте в квадрате закрытые клетки — если свободной осталась одна, пятёрка стоит там. То же можно делать для строки и столбца.',
+        '<b>Приём 2. «Что подходит в клетку».</b> Выберите пустую клетку и перечислите цифры, которые уже есть в её строке, её столбце и её квадрате. Если вместе там восемь разных цифр — девятая и есть ответ.',
+        '<b>Если вариантов два или три</b> — не ставьте цифру наугад: запишите кандидатов заметками и вернитесь к клетке позже. Как только рядом появится одна из этих цифр, лишний вариант отпадёт.',
+        'Удобный порядок: начните с цифр, которых на поле уже много (их видно по маленьким числам на панели), и для каждой пройдитесь приёмом 1 по всем квадратам. Застряли — кнопка «Подсказка» всегда показывает следующий <b>логичный</b> ход, а «🎓 Обучение» в меню разбирает оба приёма по шагам.'
+      ]],
       ['Как играть в приложении', [
         'Выберите клетку, потом цифру на панели внизу (или на клавиатуре). Под цифрой на панели мелко показано, сколько таких цифр ещё осталось поставить.',
         '<b>Заметки</b> — режим мелких цифр-кандидатов: так вы записываете, что может стоять в клетке. «Все заметки» заполняет кандидаты автоматически.',
@@ -884,18 +890,25 @@
     async path(points, onPoint) { const h = cur && cur.hand; if (!h) return; h.style.opacity = '1'; for (let i = 0; i < points.length; i++) { const p = points[i]; h.style.left = p.x + 'px'; h.style.top = p.y + 'px'; await wait(i === 0 ? 350 : 260); if (onPoint) onPoint(i, p); } await wait(500); h.style.opacity = '0'; },
   };
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const inter = (a, b) => { if (!a || !b) return 0; const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y); return w > 0 && h > 0 ? w * h : 0; };
   function place() {
     if (!cur) return; const st = cur.lesson.steps[cur.i], r = st.target ? st.target() : null, sh = cur.shade, b = cur.bubble, av = st.avoid ? st.avoid() : r;
+    const clear = (st.clear ? [].concat(st.clear()) : []).filter(Boolean);                    // то, что игрок должен нажимать: закрывать нельзя
     if (r) { sh.classList.remove('none'); Object.assign(sh.style, { left: (r.x - 4) + 'px', top: (r.y - 4) + 'px', width: (r.w + 8) + 'px', height: (r.h + 8) + 'px' }); } else { sh.classList.add('none'); sh.removeAttribute('style'); }
     const vw = innerWidth, vh = innerHeight; b.style.width = ''; let bw = b.offsetWidth, bh = b.offsetHeight, x, y;
+    const badness = (px, py, w, h) => { const box = { x: px, y: py, w, h }; return inter(box, r) * 20 + clear.reduce((s2, c) => s2 + inter(box, c) * 20, 0) + inter(box, av) + ((px < 0 || py < 0 || px + w > vw || py + h > vh) ? 1e9 : 0); };
     if (!av) { x = (vw - bw) / 2; y = Math.max(12, vh * 0.18); }
     else {
-      const right = vw - (av.x + av.w) - 28, left = av.x - 28, below = vh - (av.y + av.h) - 22, above = av.y - 22;
-      if (right >= 250) { const w = Math.min(380, right); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x + av.w + 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }          // сбоку от поля, если есть место
-      else if (left >= 250) { const w = Math.min(380, left); b.style.width = w + 'px'; bh = b.offsetHeight; x = av.x - w - 18; y = Math.min(vh - bh - 8, Math.max(8, (r || av).y + (r || av).h / 2 - bh / 2)); }
-      else if (below >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y + av.h + 14; }
-      else if (above >= bh) { x = Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)); y = av.y - bh - 14; }
-      else { const t = r || av; x = Math.min(vw - bw - 12, Math.max(12, t.x + t.w / 2 - bw / 2)); const bl = t.y + t.h + 14, ab = t.y - bh - 14; y = bl + bh < vh - 8 ? bl : ab > 8 ? ab : Math.max(8, vh - bh - 8); }       // места нет — хотя бы не закрываем подсвеченное
+      const right = vw - (av.x + av.w) - 28, left = av.x - 28, below = vh - (av.y + av.h) - 22, above = av.y - 22, tc = r || av, opts = [];
+      if (right >= 250) { const w = Math.min(380, right); opts.push([av.x + av.w + 18, Math.min(vh - bh - 8, Math.max(8, tc.y + tc.h / 2 - bh / 2)), w]); }
+      if (left >= 250) { const w = Math.min(380, left); opts.push([av.x - w - 18, Math.min(vh - bh - 8, Math.max(8, tc.y + tc.h / 2 - bh / 2)), w]); }
+      if (below >= bh) opts.push([Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)), av.y + av.h + 14, 0]);
+      if (above >= bh) opts.push([Math.min(vw - bw - 12, Math.max(12, av.x + av.w / 2 - bw / 2)), av.y - bh - 14, 0]);
+      const bl = tc.y + tc.h + 14, ab = tc.y - bh - 14, cx = Math.min(vw - bw - 12, Math.max(12, tc.x + tc.w / 2 - bw / 2));
+      opts.push([cx, bl, 0], [cx, ab, 0], [8, 8, 0], [vw - bw - 8, 8, 0], [8, vh - bh - 8, 0], [vw - bw - 8, vh - bh - 8, 0], [(vw - bw) / 2, 8, 0], [(vw - bw) / 2, vh - bh - 8, 0]);
+      let best = null;
+      for (const [px, py, w] of opts) { const ww = w || bw, hh = w ? (b.style.width = w + 'px', b.offsetHeight) : (b.style.width = '', bh); const sc = badness(px, py, ww, hh); if (!best || sc < best.sc - 0.5) best = { sc, px, py, w }; if (sc === 0) break; }
+      b.style.width = best.w ? best.w + 'px' : ''; x = best.px; y = best.py;
     }
     b.style.left = x + 'px'; b.style.top = y + 'px';
   }
@@ -1283,7 +1296,7 @@ if (typeof module !== 'undefined') module.exports = CW;
 const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 const DICT = JSON.parse($('cw-dict').textContent);
-const BUILD = '1.39 · 21 октября 2026';
+const BUILD = '1.41 · 22 октября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
