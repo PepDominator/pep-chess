@@ -319,6 +319,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     sudokuSave: { m: 'lww', slow: true }, crosswordSave: { m: 'lww', slow: true }, crosswordWeekSave: { m: 'lww', slow: true },
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
     nonogramPrefs: { m: 'lww' }, nonogramSave: { m: 'lww', slow: true }, nonogramStats: { m: 'stats' },
+    stoStats: { m: 'lww' },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
     pgAch: { m: 'ach' },                                                                      // достижения: объединяются, счётчики — максимум
     chessCurrent: { m: 'lww', delay: 2500 }, draughtsCurrent: { m: 'lww', delay: 2500 }       // идущая партия с компьютером: продолжить можно на другом устройстве
@@ -495,7 +496,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   let backend = null, user = null, friends = [], inbox = [], unsub = null, h2h = null, pendingChallenge = null;
   const emit = () => window.dispatchEvent(new Event('pgf-change'));
   // корень сайта: адрес без последнего «сегмента-игры»; учитывает вложенные адреса вроде /pep-chess/ (имя репозитория на GitHub Pages)
-  const root = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
+  const root = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
 
   // ---------- настоящий бэкенд на Firestore ----------
   async function firebaseBackend() {
@@ -770,6 +771,10 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     ['jpexp', 'Японские кроссворды', '🧠', 'Эксперт нонограмм', 'Решите японский кроссворд уровня «Эксперт» от 15 × 15', 1, (c) => Math.min(1, C(c, 'jpx'))],
     ['jpall', 'Японские кроссворды', '🪜', 'Все ступени', 'Решите по японскому кроссворду на каждом из пяти уровней сложности', 5, (c) => (C(c, 'jpl1') > 0) + (C(c, 'jpl2') > 0) + (C(c, 'jpl3') > 0) + (C(c, 'jpl4') > 0) + (C(c, 'jpl5') > 0)],
     ['jpclean', 'Японские кроссворды', '🪄', 'Чистое решение', 'Решите японский кроссворд от 20 × 20 без подсказок', 1, (c) => Math.min(1, C(c, 'jpclean'))],
+    ['sto1', 'Сто к одному', '🎤', 'Первый эфир', 'Сыграйте полную игру «Сто к одному»', 1, (c) => Math.min(1, C(c, 'sto'))],
+    ['sto10', 'Сто к одному', '📺', 'Завсегдатай студии', 'Сыграйте 10 полных игр «Сто к одному»', 10, (c) => Math.min(10, C(c, 'sto'))],
+    ['stofull', 'Сто к одному', '🧾', 'Всё табло', 'Откройте все шесть ответов табло в одном раунде', 1, (c) => Math.min(1, C(c, 'stofull'))],
+    ['stobig', 'Сто к одному', '🏆', 'Большая игра', 'Наберите 200 очков в большой игре', 1, (c) => Math.min(1, C(c, 'stobig'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -845,7 +850,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 @keyframes pgaIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
-  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
+  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
   function toasts(list) {
     if (!document.body) return; let box = document.getElementById('pga-toasts'); if (!box) { box = document.createElement('div'); box.id = 'pga-toasts'; document.body.appendChild(box); }
     if (list.length > 3) { const rest = list.length - 2; list = list.slice(0, 2).concat([{ id: 'more', icon: '🏅', title: 'Ещё достижений: ' + rest, desc: 'Нажмите, чтобы посмотреть все' }]); }          // не заваливаем экран, если достижений сразу много
@@ -888,7 +893,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   }
   // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
   function touchDay(s, game, d) {
-    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16 }[game]; if (!gbit) return;
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32 }[game]; if (!gbit) return;
     const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
     if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
     const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
@@ -904,8 +909,8 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
-    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
-    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts';
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto';
     if (completion) {
       touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
       if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
@@ -916,6 +921,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }
     if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
     if (game === 'challenge') inc('chal');
@@ -1003,6 +1009,20 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
         'Пока ходит соперник, можно задать <b>предварительный ход</b>. Номера клеток можно скрыть в настройках.',
         'Компьютер: движок Scan 3.1, уровни от 1 до 8. По сети можно играть с другом по ссылке или вызвать его из раздела «Друзья».',
         'Партию с компьютером можно продолжить после перезагрузки страницы и на другом устройстве (вход через Google).']]
+    ] },
+    sto: { title: 'Правила «Сто к одному»', icon: '🎤', sections: [
+      ['Цель игры', ['Каждый вопрос задали ста людям. На табло спрятаны шесть самых популярных ответов, а рядом — сколько человек так ответили. Ваша задача — угадать как можно больше ответов и набрать очки.']],
+      ['Раунды', [
+        '<b>Простая, двойная и тройная игра.</b> Называйте ответы по одному. Угаданный ответ открывается на табло и приносит столько очков, сколько людей так ответили; в двойной игре очки удваиваются, в тройной — утраиваются. Ответа нет на табло — промах; после трёх промахов раунд заканчивается.',
+        '<b>Игра наоборот.</b> Здесь выгоднее всего самые <b>редкие</b> ответы: последний ответ табло стоит 240 очков, первый — всего 15.',
+        '<b>Большая игра.</b> Пять вопросов и два круга: 25 секунд на первый и 30 секунд на второй. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
+      ]],
+      ['Как вводить ответы', [
+        'Пишите обычными словами: игра понимает разные формы слова («поцелуи», «поцелуй»), прощает опечатки в длинных словах и лишнее слово («нежный поцелуй»). Варианты, которые на табло записаны через косую черту, засчитываются оба.',
+        'Если ответ совсем другой по смыслу, но совпадает ключевое слово, игра может его засчитать — так же поступил бы и ведущий.'
+      ]],
+      ['Тренировка', ['В режиме тренировки нет промахов и очков: угадывайте сколько хотите, а если не получается — откройте все ответы.']],
+      ['Откуда вопросы', ['Вопросы и ответы взяты из обзоров выпусков телеигры 2013–2022 годов на сайте gameshows.ru.']]
     ] },
     sudoku: { title: 'Правила судоку', icon: '🔢', sections: [
       ['Цель игры', ['Заполнить сетку 9×9 цифрами от 1 до 9 так, чтобы в <b>каждой строке</b>, <b>каждом столбце</b> и <b>каждом блоке 3×3</b> каждая цифра встречалась ровно один раз. У каждой головоломки одно-единственное решение — угадывать не нужно.']],
@@ -5641,7 +5661,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '1.41 · 22 октября 2026';
+        const BUILD = '2.0 · 22 октября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
