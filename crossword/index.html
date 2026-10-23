@@ -192,6 +192,7 @@
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
     nonogramPrefs: { m: 'lww' }, nonogramSave: { m: 'lww', slow: true }, nonogramStats: { m: 'stats' },
     stoStats: { m: 'lww' },
+    wordsStats: { m: 'lww' }, wordsPrefs: { m: 'lww' }, wordsSave: { m: 'lww', slow: true },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
     pgAch: { m: 'ach' },                                                                      // достижения: объединяются, счётчики — максимум
     chessCurrent: { m: 'lww', delay: 2500 }, draughtsCurrent: { m: 'lww', delay: 2500 }       // идущая партия с компьютером: продолжить можно на другом устройстве
@@ -557,6 +558,10 @@
     ['sto10', 'Сто к одному', '📺', 'Завсегдатай студии', 'Сыграйте 10 полных игр «Сто к одному»', 10, (c) => Math.min(10, C(c, 'sto'))],
     ['stofull', 'Сто к одному', '🧾', 'Всё табло', 'Откройте все шесть ответов табло в одном раунде', 1, (c) => Math.min(1, C(c, 'stofull'))],
     ['stobig', 'Сто к одному', '🏆', 'Большая игра', 'Наберите 200 очков в большой игре', 1, (c) => Math.min(1, C(c, 'stobig'))],
+    ['ws1', 'Кроссвычерк', '🔍', 'Зоркий глаз', 'Решите первый кроссвычерк', 1, (c) => Math.min(1, C(c, 'ws'))],
+    ['wsexp', 'Кроссвычерк', '🦅', 'Орлиный взгляд', 'Решите кроссвычерк уровня «Эксперт»', 1, (c) => Math.min(1, C(c, 'wsexp'))],
+    ['wssecret', 'Кроссвычерк', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов', 10, (c) => Math.min(10, C(c, 'wssecret'))],
+    ['wsdaily7', 'Кроссвычерк', '🗓', 'Неделя слов', 'Решайте кроссвычерк дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -632,7 +637,7 @@
 @keyframes pgaIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
-  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
+  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
   function toasts(list) {
     if (!document.body) return; let box = document.getElementById('pga-toasts'); if (!box) { box = document.createElement('div'); box.id = 'pga-toasts'; document.body.appendChild(box); }
     if (list.length > 3) { const rest = list.length - 2; list = list.slice(0, 2).concat([{ id: 'more', icon: '🏅', title: 'Ещё достижений: ' + rest, desc: 'Нажмите, чтобы посмотреть все' }]); }          // не заваливаем экран, если достижений сразу много
@@ -675,7 +680,7 @@
   }
   // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
   function touchDay(s, game, d) {
-    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32 }[game]; if (!gbit) return;
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64 }[game]; if (!gbit) return;
     const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
     if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
     const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
@@ -691,8 +696,8 @@
       if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
-    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
-    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto';
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words';
     if (completion) {
       touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
       if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
@@ -703,6 +708,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); }
     if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }
     if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
@@ -792,12 +798,26 @@
         'Компьютер: движок Scan 3.1, уровни от 1 до 8. По сети можно играть с другом по ссылке или вызвать его из раздела «Друзья».',
         'Партию с компьютером можно продолжить после перезагрузки страницы и на другом устройстве (вход через Google).']]
     ] },
+    words: { title: 'Правила кроссвычерка', icon: '🔍', sections: [
+      ['Цель игры', ['В сетке букв спрятаны слова из списка. Найдите и вычеркните их все. Буквы, которые останутся невычеркнутыми, по порядку — слева направо, сверху вниз — сложатся в <b>тайное слово</b>.']],
+      ['Как вычёркивать', [
+        'Проведите пальцем или мышью от первой буквы слова до последней. Можно и иначе: нажать на первую букву (она подсветится), потом на последнюю.',
+        'Слова идут только по прямой. На лёгком уровне — слева направо и сверху вниз, на среднем ещё по диагонали, на сложном — и задом наперёд, на «Эксперте» — во всех восьми направлениях.',
+        'Одна буква может принадлежать двум словам — там, где они пересекаются.'
+      ]],
+      ['Советы', [
+        'Ищите сначала длинные слова и редкие буквы: Ъ, Щ, Ф, Э, Ю сразу бросаются в глаза.',
+        'На трудных уровнях проверяйте слово в обе стороны — оно может читаться справа налево или снизу вверх.',
+        '«Подсказка» мигнёт первой буквой одного из ненайденных слов. Тайное слово засчитывается в статистику, только если вы разгадали его сами.'
+      ]],
+      ['Кроссвычерк дня', ['Каждый день — один и тот же кроссвычерк для всех, средний уровень. Решайте каждый день, чтобы росла серия.']]
+    ] },
     sto: { title: 'Правила «Сто к одному»', icon: '🎤', sections: [
       ['Цель игры', ['Каждый вопрос задали ста людям. На табло спрятаны шесть самых популярных ответов, а рядом — сколько человек так ответили. Ваша задача — угадать как можно больше ответов и набрать очки.']],
       ['Раунды', [
         '<b>Простая, двойная и тройная игра.</b> Называйте ответы по одному. Угаданный ответ открывается на табло и приносит столько очков, сколько людей так ответили; в двойной игре очки удваиваются, в тройной — утраиваются. Ответа нет на табло — промах; после трёх промахов раунд заканчивается.',
         '<b>Игра наоборот.</b> Здесь выгоднее всего самые <b>редкие</b> ответы: последний ответ табло стоит 240 очков, первый — всего 15.',
-        '<b>Большая игра.</b> Пять вопросов и два круга: 25 секунд на первый и 30 секунд на второй. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
+        '<b>Большая игра.</b> Пять вопросов и два круга: 90 секунд на первый и 100 секунд на второй — хватит, чтобы спокойно набрать ответы. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
       ]],
       ['Как вводить ответы', [
         'Пишите обычными словами: игра понимает разные формы слова («поцелуи», «поцелуй»), прощает опечатки в длинных словах и лишнее слово («нежный поцелуй»). Варианты, которые на табло записаны через косую черту, засчитываются оба.',
@@ -1316,7 +1336,7 @@ if (typeof module !== 'undefined') module.exports = CW;
 const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 const DICT = JSON.parse($('cw-dict').textContent);
-const BUILD = '2.0 · 22 октября 2026';
+const BUILD = '2.1 · 23 октября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
