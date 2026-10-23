@@ -1,7 +1,7 @@
 {
-  "name": "Кроссвычерк — Pep Games",
-  "short_name": "Кроссвычерк",
-  "description": "Найдите спрятанные слова, а из оставшихся букв сложите тайное слово",
+  "name": "Филворд — Pep Games",
+  "short_name": "Филворд",
+  "description": "Филворд и поиск слов: найдите все спрятанные слова",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

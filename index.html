@@ -648,10 +648,11 @@
     ['sto10', 'Сто к одному', '📺', 'Завсегдатай студии', 'Сыграйте 10 полных игр «Сто к одному»', 10, (c) => Math.min(10, C(c, 'sto'))],
     ['stofull', 'Сто к одному', '🧾', 'Всё табло', 'Откройте все шесть ответов табло в одном раунде', 1, (c) => Math.min(1, C(c, 'stofull'))],
     ['stobig', 'Сто к одному', '🏆', 'Большая игра', 'Наберите 200 очков в большой игре', 1, (c) => Math.min(1, C(c, 'stobig'))],
-    ['ws1', 'Кроссвычерк', '🔍', 'Зоркий глаз', 'Решите первый кроссвычерк', 1, (c) => Math.min(1, C(c, 'ws'))],
-    ['wsexp', 'Кроссвычерк', '🦅', 'Орлиный взгляд', 'Решите кроссвычерк уровня «Эксперт»', 1, (c) => Math.min(1, C(c, 'wsexp'))],
-    ['wssecret', 'Кроссвычерк', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов', 10, (c) => Math.min(10, C(c, 'wssecret'))],
-    ['wsdaily7', 'Кроссвычерк', '🗓', 'Неделя слов', 'Решайте кроссвычерк дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
+    ['ws1', 'Филворд', '🔍', 'Зоркий глаз', 'Решите первый филворд или «Поиск слов»', 1, (c) => Math.min(1, C(c, 'ws'))],
+    ['wsexp', 'Филворд', '🦅', 'Орлиный взгляд', 'Решите филворд или «Поиск слов» уровня «Эксперт»', 1, (c) => Math.min(1, C(c, 'wsexp'))],
+    ['wsnolist', 'Филворд', '🙈', 'Вслепую', 'Решите филворд от среднего уровня без списка слов', 1, (c) => Math.min(1, C(c, 'wsnolist'))],
+    ['wssecret', 'Филворд', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов в «Поиске слов»', 10, (c) => Math.min(10, C(c, 'wssecret'))],
+    ['wsdaily7', 'Филворд', '🗓', 'Неделя слов', 'Решайте филворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -798,7 +799,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
-    if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); }
+    if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); if (d.mode === 'fil' && d.noList && d.level >= 2 && !d.hints) inc('wsnolist'); }
     if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }
     if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
@@ -888,33 +889,36 @@
         'Компьютер: движок Scan 3.1, уровни от 1 до 8. По сети можно играть с другом по ссылке или вызвать его из раздела «Друзья».',
         'Партию с компьютером можно продолжить после перезагрузки страницы и на другом устройстве (вход через Google).']]
     ] },
-    words: { title: 'Правила кроссвычерка', icon: '🔍', sections: [
-      ['Цель игры', ['В сетке букв спрятаны слова из списка. Найдите и вычеркните их все. Буквы, которые останутся невычеркнутыми, по порядку — слева направо, сверху вниз — сложатся в <b>тайное слово</b>.']],
-      ['Как вычёркивать', [
-        'Проведите пальцем или мышью от первой буквы слова до последней. Можно и иначе: нажать на первую букву (она подсветится), потом на последнюю.',
-        'Слова идут только по прямой. На лёгком уровне — слева направо и сверху вниз, на среднем ещё по диагонали, на сложном — и задом наперёд, на «Эксперте» — во всех восьми направлениях.',
-        'Одна буква может принадлежать двум словам — там, где они пересекаются.'
+    words: { title: 'Правила филворда', icon: '🔍', sections: [
+      ['Филворд', [
+        'Все буквы сетки поделены между словами из списка. Слово читается по <b>соседним клеткам</b> — вверх, вниз, влево или вправо, — поэтому петляет зигзагом. Каждая буква принадлежит ровно одному слову, и когда все слова найдены, сетка заполнена целиком.',
+        'Проведите пальцем или мышью от первой буквы слова через все остальные по порядку. Если ошиблись, ведите обратно — последняя буква снимется. Можно и касаниями: нажимайте буквы одну за другой; повторное касание последней буквы сбрасывает выделение.'
+      ]],
+      ['Поиск слов', [
+        'Второй режим: слова спрятаны по прямой. На лёгком уровне — слева направо и сверху вниз, на среднем ещё по диагонали, на сложном и задом наперёд, на «Эксперте» — во всех восьми направлениях. Буквы могут принадлежать двум словам сразу.',
+        'Когда все слова вычеркнуты, оставшиеся буквы по порядку — слева направо, сверху вниз — складываются в <b>тайное слово</b>.'
       ]],
       ['Советы', [
-        'Ищите сначала длинные слова и редкие буквы: Ъ, Щ, Ф, Э, Ю сразу бросаются в глаза.',
-        'На трудных уровнях проверяйте слово в обе стороны — оно может читаться справа налево или снизу вверх.',
-        '«Подсказка» мигнёт первой буквой одного из ненайденных слов. Тайное слово засчитывается в статистику, только если вы разгадали его сами.'
+        'В филворде начинайте с углов: у угловой буквы всего два соседа, и путь слова через неё угадывается легче.',
+        'Ищите редкие буквы — Ъ, Щ, Ф, Э, Ю — и длинные слова.',
+        'Хотите сложнее — уберите в меню галочку «Показывать список слов»: искать придётся по одной теме.',
+        '«Подсказка» показывает начало одного из слов; без подсказок и без списка игра засчитывается особо.'
       ]],
-      ['Кроссвычерк дня', ['Каждый день — один и тот же кроссвычерк для всех, средний уровень. Решайте каждый день, чтобы росла серия.']]
+      ['Филворд дня', ['Каждый день — один и тот же филворд для всех, средний уровень. Решайте каждый день, чтобы росла серия.']]
     ] },
     sto: { title: 'Правила «Сто к одному»', icon: '🎤', sections: [
       ['Цель игры', ['Каждый вопрос задали ста людям. На табло спрятаны шесть самых популярных ответов, а рядом — сколько человек так ответили. Ваша задача — угадать как можно больше ответов и набрать очки.']],
       ['Раунды', [
         '<b>Простая, двойная и тройная игра.</b> Называйте ответы по одному. Угаданный ответ открывается на табло и приносит столько очков, сколько людей так ответили; в двойной игре очки удваиваются, в тройной — утраиваются. Ответа нет на табло — промах; после трёх промахов раунд заканчивается.',
         '<b>Игра наоборот.</b> Здесь выгоднее всего самые <b>редкие</b> ответы: последний ответ табло стоит 240 очков, первый — всего 15.',
-        '<b>Большая игра.</b> Пять вопросов и два круга: 90 секунд на первый и 100 секунд на второй — хватит, чтобы спокойно набрать ответы. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
+        '<b>Большая игра.</b> Пять вопросов и два круга по 100 секунд — хватит, чтобы спокойно набрать ответы. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
       ]],
       ['Как вводить ответы', [
         'Пишите обычными словами: игра понимает разные формы слова («поцелуи», «поцелуй»), прощает опечатки в длинных словах и лишнее слово («нежный поцелуй»). Варианты, которые на табло записаны через косую черту, засчитываются оба.',
         'Если ответ совсем другой по смыслу, но совпадает ключевое слово, игра может его засчитать — так же поступил бы и ведущий.'
       ]],
       ['Тренировка', ['В режиме тренировки нет промахов и очков: угадывайте сколько хотите, а если не получается — откройте все ответы.']],
-      ['Откуда вопросы', ['Вопросы и ответы взяты из обзоров выпусков телеигры 2013–2022 годов на сайте gameshows.ru.']]
+      ['Откуда вопросы', ['Вопросы и ответы взяты из обзоров выпусков телеигры 2013–2026 годов на сайте gameshows.ru.']]
     ] },
     sudoku: { title: 'Правила судоку', icon: '🔢', sections: [
       ['Цель игры', ['Заполнить сетку 9×9 цифрами от 1 до 9 так, чтобы в <b>каждой строке</b>, <b>каждом столбце</b> и <b>каждом блоке 3×3</b> каждая цифра встречалась ровно один раз. У каждой головоломки одно-единственное решение — угадывать не нужно.']],
@@ -1121,7 +1125,7 @@ h1 { font-weight:400; font-style:italic; font-size:clamp(34px, 6vw, 56px); line-
 .lead { color:var(--muted); font-size:clamp(14px, 2vw, 16px); max-width:520px; margin:0 auto; line-height:1.6; }
 
 /* ---------- карточки ---------- */
-.wsmini { background:var(--k-panel) !important; background-image:none !important; } .wsmini svg { width:100%; height:100%; } .ws-l { fill:var(--k-nt); font:700 20px Georgia,serif; } .ws-c1 { fill:#E9C46A; opacity:.6; } .ws-c2 { fill:var(--k-gt); opacity:.28; } .ws-c3 { fill:#B5483C; opacity:.25; }
+.fwmini { background:var(--k-panel) !important; background-image:none !important; } .fwmini svg { width:100%; height:100%; } .fw-e { fill:var(--k-surf); stroke:#C7CAB4; stroke-width:1.2; } .fw-l { fill:var(--k-nt); font:700 19px Georgia,serif; } .fw-lw { fill:var(--k-panel); font:700 19px Georgia,serif; } .fw-p { fill:none; stroke:rgba(255,255,255,.5); stroke-width:5; stroke-linecap:round; stroke-linejoin:round; }
 .stomini { background:var(--k-panel) !important; background-image:none !important; display:flex; align-items:center; justify-content:center; } .stomini svg { width:100%; height:100%; } .sto-tile { fill:#E8E9DE; stroke:#C7CAB4; stroke-width:1.5; } .sto-open { fill:var(--k-surf); stroke:var(--k-nt); stroke-width:1.6; } .sto-ink { fill:var(--k-nt); } .sto-pts { fill:var(--k-gt); } .sto-num { fill:var(--k-nt); } .sto-t { fill:var(--k-nt); font:700 24px Georgia,serif; letter-spacing:2px; } .sto-x { stroke:#B5483C; stroke-width:3; stroke-linecap:round; fill:none; }
 .ngmini { background:var(--k-panel) !important; background-image:none !important; display:flex; align-items:center; justify-content:center; }
 .ngm { width:100%; height:100%; } .ngm .ngbg { fill:var(--k-surf); } .ngm .ngf { fill:var(--k-nt); } .ngm .ngl { stroke:var(--k-line2); stroke-width:1.5; fill:none; } .ngm .ngt { fill:var(--k-mu); font:700 22px Georgia,serif; }
@@ -1347,7 +1351,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini" id="mini-chess"></div></div>
       <div class="info">
         <h2 class="serif">Шахматы</h2>
-        <p>Классика против Stockfish 19 с подсветкой ходов, премувами и разбором партий. Или играйте с другом по ссылке.</p>
+        <p>Вечная игра королей. Сыграйте с компьютером любой силы — от новичка до гроссмейстера, — разберите партию ход за ходом или позовите друга по ссылке.</p>
         <div class="chips"><b>Stockfish 19</b><b>По сети</b><b>Анализ</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-chess"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -1357,7 +1361,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini" id="mini-draughts"></div></div>
       <div class="info">
         <h2 class="serif">Международные шашки</h2>
-        <p>Доска 10×10, летающие дамки и правило большинства. Соперник — тот же движок Scan 3.1, что на lidraughts.org.</p>
+        <p>Большая доска 10 × 10, дальнобойные дамки и правило большинства. Соперник по силам — от новичка до мастера, а можно сыграть и с другом по сети.</p>
         <div class="chips"><b>Scan 3.1</b><b>10×10</b><b>По сети</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-draughts"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -1367,7 +1371,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini sdk" id="mini-sudoku" style="background-image:none"></div></div>
       <div class="info">
         <h2 class="serif">Судоку</h2>
-        <p>Четыре уровня сложности, заметки, подсказки и «судоку дня» — одна головоломка для всех. Генерируется прямо на вашем устройстве.</p>
+        <p>Девять цифр и чистая логика. Головоломки от лёгких до по-настоящему трудных, заметки для сложных мест и одна общая задача дня для всех.</p>
         <div class="chips"><b>4 уровня</b><b>Заметки</b><b>Судоку дня</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-sudoku"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -1377,7 +1381,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini cwm" id="mini-crossword" style="background-image:none"></div></div>
       <div class="info">
         <h2 class="serif">Кроссворды</h2>
-        <p>Классические кроссворды на русском языке: 30 тем, размер от 6 до 150 слов, пять уровней сложности, подсказки, «кроссворд дня» и суперкроссворд недели. Более 10 000 слов с вопросами.</p>
+        <p>Неспешный вечер со словами: тематические кроссворды любого размера — от короткой разминки за чашкой чая до большого суперкроссворда недели.</p>
         <div class="chips"><b>30 тем</b><b>6–150 слов</b><b>5 уровней</b><b>Суперкроссворд</b></div>
         <div class="foot"><span class="count" id="cnt-crossword"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -1387,7 +1391,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini ngmini"><svg viewBox="0 0 250 250" class="ngm" aria-hidden="true"><rect x="64" y="64" width="170" height="170" class="ngbg"/><rect x="100" y="66" width="30" height="30" class="ngf"/><rect x="168" y="66" width="30" height="30" class="ngf"/><rect x="66" y="100" width="30" height="30" class="ngf"/><rect x="100" y="100" width="30" height="30" class="ngf"/><rect x="134" y="100" width="30" height="30" class="ngf"/><rect x="168" y="100" width="30" height="30" class="ngf"/><rect x="202" y="100" width="30" height="30" class="ngf"/><rect x="66" y="134" width="30" height="30" class="ngf ngh" style="--d:0.00s"/><rect x="100" y="134" width="30" height="30" class="ngf ngh" style="--d:0.09s"/><rect x="134" y="134" width="30" height="30" class="ngf ngh" style="--d:0.18s"/><rect x="168" y="134" width="30" height="30" class="ngf ngh" style="--d:0.27s"/><rect x="202" y="134" width="30" height="30" class="ngf ngh" style="--d:0.36s"/><rect x="100" y="168" width="30" height="30" class="ngf ngh" style="--d:0.45s"/><rect x="134" y="168" width="30" height="30" class="ngf ngh" style="--d:0.54s"/><rect x="168" y="168" width="30" height="30" class="ngf ngh" style="--d:0.63s"/><rect x="134" y="202" width="30" height="30" class="ngf ngh" style="--d:0.72s"/><path d="M64 64V234" class="ngl"/><path d="M64 64H234" class="ngl"/><path d="M98 64V234" class="ngl"/><path d="M64 98H234" class="ngl"/><path d="M132 64V234" class="ngl"/><path d="M64 132H234" class="ngl"/><path d="M166 64V234" class="ngl"/><path d="M64 166H234" class="ngl"/><path d="M200 64V234" class="ngl"/><path d="M64 200H234" class="ngl"/><path d="M234 64V234" class="ngl"/><path d="M64 234H234" class="ngl"/><text x="32" y="88" text-anchor="end" class="ngt dn">1</text><path class="ngx on" style="--l:18;--d:0.00s" d="M18 80H34"/><text x="54" y="88" text-anchor="end" class="ngt dn">1</text><path class="ngx on" style="--l:18;--d:0.00s" d="M40 80H56"/><text x="54" y="122" text-anchor="end" class="ngt dn">5</text><path class="ngx on" style="--l:18;--d:0.00s" d="M40 114H56"/><text x="54" y="156" text-anchor="end" class="ngt hd" style="--d:0.60s">5</text><path class="ngx" style="--l:18;--d:0.60s" d="M40 148H56"/><text x="54" y="190" text-anchor="end" class="ngt hd" style="--d:0.95s">3</text><path class="ngx" style="--l:18;--d:0.95s" d="M40 182H56"/><text x="54" y="224" text-anchor="end" class="ngt hd" style="--d:1.30s">1</text><path class="ngx" style="--l:18;--d:1.30s" d="M40 216H56"/><text x="81" y="54" text-anchor="middle" class="ngt hd" style="--d:1.50s">2</text><path class="ngx" style="--l:18;--d:1.50s" d="M72 46H90"/><text x="115" y="54" text-anchor="middle" class="ngt hd" style="--d:1.60s">4</text><path class="ngx" style="--l:18;--d:1.60s" d="M106 46H124"/><text x="149" y="54" text-anchor="middle" class="ngt hd" style="--d:1.70s">4</text><path class="ngx" style="--l:18;--d:1.70s" d="M140 46H158"/><text x="183" y="54" text-anchor="middle" class="ngt hd" style="--d:1.80s">4</text><path class="ngx" style="--l:18;--d:1.80s" d="M174 46H192"/><text x="217" y="54" text-anchor="middle" class="ngt hd" style="--d:1.90s">2</text><path class="ngx" style="--l:18;--d:1.90s" d="M208 46H226"/></svg></div></div>
       <div class="info">
         <h2 class="serif">Японские кроссворды</h2>
-        <p>Числа по краям подсказывают, сколько клеток подряд закрасить. Угадайте картинку: больше 300 сюжетов, сцены и узоры, поля от 5 × 5 до 100 × 100, картинка дня, подсказки. Большие поля можно решать частями: всё сохраняется.</p>
+        <p>Закрашивайте клетки по числам — и из сетки проступает картинка. Сотни сюжетов, от крошечных полей на пару минут до огромных полотен на много вечеров.</p>
         <div class="chips"><b>5×5 — 100×100</b><b>Картинка дня</b><b>Подсказки</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-nonogram"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -1396,17 +1400,17 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
       <div class="art"><div class="mini stomini"><svg viewBox="0 0 250 250" aria-hidden="true"><text x="125" y="46" text-anchor="middle" class="sto-t">100 : 1</text><rect x="34" y="62" width="182" height="24" class="sto-open"/><rect x="44" y="71" width="88" height="6" class="sto-ink"/><rect x="180" y="66" width="28" height="16" class="sto-pts"/><rect x="34" y="92" width="182" height="24" class="sto-tile"/><circle cx="125" cy="104" r="8" class="sto-num"/><rect x="34" y="122" width="182" height="24" class="sto-open"/><rect x="44" y="131" width="70" height="6" class="sto-ink"/><rect x="180" y="126" width="28" height="16" class="sto-pts"/><rect x="34" y="152" width="182" height="24" class="sto-tile"/><circle cx="125" cy="164" r="8" class="sto-num"/><rect x="34" y="182" width="182" height="24" class="sto-tile"/><circle cx="125" cy="194" r="8" class="sto-num"/><rect x="34" y="212" width="182" height="24" class="sto-tile"/><circle cx="125" cy="224" r="8" class="sto-num"/></svg></div></div>
       <div class="info">
         <h2 class="serif">Сто к одному</h2>
-        <p>Угадайте самые популярные ответы на вопросы, которые задали ста людям. Больше двух тысяч настоящих вопросов из выпусков: простая, двойная и тройная игра, «Игра наоборот» и большая игра на время.</p>
-        <div class="chips"><b>2400+ вопросов</b><b>Большая игра</b><b>Тренировка</b><b>Офлайн</b></div>
+        <p>Угадайте, что ответили сто человек. Тысячи настоящих вопросов из телеигры, азарт большой игры на время и спокойная тренировка без спешки.</p>
+        <div class="chips"><b>3800 вопросов</b><b>Большая игра</b><b>Тренировка</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-sto"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
-    <a class="card" href="words/" id="card-words" aria-label="Играть в кроссвычерк">
-      <div class="art"><div class="mini wsmini"><svg viewBox="0 0 250 250" aria-hidden="true"><rect x="32" y="114" width="186" height="26" rx="13" class="ws-c1"/><rect x="32" y="52" width="26" height="150" rx="13" class="ws-c2"/><rect x="155" y="52" width="26" height="88" rx="13" class="ws-c3"/><text x="48" y="70" text-anchor="middle" class="ws-l">К</text><text x="79" y="70" text-anchor="middle" class="ws-l">О</text><text x="110" y="70" text-anchor="middle" class="ws-l">Т</text><text x="141" y="70" text-anchor="middle" class="ws-l">А</text><text x="172" y="70" text-anchor="middle" class="ws-l">П</text><text x="203" y="70" text-anchor="middle" class="ws-l">Л</text><text x="48" y="101" text-anchor="middle" class="ws-l">Р</text><text x="79" y="101" text-anchor="middle" class="ws-l">Ы</text><text x="110" y="101" text-anchor="middle" class="ws-l">Б</text><text x="141" y="101" text-anchor="middle" class="ws-l">А</text><text x="172" y="101" text-anchor="middle" class="ws-l">Л</text><text x="203" y="101" text-anchor="middle" class="ws-l">И</text><text x="48" y="132" text-anchor="middle" class="ws-l">О</text><text x="79" y="132" text-anchor="middle" class="ws-l">Л</text><text x="110" y="132" text-anchor="middle" class="ws-l">Е</text><text x="141" y="132" text-anchor="middle" class="ws-l">Н</text><text x="172" y="132" text-anchor="middle" class="ws-l">Ь</text><text x="203" y="132" text-anchor="middle" class="ws-l">С</text><text x="48" y="163" text-anchor="middle" class="ws-l">Т</text><text x="79" y="163" text-anchor="middle" class="ws-l">Е</text><text x="110" y="163" text-anchor="middle" class="ws-l">К</text><text x="141" y="163" text-anchor="middle" class="ws-l">И</text><text x="172" y="163" text-anchor="middle" class="ws-l">С</text><text x="203" y="163" text-anchor="middle" class="ws-l">А</text><text x="48" y="194" text-anchor="middle" class="ws-l">В</text><text x="79" y="194" text-anchor="middle" class="ws-l">О</text><text x="110" y="194" text-anchor="middle" class="ws-l">Л</text><text x="141" y="194" text-anchor="middle" class="ws-l">К</text><text x="172" y="194" text-anchor="middle" class="ws-l">И</text><text x="203" y="194" text-anchor="middle" class="ws-l">М</text><text x="48" y="225" text-anchor="middle" class="ws-l">Ё</text><text x="79" y="225" text-anchor="middle" class="ws-l">Ж</text><text x="110" y="225" text-anchor="middle" class="ws-l">И</text><text x="141" y="225" text-anchor="middle" class="ws-l">К</text><text x="172" y="225" text-anchor="middle" class="ws-l">А</text><text x="203" y="225" text-anchor="middle" class="ws-l">Ш</text></svg></div></div>
+    <a class="card" href="words/" id="card-words" aria-label="Играть в филворд">
+      <div class="art"><div class="mini fwmini"><svg viewBox="0 0 250 250" aria-hidden="true"><rect x="38" y="38" width="34" height="34" class="fw-f" style="fill:var(--k-gt)"/><text x="55" y="62" text-anchor="middle" class="fw-lw">К</text><rect x="74" y="38" width="34" height="34" class="fw-f" style="fill:var(--k-gt)"/><text x="91" y="62" text-anchor="middle" class="fw-lw">О</text><rect x="110" y="38" width="34" height="34" class="fw-f" style="fill:var(--k-gt)"/><text x="127" y="62" text-anchor="middle" class="fw-lw">Ш</text><rect x="146" y="38" width="34" height="34" class="fw-f" style="fill:var(--k-gt)"/><text x="163" y="62" text-anchor="middle" class="fw-lw">К</text><rect x="182" y="38" width="34" height="34" class="fw-f" style="fill:var(--k-gt)"/><text x="199" y="62" text-anchor="middle" class="fw-lw">А</text><rect x="38" y="74" width="34" height="34" class="fw-e"/><text x="55" y="98" text-anchor="middle" class="fw-l">С</text><rect x="74" y="74" width="34" height="34" class="fw-e"/><text x="91" y="98" text-anchor="middle" class="fw-l">Л</text><rect x="110" y="74" width="34" height="34" class="fw-e"/><text x="127" y="98" text-anchor="middle" class="fw-l">О</text><rect x="146" y="74" width="34" height="34" class="fw-e"/><text x="163" y="98" text-anchor="middle" class="fw-l">Н</text><rect x="182" y="74" width="34" height="34" class="fw-f" style="fill:#C99A2E"/><text x="199" y="98" text-anchor="middle" class="fw-lw">В</text><rect x="38" y="110" width="34" height="34" class="fw-e"/><text x="55" y="134" text-anchor="middle" class="fw-l">Л</text><rect x="74" y="110" width="34" height="34" class="fw-e"/><text x="91" y="134" text-anchor="middle" class="fw-l">И</text><rect x="110" y="110" width="34" height="34" class="fw-e"/><text x="127" y="134" text-anchor="middle" class="fw-l">С</text><rect x="146" y="110" width="34" height="34" class="fw-e"/><text x="163" y="134" text-anchor="middle" class="fw-l">А</text><rect x="182" y="110" width="34" height="34" class="fw-f" style="fill:#C99A2E"/><text x="199" y="134" text-anchor="middle" class="fw-lw">О</text><rect x="38" y="146" width="34" height="34" class="fw-f" style="fill:#B5483C"/><text x="55" y="170" text-anchor="middle" class="fw-lw">М</text><rect x="74" y="146" width="34" height="34" class="fw-f" style="fill:#B5483C"/><text x="91" y="170" text-anchor="middle" class="fw-lw">Ь</text><rect x="110" y="146" width="34" height="34" class="fw-e"/><text x="127" y="170" text-anchor="middle" class="fw-l">Б</text><rect x="146" y="146" width="34" height="34" class="fw-e"/><text x="163" y="170" text-anchor="middle" class="fw-l">Р</text><rect x="182" y="146" width="34" height="34" class="fw-f" style="fill:#C99A2E"/><text x="199" y="170" text-anchor="middle" class="fw-lw">Л</text><rect x="38" y="182" width="34" height="34" class="fw-f" style="fill:#B5483C"/><text x="55" y="206" text-anchor="middle" class="fw-lw">Ы</text><rect x="74" y="182" width="34" height="34" class="fw-f" style="fill:#B5483C"/><text x="91" y="206" text-anchor="middle" class="fw-lw">Ш</text><rect x="110" y="182" width="34" height="34" class="fw-e"/><text x="127" y="206" text-anchor="middle" class="fw-l">О</text><rect x="146" y="182" width="34" height="34" class="fw-e"/><text x="163" y="206" text-anchor="middle" class="fw-l">Б</text><rect x="182" y="182" width="34" height="34" class="fw-f" style="fill:#C99A2E"/><text x="199" y="206" text-anchor="middle" class="fw-lw">К</text><polyline points="55,55 91,55 127,55 163,55 199,55" class="fw-p"/><polyline points="199,91 199,127 199,163 199,199" class="fw-p"/><polyline points="55,163 55,199 91,199 91,163" class="fw-p"/></svg></div></div>
       <div class="info">
-        <h2 class="serif">Кроссвычерк</h2>
-        <p>Найдите и вычеркните спрятанные слова — по прямой, по диагонали и задом наперёд. Оставшиеся буквы сложатся в тайное слово. Четыре уровня, темы и кроссвычерк дня.</p>
-        <div class="chips"><b>4 уровня</b><b>Тайное слово</b><b>Кроссвычерк дня</b><b>Офлайн</b></div>
+        <h2 class="serif">Филворд</h2>
+        <p>Слова прячутся в сетке букв и петляют зигзагом — найдите их все, пока сетка не заполнится целиком. А в режиме «Поиск слов» они идут по прямой и складываются в тайное слово.</p>
+        <div class="chips"><b>2 режима</b><b>5 уровней</b><b>Филворд дня</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-words"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
@@ -1423,7 +1427,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.1 · 23 октября 2026</div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.2 · 23 октября 2026</div>
   </footer>
 </div>
 
@@ -1476,7 +1480,7 @@ paintMini('mini-draughts', DRAUGHTS, [
 function count(key) { try { const n = JSON.parse(localStorage.getItem(key) || '[]').length; return n ? `Сыграно партий: ${n}` : 'Новая игра'; } catch (e) { return ''; } }
 document.getElementById('cnt-chess').textContent = count('chessGameHistory');
 document.getElementById('cnt-draughts').textContent = count('draughtsHistory');
-try { const st = JSON.parse(localStorage.getItem('wordsStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-words').textContent = n ? `Решено: ${n}` : 'Новая игра'; } catch (e) {}
+try { const st = JSON.parse(localStorage.getItem('wordsStats') || '{}'), n = Object.values(st.solved || {}).concat(Object.values((st.fil || {}).solved || {})).reduce((a, b) => a + b, 0); document.getElementById('cnt-words').textContent = n ? `Решено: ${n}` : 'Новая игра'; } catch (e) {}
 try { const st = JSON.parse(localStorage.getItem('stoStats') || '{}'); document.getElementById('cnt-sto').textContent = st.games ? `Сыграно игр: ${st.games}` : 'Новая игра'; } catch (e) {}
 try { const st = JSON.parse(localStorage.getItem('crosswordStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-crossword').textContent = n ? `Разгадано: ${n}` : 'Новая игра'; } catch (e) { document.getElementById('cnt-crossword').textContent = ''; }
 try { const st = JSON.parse(localStorage.getItem('sudokuStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-sudoku').textContent = n ? `Решено: ${n}` : 'Новая игра'; } catch (e) { document.getElementById('cnt-sudoku').textContent = ''; }

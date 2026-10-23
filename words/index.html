@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#EEF0E7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Кроссвычерк</title>
+<title>Филворд</title>
 <script>
 // ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
 (function () {
@@ -558,10 +558,11 @@
     ['sto10', 'Сто к одному', '📺', 'Завсегдатай студии', 'Сыграйте 10 полных игр «Сто к одному»', 10, (c) => Math.min(10, C(c, 'sto'))],
     ['stofull', 'Сто к одному', '🧾', 'Всё табло', 'Откройте все шесть ответов табло в одном раунде', 1, (c) => Math.min(1, C(c, 'stofull'))],
     ['stobig', 'Сто к одному', '🏆', 'Большая игра', 'Наберите 200 очков в большой игре', 1, (c) => Math.min(1, C(c, 'stobig'))],
-    ['ws1', 'Кроссвычерк', '🔍', 'Зоркий глаз', 'Решите первый кроссвычерк', 1, (c) => Math.min(1, C(c, 'ws'))],
-    ['wsexp', 'Кроссвычерк', '🦅', 'Орлиный взгляд', 'Решите кроссвычерк уровня «Эксперт»', 1, (c) => Math.min(1, C(c, 'wsexp'))],
-    ['wssecret', 'Кроссвычерк', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов', 10, (c) => Math.min(10, C(c, 'wssecret'))],
-    ['wsdaily7', 'Кроссвычерк', '🗓', 'Неделя слов', 'Решайте кроссвычерк дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
+    ['ws1', 'Филворд', '🔍', 'Зоркий глаз', 'Решите первый филворд или «Поиск слов»', 1, (c) => Math.min(1, C(c, 'ws'))],
+    ['wsexp', 'Филворд', '🦅', 'Орлиный взгляд', 'Решите филворд или «Поиск слов» уровня «Эксперт»', 1, (c) => Math.min(1, C(c, 'wsexp'))],
+    ['wsnolist', 'Филворд', '🙈', 'Вслепую', 'Решите филворд от среднего уровня без списка слов', 1, (c) => Math.min(1, C(c, 'wsnolist'))],
+    ['wssecret', 'Филворд', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов в «Поиске слов»', 10, (c) => Math.min(10, C(c, 'wssecret'))],
+    ['wsdaily7', 'Филворд', '🗓', 'Неделя слов', 'Решайте филворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -708,7 +709,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
-    if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); }
+    if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); if (d.mode === 'fil' && d.noList && d.level >= 2 && !d.hints) inc('wsnolist'); }
     if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }
     if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
     if (game === 'friend') inc('friend');
@@ -798,33 +799,36 @@
         'Компьютер: движок Scan 3.1, уровни от 1 до 8. По сети можно играть с другом по ссылке или вызвать его из раздела «Друзья».',
         'Партию с компьютером можно продолжить после перезагрузки страницы и на другом устройстве (вход через Google).']]
     ] },
-    words: { title: 'Правила кроссвычерка', icon: '🔍', sections: [
-      ['Цель игры', ['В сетке букв спрятаны слова из списка. Найдите и вычеркните их все. Буквы, которые останутся невычеркнутыми, по порядку — слева направо, сверху вниз — сложатся в <b>тайное слово</b>.']],
-      ['Как вычёркивать', [
-        'Проведите пальцем или мышью от первой буквы слова до последней. Можно и иначе: нажать на первую букву (она подсветится), потом на последнюю.',
-        'Слова идут только по прямой. На лёгком уровне — слева направо и сверху вниз, на среднем ещё по диагонали, на сложном — и задом наперёд, на «Эксперте» — во всех восьми направлениях.',
-        'Одна буква может принадлежать двум словам — там, где они пересекаются.'
+    words: { title: 'Правила филворда', icon: '🔍', sections: [
+      ['Филворд', [
+        'Все буквы сетки поделены между словами из списка. Слово читается по <b>соседним клеткам</b> — вверх, вниз, влево или вправо, — поэтому петляет зигзагом. Каждая буква принадлежит ровно одному слову, и когда все слова найдены, сетка заполнена целиком.',
+        'Проведите пальцем или мышью от первой буквы слова через все остальные по порядку. Если ошиблись, ведите обратно — последняя буква снимется. Можно и касаниями: нажимайте буквы одну за другой; повторное касание последней буквы сбрасывает выделение.'
+      ]],
+      ['Поиск слов', [
+        'Второй режим: слова спрятаны по прямой. На лёгком уровне — слева направо и сверху вниз, на среднем ещё по диагонали, на сложном и задом наперёд, на «Эксперте» — во всех восьми направлениях. Буквы могут принадлежать двум словам сразу.',
+        'Когда все слова вычеркнуты, оставшиеся буквы по порядку — слева направо, сверху вниз — складываются в <b>тайное слово</b>.'
       ]],
       ['Советы', [
-        'Ищите сначала длинные слова и редкие буквы: Ъ, Щ, Ф, Э, Ю сразу бросаются в глаза.',
-        'На трудных уровнях проверяйте слово в обе стороны — оно может читаться справа налево или снизу вверх.',
-        '«Подсказка» мигнёт первой буквой одного из ненайденных слов. Тайное слово засчитывается в статистику, только если вы разгадали его сами.'
+        'В филворде начинайте с углов: у угловой буквы всего два соседа, и путь слова через неё угадывается легче.',
+        'Ищите редкие буквы — Ъ, Щ, Ф, Э, Ю — и длинные слова.',
+        'Хотите сложнее — уберите в меню галочку «Показывать список слов»: искать придётся по одной теме.',
+        '«Подсказка» показывает начало одного из слов; без подсказок и без списка игра засчитывается особо.'
       ]],
-      ['Кроссвычерк дня', ['Каждый день — один и тот же кроссвычерк для всех, средний уровень. Решайте каждый день, чтобы росла серия.']]
+      ['Филворд дня', ['Каждый день — один и тот же филворд для всех, средний уровень. Решайте каждый день, чтобы росла серия.']]
     ] },
     sto: { title: 'Правила «Сто к одному»', icon: '🎤', sections: [
       ['Цель игры', ['Каждый вопрос задали ста людям. На табло спрятаны шесть самых популярных ответов, а рядом — сколько человек так ответили. Ваша задача — угадать как можно больше ответов и набрать очки.']],
       ['Раунды', [
         '<b>Простая, двойная и тройная игра.</b> Называйте ответы по одному. Угаданный ответ открывается на табло и приносит столько очков, сколько людей так ответили; в двойной игре очки удваиваются, в тройной — утраиваются. Ответа нет на табло — промах; после трёх промахов раунд заканчивается.',
         '<b>Игра наоборот.</b> Здесь выгоднее всего самые <b>редкие</b> ответы: последний ответ табло стоит 240 очков, первый — всего 15.',
-        '<b>Большая игра.</b> Пять вопросов и два круга: 90 секунд на первый и 100 секунд на второй — хватит, чтобы спокойно набрать ответы. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
+        '<b>Большая игра.</b> Пять вопросов и два круга по 100 секунд — хватит, чтобы спокойно набрать ответы. Во втором круге нельзя повторять свои ответы из первого. Наберите за оба круга 200 очков — и большая игра выиграна.'
       ]],
       ['Как вводить ответы', [
         'Пишите обычными словами: игра понимает разные формы слова («поцелуи», «поцелуй»), прощает опечатки в длинных словах и лишнее слово («нежный поцелуй»). Варианты, которые на табло записаны через косую черту, засчитываются оба.',
         'Если ответ совсем другой по смыслу, но совпадает ключевое слово, игра может его засчитать — так же поступил бы и ведущий.'
       ]],
       ['Тренировка', ['В режиме тренировки нет промахов и очков: угадывайте сколько хотите, а если не получается — откройте все ответы.']],
-      ['Откуда вопросы', ['Вопросы и ответы взяты из обзоров выпусков телеигры 2013–2022 годов на сайте gameshows.ru.']]
+      ['Откуда вопросы', ['Вопросы и ответы взяты из обзоров выпусков телеигры 2013–2026 годов на сайте gameshows.ru.']]
     ] },
     sudoku: { title: 'Правила судоку', icon: '🔢', sections: [
       ['Цель игры', ['Заполнить сетку 9×9 цифрами от 1 до 9 так, чтобы в <b>каждой строке</b>, <b>каждом столбце</b> и <b>каждом блоке 3×3</b> каждая цифра встречалась ровно один раз. У каждой головоломки одно-единственное решение — угадывать не нужно.']],
@@ -982,8 +986,8 @@
 
 </script>
 <script>
-// Движок «Кроссвычерк»: слова темы плотно укладываются в сетку по прямым линиям,
-// оставшиеся клетки по порядку чтения образуют тайное слово.
+// Движок «Филворд»: классический филворд (слова-змейки) и «Поиск слов» (слова по прямым линиям,
+// оставшиеся клетки по порядку чтения образуют тайное слово).
 (function (root) {
   'use strict';
   const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -993,7 +997,8 @@
     { name: 'Лёгкий', R: 8, C: 8, dirs: [E, S], maxL: 2, maxLen: 8, secret: [4, 7] },
     { name: 'Средний', R: 10, C: 10, dirs: [E, S, SE], maxL: 3, maxLen: 10, secret: [5, 8] },
     { name: 'Сложный', R: 12, C: 12, dirs: [E, S, SE, NE, W, N], maxL: 4, maxLen: 11, secret: [5, 9] },
-    { name: 'Эксперт', R: 15, C: 15, dirs: [E, S, SE, NE, W, N, NW, SW], maxL: 5, maxLen: 12, secret: [6, 10] }];
+    { name: 'Эксперт', R: 15, C: 15, dirs: [E, S, SE, NE, W, N, NW, SW], maxL: 5, maxLen: 12, secret: [6, 10] },
+    { name: 'Гигант', R: 18, C: 18, dirs: [E, S, SE, NE, W, N, NW, SW], maxL: 5, maxLen: 12, secret: [7, 12] }];
   const norm = (w) => w.toUpperCase().replace(/Ё/g, 'Е');
   function shuffle(a, rnd) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   // сколько раз слово читается в сетке по разрешённым направлениям
@@ -1056,7 +1061,70 @@
     const holes = p.grid.map((_, i) => i).filter((i) => !used.has(i));
     return p.words.every((x) => x.cells.map((i) => p.grid[i]).join('') === x.w && countIn(p.grid, p.R, p.C, x.w, dirs) === 1) && holes.map((i) => p.grid[i]).join('') === p.secret.w;
   }
-  const api = { LEVELS, generate, verify, countIn, mulberry32, norm };
+
+  // ================= классический филворд: слова-змейки заполняют всю сетку =================
+  const FIL = [null,
+    { name: 'Лёгкий', R: 5, C: 5, min: 3, max: 6, maxL: 2 },
+    { name: 'Средний', R: 7, C: 7, min: 4, max: 8, maxL: 3 },
+    { name: 'Сложный', R: 9, C: 9, min: 4, max: 9, maxL: 4 },
+    { name: 'Эксперт', R: 11, C: 11, min: 4, max: 10, maxL: 5 },
+    { name: 'Гигант', R: 14, C: 14, min: 4, max: 11, maxL: 5 }];
+  // случайный гамильтонов путь по сетке (алгоритм «backbite»): проходит через каждую клетку ровно один раз
+  function hamPath(R, C, rnd) {
+    let path = []; for (let r = 0; r < R; r++) for (let k = 0; k < C; k++) path.push(r * C + (r % 2 ? C - 1 - k : k));
+    const nb = (i) => { const r = (i / C) | 0, c = i % C, o = []; if (r) o.push(i - C); if (r < R - 1) o.push(i + C); if (c) o.push(i - 1); if (c < C - 1) o.push(i + 1); return o; };
+    const pos = new Int32Array(R * C); const reindex = () => path.forEach((v, i) => { pos[v] = i; }); reindex();
+    for (let it = 0, N = R * C * 60; it < N; it++) {
+      if (rnd() < 0.5) path.reverse(), reindex();
+      const end = path[path.length - 1], ns = nb(end), n = ns[Math.floor(rnd() * ns.length)], i = pos[n];
+      if (i === path.length - 2) continue;
+      const tail = path.slice(i + 1).reverse(); path = path.slice(0, i + 1).concat(tail); for (let k = i + 1; k < path.length; k++) pos[path[k]] = k;
+    }
+    return path;
+  }
+  // разбить N клеток на куски длиной от min до max (предпочитая средние)
+  function cutLengths(N, min, max, rnd) {
+    for (let t = 0; t < 200; t++) {
+      const out = []; let left = N;
+      while (left > 0) {
+        if (left <= max && (left >= min)) { if (rnd() < 0.5 || left - min < min) { out.push(left); left = 0; break; } }
+        const opts = []; for (let L = min; L <= Math.min(max, left); L++) { const rest = left - L; if (rest === 0 || rest >= min) opts.push(L); }
+        if (!opts.length) break; const L = opts[Math.floor((rnd() + rnd()) / 2 * opts.length)]; out.push(L); left -= L;
+      }
+      if (left === 0) return out;
+    }
+    return null;
+  }
+  function generateFil(dict, o) {
+    const L = FIL[o.level || 2], R = L.R, C = L.C, rnd = mulberry32((o.seed >>> 0) || 1), all = !o.theme || o.theme === 'Всё';
+    const ok = (x) => x.l <= L.maxL && x.w.length >= L.min && x.w.length <= L.max;
+    const byLen = (arr) => { const m = {}; for (const w of [...new Set(arr.map((x) => norm(x.w)))].filter((w) => /^[А-Я]+$/.test(w))) (m[w.length] = m[w.length] || []).push(w); return m; };
+    const theme = byLen(dict.filter((x) => ok(x) && (all || x.t === o.theme))), other = all ? {} : byLen(dict.filter((x) => ok(x) && x.t !== o.theme));
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const path = hamPath(R, C, rnd), lens = cutLengths(R * C, L.min, L.max, rnd); if (!lens) continue;
+      const used = new Set(), words = []; let at = 0, outside = 0, fail = false;
+      for (const len of lens) {
+        const tp = (theme[len] || []).filter((w) => !used.has(w)), op = (other[len] || []).filter((w) => !used.has(w));
+        let w = tp.length ? tp[Math.floor(rnd() * tp.length)] : null; if (!w && op.length) { w = op[Math.floor(rnd() * op.length)]; outside++; }
+        if (!w) { fail = true; break; }
+        used.add(w); let cells = path.slice(at, at + len); if (rnd() < 0.5) cells = cells.reverse(); at += len; words.push({ w, cells });
+      }
+      if (fail) continue;
+      // не допускаем, чтобы одно слово было началом другого (тогда выделение было бы неоднозначным)
+      if (words.some((a) => words.some((b) => a !== b && b.w.startsWith(a.w)))) continue;
+      const grid = new Array(R * C).fill(''); words.forEach((x) => x.cells.forEach((i, k) => { grid[i] = x.w[k]; }));
+      words.sort((a, b) => a.w.localeCompare(b.w, 'ru'));
+      return { kind: 'fil', level: o.level || 2, R, C, grid, words, theme: o.theme || 'Всё', seed: o.seed, mixed: outside > 0, outside };
+    }
+    return null;
+  }
+  // проверка филворда: все клетки заняты ровно одним словом, клетки каждого слова соседние по стороне
+  function verifyFil(p) {
+    const seen = new Array(p.R * p.C).fill(0);
+    for (const x of p.words) { if (x.cells.map((i) => p.grid[i]).join('') !== x.w) return false; for (let k = 0; k < x.cells.length; k++) { seen[x.cells[k]]++; if (k) { const a = x.cells[k - 1], b = x.cells[k]; const adj = Math.abs(a - b) === p.C || (Math.abs(a - b) === 1 && ((a / p.C) | 0) === ((b / p.C) | 0)); if (!adj) return false; } } }
+    return seen.every((n) => n === 1);
+  }
+  const api = { LEVELS, FIL, generate, generateFil, verify, verifyFil, hamPath, countIn, mulberry32, norm };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.WS = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1086,7 +1154,8 @@ h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0
 .card.offer { background:#FBF3D6; border-color:#D9C58E; }
 .rec-btn { display:block; width:100%; border:1px dashed var(--border); background:none; color:var(--muted); padding:10px; font-weight:600; font-size:13.5px; cursor:pointer; margin:8px 0; } .rec-btn:hover { color:var(--text); background:var(--k-hover); }
 .title { font-size:13px; color:var(--muted); margin:18px 0 8px; text-align:center; }
-.seg { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border); } .seg button { border:none; border-right:1px solid var(--border); background:var(--k-surf); padding:10px 4px; cursor:pointer; font-size:13px; color:var(--text); } .seg button:last-child { border-right:none; } .seg button small { display:block; color:var(--muted); font-size:11px; } .seg button.on { background:var(--green); color:#fff; } .seg button.on small { color:#D8E3DB; }
+.seg.two { grid-template-columns:1fr 1fr; } .chk { display:block; margin-top:12px; font-size:14px; cursor:pointer; } .chk small { display:block; color:var(--muted); font-size:12px; margin:2px 0 0 24px; } .chk input { margin-right:8px; }
+.seg { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--border); } .seg button { border:none; border-right:1px solid var(--border); background:var(--k-surf); padding:10px 4px; cursor:pointer; font-size:13px; color:var(--text); } .seg button:last-child { border-right:none; } .seg button small { display:block; color:var(--muted); font-size:11px; } .seg button.on { background:var(--green); color:#fff; } .seg button.on small { color:#D8E3DB; }
 select { width:100%; padding:10px; border:1px solid var(--border); background:var(--k-surf); font-size:14px; color:var(--text); }
 .big { display:block; width:100%; padding:15px; border:none; font-size:16px; font-weight:700; cursor:pointer; background:var(--green); color:#fff; box-shadow:0 6px 16px rgba(59,93,74,.25); margin-top:16px; }
 table.stats { width:100%; border-collapse:collapse; font-size:13.5px; } table.stats td { border-bottom:1px solid #ECECE2; padding:7px 4px; } table.stats td:last-child { text-align:right; font-weight:700; }
@@ -1103,7 +1172,8 @@ table.stats { width:100%; border-collapse:collapse; font-size:13.5px; } table.st
 #board .c { width:var(--cs); height:var(--cs); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:calc(var(--cs) * 0.5); color:var(--navy); position:relative; z-index:2; }
 #board .c.sel { background:rgba(233,196,106,.55); } #board .c.pend { background:rgba(233,196,106,.85); }
 #board .c.hint { animation:blink 1s ease 3; } @keyframes blink { 50% { background:rgba(233,196,106,.9); } }
-#board .c.secret { color:#fff; background:var(--gold); } #board .c.dim { color:var(--k-mu2); }
+#board .c.secret { color:#fff; background:var(--gold); } #board .c.dim { color:var(--k-mu2); } #board .c.own { color:#fff; } #board .c.path { background:rgba(233,196,106,.65); }
+#fl { position:absolute; inset:8px; pointer-events:none; z-index:3; } #fl polyline { fill:none; stroke:rgba(255,255,255,.55); stroke-linecap:round; stroke-linejoin:round; }
 #caps { position:absolute; inset:8px; pointer-events:none; z-index:1; }
 .cap { position:absolute; border-radius:999px; opacity:.38; transform-origin:0 50%; }
 .side { width:290px; flex-shrink:0; }
@@ -1119,7 +1189,9 @@ table.stats { width:100%; border-collapse:collapse; font-size:13.5px; } table.st
 #win .big-num { font-size:40px; font-weight:800; color:var(--navy); margin:6px 0; } #win .lines { font-size:14px; color:var(--muted); line-height:1.7; }
 #toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#2A2E24; color:#fff; padding:10px 16px; font-size:14px; z-index:60; opacity:0; transition:opacity .2s; pointer-events:none; } #toast.show { opacity:1; }
 @media (max-width:860px) { .play { flex-direction:column; align-items:center; } .side { width:100%; max-width:560px; } }
-@media (max-width:560px) { body { padding:8px; } #bwrap { padding:5px; } #caps { inset:5px; } #wlist { font-size:13px; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #board .c:not(.own) { color:#DCE3F2; } }
+:root[data-theme="dark"] #board .c:not(.own) { color:#DCE3F2; }
+@media (max-width:560px) { body { padding:8px; } #bwrap { padding:5px; } #caps, #fl { inset:5px; } #wlist { font-size:13px; } }
 /*PGDARK-VARS*/
 :root{--k-bg:#EEF0E7;--k-panel:#FDFDFA;--k-surf:#F3F2EA;--k-hover:#EAEADF;--k-line:#D9DBCC;--k-line2:#B7BAA5;--k-tx:#2A2E24;--k-mu:#6E7568;--k-mu2:#9A9D8E;--k-gt:#3B5D4A;--k-rt:#A23B33;--k-nt:#2F3A56;--k-warm:#F3EEDD;color-scheme:light}
 html[data-theme="dark"]{--k-bg:#131815;--k-panel:#1C221E;--k-surf:#252C27;--k-hover:#2E372F;--k-line:#39443C;--k-line2:#4D5A50;--k-tx:#E5E9DE;--k-mu:#A5AC9B;--k-mu2:#7E8677;--k-gt:#8CC3A0;--k-rt:#E8887E;--k-nt:#A9B9E0;--k-warm:#2B291E;--bg:#131815;--panel:#1C221E;--side-bg:#1C221E;--text:#E5E9DE;--muted:#A5AC9B;--ink-muted:#A5AC9B;--border:#39443C;--highlight:#2B3A2E;--green2:#8CC3A0;color-scheme:dark}
@@ -1161,19 +1233,22 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 <div id="menu" class="modal">
   <a class="back-hub" href="../">← Все игры</a>
   <div class="brand">Pep Games</div>
-  <h2 class="serif">Кроссвычерк</h2>
-  <p class="sub">Найдите и вычеркните спрятанные слова. Оставшиеся буквы сложатся в тайное слово.</p>
+  <h2 class="serif">Филворд</h2>
+  <p class="sub" id="mode-sub"></p>
   <div class="content">
     <div id="resume-card" class="card hidden"><div><b>Продолжить</b><small id="resume-info"></small></div><button id="resume-btn">Играть</button></div>
-    <div class="card"><div><b>Кроссвычерк дня</b><small id="daily-info">Один и тот же для всех, средний уровень</small></div><button id="daily-btn">Играть</button></div>
+    <div class="card"><div><b>Филворд дня</b><small id="daily-info">Один и тот же для всех, средний уровень</small></div><button id="daily-btn">Играть</button></div>
     <button class="rec-btn" data-rules="words" type="button">📖 Правила и советы</button>
-    <button class="rec-btn" id="tut-btn" type="button" style="margin-top:-4px">🎓 Обучение: как искать слова (1 минута)</button>
+    <button class="rec-btn" id="tut-btn" type="button" style="margin-top:-4px">🎓 Обучение: как играть (1 минута)</button>
     <div id="tut-offer" class="card offer hidden"><div><b>Играете впервые?</b><small>Короткое обучение на маленьком поле — 1 минута</small></div><div style="display:flex;gap:6px"><button id="tut-start">Начать</button><button id="tut-later" style="background:none;color:var(--k-mu);border:1px solid var(--k-line)">Не сейчас</button></div></div>
+    <div class="title">Режим</div>
+    <div class="seg two" id="modes"><button data-m="fil">Филворд<small>слова петляют зигзагом</small></button><button data-m="line">Поиск слов<small>по прямой + тайное слово</small></button></div>
     <div class="title">Уровень</div>
     <div class="seg" id="levels"></div>
     <div class="title">Тема</div>
     <select id="theme"></select>
-    <button class="big" id="new-btn">Новый кроссвычерк</button>
+    <label class="chk"><input type="checkbox" id="showlist"> Показывать список слов <small>без списка — интереснее и труднее</small></label>
+    <button class="big" id="new-btn">Новый филворд</button>
     <div class="title">Ваша статистика</div>
     <table class="stats" id="stats"></table>
     <div id="sync-row" style="margin-top:16px"></div>
@@ -1184,169 +1259,231 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 <div id="game" class="hidden">
   <div class="topbar"><button class="tb" id="menu-btn">← Меню</button><div class="lv" id="lv"></div><div id="timer">0:00</div></div>
   <div class="play">
-    <div id="bwrap"><div id="caps"></div><div id="board"></div></div>
+    <div id="bwrap"><div id="caps"></div><div id="board"></div><svg id="fl"></svg></div>
     <div class="side">
-      <div class="panel"><div class="ph"><span>Найдите слова</span><b id="count"></b></div><div id="wlist"></div>
+      <div class="panel"><div class="ph"><span id="ph-t">Найдите слова</span><b id="count"></b></div><div id="wlist"></div>
         <div class="tools"><button id="hint-btn">💡 Подсказка</button><button id="give-btn">Сдаться</button></div>
         <div id="secret-box" class="hidden"><p>Все слова найдены! Прочитайте оставшиеся буквы слева направо, сверху вниз — это <b>тайное слово</b>.</p><div class="row"><input id="secret" autocomplete="off" aria-label="Тайное слово" placeholder="Тайное слово"><button id="secret-btn">Ответить</button></div><button class="alt" id="secret-show">Показать ответ</button></div>
       </div>
     </div>
   </div>
 </div>
-<div id="win" class="hidden"><div class="modal"><div class="brand">Кроссвычерк решён</div><div class="big-num" id="w-time"></div><div class="lines" id="w-lines"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="big" id="w-again" style="margin-top:0">Ещё один</button><button class="big" id="w-menu" style="margin-top:0;background:var(--k-surf);color:var(--k-tx);box-shadow:none;border:1px solid var(--k-line)">В меню</button></div></div></div>
+<div id="win" class="hidden"><div class="modal"><div class="brand" id="w-brand">Филворд решён</div><div class="big-num" id="w-time"></div><div class="lines" id="w-lines"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="big" id="w-again" style="margin-top:0">Ещё один</button><button class="big" id="w-menu" style="margin-top:0;background:var(--k-surf);color:var(--k-tx);box-shadow:none;border:1px solid var(--k-line)">В меню</button></div></div></div>
 <div id="toast"></div>
 
 <script>
 (() => {
   'use strict';
-  const $ = (id) => document.getElementById(id), WS = window.WS, VERSION = 'Версия 2.1 · 23 октября 2026';
+  const $ = (id) => document.getElementById(id), WS = window.WS, VERSION = 'Версия 2.2 · 23 октября 2026';
   const LS = { stats: 'wordsStats', save: 'wordsSave', prefs: 'wordsPrefs' };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-  const toast = (m) => { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1800); };
+  const toast = (m) => { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1900); };
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const THEMES = ['Всё', 'Животные', 'Природа', 'Еда и напитки', 'Дом и быт', 'Города и страны', 'Профессии', 'Транспорт и техника', 'Спорт', 'Искусство и музыка', 'Наука и космос', 'Человек и семья', 'Сказки и кино', 'Литература', 'Здоровье'];
-  const COLORS = ['#3B5D4A', '#2F3A56', '#B5483C', '#C99A2E', '#6A4C93', '#1D7A8C', '#8C5A2B', '#4A7C2E'];
+  const COLORS = ['#3B5D4A', '#2F3A56', '#B5483C', '#C99A2E', '#6A4C93', '#1D7A8C', '#8C5A2B', '#4A7C2E', '#9C3D6B', '#3D6B9C'];
+  const MODES = { fil: { name: 'Филворд', sub: 'Слова прячутся в сетке и петляют зигзагом — вверх, вниз, вправо и влево. Найдите их все: каждая буква принадлежит ровно одному слову.' }, line: { name: 'Поиск слов', sub: 'Слова спрятаны по прямой — в строках, столбцах и по диагонали. Вычеркните все, а оставшиеся буквы сложатся в тайное слово.' } };
   const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  let D = null, S = null, prefs = load(LS.prefs, { level: 1, theme: 'Всё' }), stats = load(LS.stats, { solved: { 1: 0, 2: 0, 3: 0, 4: 0 }, best: {}, secrets: 0, words: 0, daily: { results: {}, streak: 0, last: null } });
+  const defStats = () => ({ fil: { solved: {}, best: {} }, solved: {}, best: {}, secrets: 0, words: 0, daily: { results: {}, streak: 0, last: null } });
+  let D = null, S = null, prefs = Object.assign({ level: 1, theme: 'Всё', mode: 'fil', list: true }, load(LS.prefs, {})), stats = Object.assign(defStats(), load(LS.stats, {}));
+  if (!stats.fil) stats.fil = { solved: {}, best: {} };
   const loadD = () => (D ? Promise.resolve(D) : fetch('words.json').then((r) => r.json()).then((a) => (D = a.map(([w, t, l]) => ({ w, t, l })))));
+  const LV = (mode, l) => (mode === 'fil' ? WS.FIL : WS.LEVELS)[l];
   // ---------- старт ----------
   function startNew(o) {
     loadD().then(() => {
-      const seed = o.seed != null ? o.seed : (Math.random() * 2 ** 31) | 0, p = WS.generate(D, { level: o.level, theme: o.theme, seed });
+      const mode = o.mode || 'fil', seed = o.seed != null ? o.seed : (Math.random() * 2 ** 31) | 0;
+      const p = mode === 'fil' ? WS.generateFil(D, { level: o.level, theme: o.theme, seed }) : WS.generate(D, { level: o.level, theme: o.theme, seed });
       if (!p) { toast('Не получилось составить сетку, попробуйте ещё раз'); return; }
-      S = { p, found: [], time: 0, hints: 0, daily: !!o.daily, dateKey: o.daily ? todayKey() : null, secretDone: false, secretShown: false, tutorial: !!o.tutorial };
-      openGame();
-      if (p.mixed) setTimeout(() => toast(`В теме «${p.theme}» мало слов для такого поля — добавлено ${p.outside} из других тем`), 400);
+      p.kind = mode;
+      S = { p, mode, found: [], time: 0, hints: 0, daily: !!o.daily, dateKey: o.daily ? todayKey() : null, secretDone: false, tutorial: !!o.tutorial, list: o.list != null ? o.list : prefs.list };
+      openGame(); if (p.mixed) setTimeout(() => toast(`В теме «${p.theme}» мало подходящих слов — добавлено ${p.outside} из других тем`), 400);
     }).catch(() => toast('Не удалось загрузить словарь'));
   }
-  function startDaily() { const k = todayKey(); let h = 0; for (const ch of 'words' + k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; startNew({ level: 2, theme: 'Всё', seed: h, daily: true }); }
-  function resume() { const sv = load(LS.save, null); if (!sv) return; loadD().then(() => { S = sv; openGame(); }); }
+  function startDaily() { const k = todayKey(); let h = 0; for (const ch of 'filword' + k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; startNew({ mode: 'fil', level: 2, theme: 'Всё', seed: h, daily: true, list: true }); }
+  function resume() { const sv = load(LS.save, null); if (!sv) return; loadD().then(() => { S = sv; if (!S.mode) S.mode = S.p.kind || 'line'; openGame(); }); }
   function openGame() {
     $('menu').classList.add('hidden'); $('win').classList.add('hidden'); $('game').classList.remove('hidden');
-    const L = WS.LEVELS[S.p.level]; $('lv').innerHTML = `${S.daily ? 'Кроссвычерк дня' : L.name}<small>${S.p.theme === 'Всё' ? 'все темы' : S.p.theme} · ${S.p.R} × ${S.p.C}</small>`;
-    buildBoard(); render(); startClock();
+    const L = LV(S.mode, S.p.level); $('lv').innerHTML = `${S.daily ? 'Филворд дня' : MODES[S.mode].name + ' · ' + L.name}<small>${S.p.theme === 'Всё' ? 'все темы' : S.p.theme} · ${S.p.R} × ${S.p.C}</small>`;
+    path = []; pending = null; buildBoard(); render(); startClock();
   }
   // ---------- поле ----------
   function sizeBoard() {
     const p = S.p, narrow = innerWidth <= 860, availW = Math.min(innerWidth - (narrow ? 26 : 340), 640), availH = innerHeight - (narrow ? 260 : 110);
-    const cs = Math.max(20, Math.min(46, Math.floor(Math.min(availW / p.C, availH / p.R))));
+    const cs = Math.max(17, Math.min(S.mode === 'fil' ? 64 : 46, Math.floor(Math.min(availW / p.C, availH / p.R))));
     document.documentElement.style.setProperty('--cs', cs + 'px'); $('board').style.gridTemplateColumns = `repeat(${p.C}, var(--cs))`; return cs;
   }
   function buildBoard() { sizeBoard(); $('board').innerHTML = S.p.grid.map((ch, i) => `<div class="c" data-i="${i}">${ch}</div>`).join(''); }
+  const csNow = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cs'));
   function render() {
-    const p = S.p; $('count').textContent = `${S.found.length} из ${p.words.length}`;
-    const fset = new Set(S.found); $('wlist').innerHTML = p.words.map((x, k) => `<span class="${fset.has(k) ? 'f' : ''}">${x.w}</span>`).join('');
-    drawCaps();
-    const all = S.found.length === p.words.length; $('secret-box').classList.toggle('hidden', !all || S.secretDone);
-    const cells = $('board').children; for (const i of p.secret.cells) cells[i].classList.toggle('secret', all);
+    const p = S.p, fset = new Set(S.found), all = S.found.length === p.words.length;
+    $('count').textContent = `${S.found.length} из ${p.words.length}`;
+    $('ph-t').textContent = S.list || all ? 'Найдите слова' : 'Найденные слова';
+    const show = S.list || all ? p.words.map((x, k) => [x, k]) : S.found.map((k) => [p.words[k], k]);
+    $('wlist').innerHTML = show.length ? show.map(([x, k]) => `<span class="${fset.has(k) ? 'f' : ''}">${x.w}</span>`).join('') : '<span style="color:#A4A897;font-weight:500">Список скрыт — ищите слова сами</span>';
+    const ch = $('board').children;
+    if (S.mode === 'fil') {
+      for (const el of ch) { el.classList.remove('own'); el.style.background = ''; }
+      S.found.forEach((k, n) => { for (const i of p.words[k].cells) { ch[i].classList.add('own'); ch[i].style.background = COLORS[n % COLORS.length]; } });
+      drawFilLines(); $('caps').innerHTML = '';
+    } else {
+      drawCaps(); $('fl').innerHTML = '';
+      for (const i of p.secret.cells) ch[i].classList.toggle('secret', all);
+      $('secret-box').classList.toggle('hidden', !all || S.secretDone);
+    }
+    if (S.mode === 'fil') $('secret-box').classList.add('hidden');
     $('hint-btn').disabled = all; $('give-btn').disabled = all;
   }
   function drawCaps() {
-    const cs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cs')), box = $('caps'); box.innerHTML = '';
+    const cs = csNow(), box = $('caps'); box.innerHTML = '';
     S.found.forEach((k, n) => { const cells = S.p.words[k].cells, a = cells[0], b = cells[cells.length - 1], C = S.p.C;
       const x1 = (a % C + 0.5) * cs, y1 = (((a / C) | 0) + 0.5) * cs, x2 = (b % C + 0.5) * cs, y2 = (((b / C) | 0) + 0.5) * cs, len = Math.hypot(x2 - x1, y2 - y1) + cs * 0.84, ang = Math.atan2(y2 - y1, x2 - x1);
       const el = document.createElement('div'); el.className = 'cap'; Object.assign(el.style, { left: (x1 - Math.cos(ang) * cs * 0.42) + 'px', top: (y1 - Math.sin(ang) * cs * 0.42 - cs * 0.38) + 'px', width: len + 'px', height: (cs * 0.76) + 'px', background: COLORS[n % COLORS.length], transform: `rotate(${ang}rad)` }); box.appendChild(el); });
   }
-  // ---------- выделение: протяжка или два касания ----------
-  let drag = null, pending = null;
+  function drawFilLines() {
+    const cs = csNow(), C = S.p.C, svg = $('fl'), W = cs * C, H = cs * S.p.R; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.width = W + 'px'; svg.style.height = H + 'px';
+    const pts = (cells) => cells.map((i) => `${(i % C + 0.5) * cs},${(((i / C) | 0) + 0.5) * cs}`).join(' ');
+    let h = S.found.map((k) => `<polyline points="${pts(S.p.words[k].cells)}" stroke-width="${cs * 0.16}"/>`).join('');
+    if (path.length > 1) h += `<polyline points="${pts(path)}" stroke-width="${cs * 0.22}" style="stroke:rgba(201,154,46,.85)"/>`;
+    svg.innerHTML = h;
+  }
+  // ---------- выделение ----------
+  let drag = null, pending = null, path = [], flashT = null;
   const cellAt = (x, y) => { const b = $('board').getBoundingClientRect(), cs = b.width / S.p.C, c = Math.floor((x - b.left) / cs), r = Math.floor((y - b.top) / cs); return r >= 0 && c >= 0 && r < S.p.R && c < S.p.C ? r * S.p.C + c : -1; };
+  const adj = (a, b) => Math.abs(a - b) === S.p.C || (Math.abs(a - b) === 1 && ((a / S.p.C) | 0) === ((b / S.p.C) | 0));
+  const owned = (i) => S.mode === 'fil' && S.found.some((k) => S.p.words[k].cells.includes(i));
   function lineCells(a, b) {
     const C = S.p.C, R = S.p.R, ar = (a / C) | 0, ac = a % C, br = (b / C) | 0, bc = b % C, dr = br - ar, dc = bc - ac;
     if (!dr && !dc) return [a];
-    const ang = Math.atan2(dr, dc), k = Math.round(ang / (Math.PI / 4)), DR = Math.round(Math.sin(k * Math.PI / 4)), DC = Math.round(Math.cos(k * Math.PI / 4)), n = Math.max(Math.abs(dr), Math.abs(dc));
+    const k = Math.round(Math.atan2(dr, dc) / (Math.PI / 4)), DR = Math.round(Math.sin(k * Math.PI / 4)), DC = Math.round(Math.cos(k * Math.PI / 4)), n = Math.max(Math.abs(dr), Math.abs(dc));
     const out = []; for (let s = 0; s <= n; s++) { const r = ar + DR * s, c = ac + DC * s; if (r < 0 || c < 0 || r >= R || c >= C) break; out.push(r * C + c); } return out;
   }
-  function showSel(cells) { const ch = $('board').children; for (const el of ch) el.classList.remove('sel'); for (const i of cells) ch[i].classList.add('sel'); }
-  function tryWord(cells) {
+  function showSel(cells) { const ch = $('board').children; for (const el of ch) el.classList.remove('sel', 'path'); for (const i of cells) ch[i].classList.add(S.mode === 'fil' ? 'path' : 'sel'); if (S.mode === 'fil') drawFilLines(); }
+  function accept(k) { S.found.push(k); stats.words = (stats.words || 0) + 1; save(); render(); if (S.found.length === S.p.words.length) allFound(); }
+  function tryWord(cells) {   // поиск слов: по прямой в любую сторону
     if (cells.length < 2) return false; const key = cells.join(','), rev = cells.slice().reverse().join(',');
     const k = S.p.words.findIndex((x, n) => !S.found.includes(n) && (x.cells.join(',') === key || x.cells.join(',') === rev));
     if (k < 0) { const s = cells.map((i) => S.p.grid[i]).join(''); if (s.length >= 3) toast(`«${s}» — такого слова в списке нет`); return false; }
-    S.found.push(k); stats.words = (stats.words || 0) + 1; save(); render(); if (S.found.length === S.p.words.length) allFound(); return true;
+    accept(k); return true;
+  }
+  function tryPath(cells, quiet) {  // филворд: точный путь слова от первой буквы к последней
+    const key = cells.join(','), k = S.p.words.findIndex((x, n) => !S.found.includes(n) && x.cells.join(',') === key);
+    if (k >= 0) { accept(k); return true; }
+    if (!quiet && cells.length >= 3) { const s = cells.map((i) => S.p.grid[i]).join(''); const same = S.p.words.findIndex((x, n) => !S.found.includes(n) && x.w === s);
+      toast(same >= 0 ? `«${s}» — верное слово, но спрятано оно по-другому` : `«${s}» — такого слова нет`); }
+    return false;
   }
   const bw = $('bwrap');
-  bw.addEventListener('pointerdown', (e) => { if (!S || S.secretDone) return; const i = cellAt(e.clientX, e.clientY); if (i < 0) return; bw.setPointerCapture(e.pointerId); drag = { a: i, b: i, moved: false }; showSel([i]); });
-  bw.addEventListener('pointermove', (e) => { if (!drag) return; const i = cellAt(e.clientX, e.clientY); if (i < 0 || i === drag.b) return; drag.b = i; drag.moved = true; showSel(lineCells(drag.a, i)); });
+  bw.addEventListener('pointerdown', (e) => {
+    if (!S || S.secretDone || S.found.length === S.p.words.length) return; const i = cellAt(e.clientX, e.clientY); if (i < 0) return; bw.setPointerCapture(e.pointerId); clearTimeout(flashT);
+    if (S.mode === 'fil') { if (owned(i)) return; const ext = !!path.length && adj(path[path.length - 1], i) && !path.includes(i), again = path.length > 0 && path[path.length - 1] === i; drag = { start: i, moved: false, ext, again };
+      if (ext) path.push(i); else if (!again) path = [i]; showSel(path); return; }
+    drag = { a: i, b: i, moved: false }; showSel([i]);
+  });
+  bw.addEventListener('pointermove', (e) => {
+    if (!drag) return; const i = cellAt(e.clientX, e.clientY); if (i < 0) return;
+    if (S.mode === 'fil') {
+      if (path.length && i === path[path.length - 1]) return;
+      if (path.length > 1 && i === path[path.length - 2]) { path.pop(); drag.moved = true; showSel(path); return; }     // назад — отменяем последнюю букву
+      if (!path.length || (adj(path[path.length - 1], i) && !path.includes(i) && !owned(i))) { if (!path.length) path = [drag.start]; if (adj(path[path.length - 1], i)) { path.push(i); drag.moved = true; showSel(path); } }
+      return;
+    }
+    if (i === drag.b) return; drag.b = i; drag.moved = true; showSel(lineCells(drag.a, i));
+  });
   bw.addEventListener('pointerup', () => {
     if (!drag) return; const d = drag; drag = null; const ch = $('board').children;
+    if (S.mode === 'fil') {
+      if (d.moved) { if (tryPath(path)) { path = []; showSel(path); } else { const failed = path; path = []; showSel(failed); flashT = setTimeout(() => showSel(path), 350); } return; }   // неудачный путь только мигает — новый можно начинать сразу
+      // касания: следующая соседняя буква дописывается к пути; слово засчитывается, как только путь совпал
+      if (d.ext) { if (tryPath(path, true)) path = []; }
+      else if (d.again) path = [];                         // повторное касание последней буквы — сбросить путь
+      showSel(path); return;
+    }
     if (d.moved && d.a !== d.b) { tryWord(lineCells(d.a, d.b)); if (pending != null) { ch[pending].classList.remove('pend'); pending = null; } showSel([]); return; }
-    if (pending == null) { pending = d.a; ch[d.a].classList.add('pend'); showSel([]); return; }      // первое касание — начало слова
+    if (pending == null) { pending = d.a; ch[d.a].classList.add('pend'); showSel([]); return; }
     const cells = lineCells(pending, d.a); ch[pending].classList.remove('pend'); pending = null; showSel(cells); tryWord(cells); setTimeout(() => showSel([]), 250);
   });
-  bw.addEventListener('pointercancel', () => { drag = null; showSel([]); });
+  bw.addEventListener('pointercancel', () => { drag = null; path = []; showSel([]); });
   // ---------- подсказка, сдаться, тайное слово ----------
   function hint() {
-    const left = S.p.words.map((_, k) => k).filter((k) => !S.found.includes(k)); if (!left.length) return; const k = left[Math.floor(Math.random() * left.length)], el = $('board').children[S.p.words[k].cells[0]];
-    el.classList.remove('hint'); void el.offsetWidth; el.classList.add('hint'); S.hints++; save(); toast(`Слово «${S.p.words[k].w}» начинается здесь`);
+    const left = S.p.words.map((_, k) => k).filter((k) => !S.found.includes(k)); if (!left.length) return; const k = left[Math.floor(Math.random() * left.length)], x = S.p.words[k];
+    const cells = S.mode === 'fil' ? x.cells.slice(0, 2) : [x.cells[0]];
+    for (const i of cells) { const el = $('board').children[i]; el.classList.remove('hint'); void el.offsetWidth; el.classList.add('hint'); }
+    S.hints++; save(); toast(S.mode === 'fil' ? `Слово «${x.w}»: мигают первые две буквы` : `Слово «${x.w}» начинается здесь`);
   }
-  function giveUp() { S.p.words.forEach((_, k) => { if (!S.found.includes(k)) S.found.push(k); }); S.gaveUp = true; save(); render(); allFound(); }
-  function allFound() { stopClock(); setTimeout(() => { if (!S.secretDone) $('secret').focus(); }, 300); if (S.gaveUp) showSecret(false); }
-  function checkSecret() { const v = WS.norm($('secret').value.trim()); if (!v) return; if (v === S.p.secret.w) showSecret(true); else { toast('Не то слово — прочитайте золотые буквы по порядку'); } }
+  function giveUp() { S.p.words.forEach((_, k) => { if (!S.found.includes(k)) S.found.push(k); }); S.gaveUp = true; path = []; save(); render(); allFound(); }
+  function allFound() { stopClock(); if (S.mode === 'fil') { finish(); return; } setTimeout(() => { if (!S.secretDone) $('secret').focus(); }, 300); if (S.gaveUp) showSecret(false); }
+  function checkSecret() { const v = WS.norm($('secret').value.trim()); if (!v) return; if (v === S.p.secret.w) showSecret(true); else toast('Не то слово — прочитайте золотые буквы по порядку'); }
   function showSecret(guessed) {
     S.secretDone = true; S.secretGuessed = !!guessed && !S.gaveUp; $('secret-box').classList.add('hidden');
-    const ch = $('board').children; S.p.grid.forEach((_, i) => { if (!S.p.secret.cells.includes(i)) ch[i].classList.add('dim'); });
-    finish();
+    const ch = $('board').children; S.p.grid.forEach((_, i) => { if (!S.p.secret.cells.includes(i)) ch[i].classList.add('dim'); }); finish();
   }
   function finish() {
     if (!S.tutorial && !S.gaveUp) {
-      const lv = S.p.level; stats.solved[lv] = (stats.solved[lv] || 0) + 1; if (!stats.best[lv] || S.time < stats.best[lv]) stats.best[lv] = S.time; if (S.secretGuessed) stats.secrets = (stats.secrets || 0) + 1;
+      const lv = S.p.level, st = S.mode === 'fil' ? stats.fil : stats; st.solved[lv] = (st.solved[lv] || 0) + 1; if (!st.best[lv] || S.time < st.best[lv]) st.best[lv] = S.time; if (S.secretGuessed) stats.secrets = (stats.secrets || 0) + 1;
       if (S.daily) { const d = stats.daily; if (d.results[S.dateKey] == null) { const y = new Date(); y.setDate(y.getDate() - 1); const yk = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`; d.streak = d.last === yk ? (d.streak || 0) + 1 : 1; d.last = S.dateKey; d.results[S.dateKey] = S.time; } }
       store(LS.stats, stats);
-      if (window.PGA) PGA.event('words', { level: lv, time: S.time, hints: S.hints, secret: !!S.secretGuessed, daily: S.daily, streak: stats.daily.streak, words: S.p.words.length, result: 'win' });
+      if (window.PGA) PGA.event('words', { mode: S.mode, level: lv, time: S.time, hints: S.hints, secret: !!S.secretGuessed, daily: S.daily, streak: stats.daily.streak, words: S.p.words.length, noList: !S.list, result: 'win' });
     }
     try { localStorage.removeItem(LS.save); } catch (e) {}
-    const tut = S.tutorial; if (tut) return;
+    if (S.tutorial) return;
+    const st = S.mode === 'fil' ? stats.fil : stats;
     setTimeout(() => {
-      $('win').classList.remove('hidden'); $('w-time').textContent = S.gaveUp ? 'Слова открыты' : fmt(S.time);
-      $('w-lines').innerHTML = `Тайное слово: <b>${S.p.secret.w}</b>${S.secretGuessed ? ' — вы его разгадали!' : ''}<br>Слов: ${S.p.words.length} · подсказок: ${S.hints}${!S.gaveUp && stats.best[S.p.level] === S.time ? '<br>Лучшее время на этом уровне!' : ''}`;
+      $('win').classList.remove('hidden'); $('w-brand').textContent = S.mode === 'fil' ? 'Филворд решён' : 'Слова найдены'; $('w-time').textContent = S.gaveUp ? 'Слова открыты' : fmt(S.time);
+      $('w-lines').innerHTML = (S.mode === 'line' ? `Тайное слово: <b>${S.p.secret.w}</b>${S.secretGuessed ? ' — вы его разгадали!' : ''}<br>` : '') + `Слов: ${S.p.words.length} · подсказок: ${S.hints}${!S.list && !S.gaveUp ? ' · без списка слов' : ''}${!S.gaveUp && st.best[S.p.level] === S.time ? '<br>Лучшее время на этом уровне!' : ''}`;
     }, 900);
   }
   // ---------- время и сохранение ----------
   let clock = null; function startClock() { stopClock(); if (S.found.length === S.p.words.length) return; clock = setInterval(() => { if (document.hidden) return; S.time++; $('timer').textContent = fmt(S.time); if (S.time % 5 === 0) save(); }, 1000); $('timer').textContent = fmt(S.time); }
   function stopClock() { if (clock) clearInterval(clock); clock = null; }
-  function save() { if (!S || S.tutorial || S.secretDone) return; store(LS.save, S); }
+  function save() { if (!S || S.tutorial || S.secretDone || S.found.length === S.p.words.length) return; store(LS.save, S); }
   // ---------- меню ----------
   function showMenu() { stopClock(); save(); S = null; $('game').classList.add('hidden'); $('win').classList.add('hidden'); $('menu').classList.remove('hidden'); renderMenu(); }
   function renderMenu() {
-    stats = load(LS.stats, stats); const sv = load(LS.save, null); $('resume-card').classList.toggle('hidden', !sv);
-    if (sv) $('resume-info').textContent = `${sv.daily ? 'Кроссвычерк дня' : WS.LEVELS[sv.p.level].name} · найдено ${sv.found.length} из ${sv.p.words.length} · ${fmt(sv.time)}`;
+    stats = Object.assign(defStats(), load(LS.stats, stats)); if (!stats.fil) stats.fil = { solved: {}, best: {} };
+    const sv = load(LS.save, null); $('resume-card').classList.toggle('hidden', !sv);
+    if (sv) { const m = sv.mode || 'line'; $('resume-info').textContent = `${sv.daily ? 'Филворд дня' : MODES[m].name + ' · ' + LV(m, sv.p.level).name} · найдено ${sv.found.length} из ${sv.p.words.length} · ${fmt(sv.time)}`; }
     const dr = stats.daily.results[todayKey()]; $('daily-info').textContent = dr != null ? `Решён сегодня за ${fmt(dr)} · серия ${stats.daily.streak} дн.` : 'Один и тот же для всех, средний уровень';
-    $('levels').innerHTML = [1, 2, 3, 4].map((l) => `<button data-l="${l}" class="${prefs.level === l ? 'on' : ''}">${WS.LEVELS[l].name}<small>${WS.LEVELS[l].R} × ${WS.LEVELS[l].C}</small></button>`).join('');
+    $('mode-sub').textContent = MODES[prefs.mode].sub;
+    $('modes').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.m === prefs.mode); b.onclick = () => { prefs.mode = b.dataset.m; store(LS.prefs, prefs); renderMenu(); }; });
+    $('levels').innerHTML = [1, 2, 3, 4, 5].map((l) => { const L = LV(prefs.mode, l); return `<button data-l="${l}" class="${prefs.level === l ? 'on' : ''}">${L.name}<small>${L.R} × ${L.C}</small></button>`; }).join('');
     $('levels').querySelectorAll('button').forEach((b) => { b.onclick = () => { prefs.level = +b.dataset.l; store(LS.prefs, prefs); renderMenu(); }; });
-    $('theme').innerHTML = THEMES.map((t) => `<option ${t === prefs.theme ? 'selected' : ''}>${t}</option>`).join('');
-    const total = [1, 2, 3, 4].reduce((a, l) => a + (stats.solved[l] || 0), 0);
-    $('stats').innerHTML = [['Решено кроссвычерков', total]].concat([1, 2, 3, 4].map((l) => [`${WS.LEVELS[l].name}: решено / лучшее время`, `${stats.solved[l] || 0} / ${stats.best[l] ? fmt(stats.best[l]) : '—'}`]), [['Разгадано тайных слов', stats.secrets || 0], ['Найдено слов', stats.words || 0]]).map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+    $('theme').innerHTML = THEMES.map((t) => `<option ${t === prefs.theme ? 'selected' : ''}>${t}</option>`).join(''); $('showlist').checked = !!prefs.list;
+    $('new-btn').textContent = prefs.mode === 'fil' ? 'Новый филворд' : 'Новый поиск слов';
+    const sum = (o) => [1, 2, 3, 4, 5].reduce((a, l) => a + (o.solved[l] || 0), 0), cell = (o, l) => `${o.solved[l] || 0} / ${o.best[l] ? fmt(o.best[l]) : '—'}`;
+    const total = sum(stats.fil) + sum(stats);
+    $('stats').innerHTML = [['Решено филвордов', sum(stats.fil)]].concat([1, 2, 3, 4, 5].map((l) => [`· ${WS.FIL[l].name}: решено / лучшее время`, cell(stats.fil, l)]), [['Решено «Поиск слов»', sum(stats)], ['Разгадано тайных слов', stats.secrets || 0], ['Найдено слов всего', stats.words || 0]]).map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
     $('ver').textContent = VERSION; let later = false; try { later = !!localStorage.getItem('wordsTutorLater'); } catch (e) {}
     $('tut-offer').classList.toggle('hidden', !!(total || sv || later || (window.PGTutor && PGTutor.isDone('words'))));
   }
   // ---------- обучение ----------
   function startTutorial() {
     loadD().then(() => {
-      const p = WS.generate(D, { level: 1, theme: 'Животные', seed: 20261022 }); S = { p, found: [], time: 0, hints: 0, tutorial: true, secretDone: false }; openGame(); stopClock();
+      const p = WS.generateFil(D, { level: 1, theme: 'Животные', seed: 20261023 }); p.kind = 'fil'; S = { p, mode: 'fil', found: [], time: 0, hints: 0, tutorial: true, secretDone: false, list: true }; openGame(); stopClock();
       const rect = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; }, w0 = p.words[0];
-      const cen = (i) => { const el = $('board').children[i], b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; };
+      const cen = (i) => { const b = $('board').children[i].getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; };
       window.PGTutor && PGTutor.run({ id: 'words', title: 'Обучение', steps: [
-        { text: 'В сетке спрятаны слова из списка. Они идут по прямой: на этом уровне — <b>слева направо</b> и <b>сверху вниз</b>, на трудных — ещё по диагонали и задом наперёд.', target: () => rect($('bwrap')), avoid: () => rect($('bwrap')), button: 'Понятно' },
-        { text: `Найдите слово «<b>${w0.w}</b>»: проведите пальцем или мышью от первой буквы до последней. Можно и так: нажать на первую букву, потом на последнюю.`, target: () => rect($('bwrap')), avoid: () => rect($('bwrap')), done: () => S.found.includes(0), demo: async (h) => { await h.path([cen(w0.cells[0]), cen(w0.cells[w0.cells.length - 1])], (k) => { const ch = $('board').children; if (k === 0) { pending = w0.cells[0]; ch[pending].classList.add('pend'); } else { ch[pending].classList.remove('pend'); pending = null; tryWord(lineCells(w0.cells[0], w0.cells[w0.cells.length - 1])); } }); } },
-        { text: 'Найденное слово выделяется цветом и вычёркивается в списке. Не можете найти — нажмите «💡 Подсказка»: мигнёт первая буква одного из слов.', target: () => rect(document.querySelector('.side')), avoid: () => rect($('bwrap')), button: 'Дальше' },
-        { text: 'Когда все слова вычеркнуты, оставшиеся буквы станут <b>золотыми</b>. Прочитайте их по порядку — слева направо, сверху вниз — это тайное слово. Его можно ввести и проверить себя.', target: () => rect($('bwrap')), avoid: () => rect($('bwrap')), button: 'Решить первый кроссвычерк' }
-      ], onFinish: () => startNew({ level: 1, theme: 'Всё' }), onExit: () => showMenu() });
+        { text: 'Это <b>филворд</b>. Все буквы сетки поделены между словами из списка. Слово можно читать, переходя на <b>соседнюю клетку</b> вверх, вниз, влево или вправо — оно петляет зигзагом. Каждая буква принадлежит ровно одному слову.', target: () => rect($('bwrap')), avoid: () => rect($('bwrap')), button: 'Понятно' },
+        { text: `Найдите слово «<b>${w0.w}</b>»: проведите пальцем от первой буквы через все остальные по порядку. Ошиблись — ведите обратно, буква снимется. Можно и касаниями: нажимайте буквы одну за другой.`, target: () => rect($('bwrap')), avoid: () => rect($('bwrap')), done: () => S.found.includes(0), demo: async (h) => { await h.path(w0.cells.map(cen), (k) => { path = w0.cells.slice(0, k + 1); showSel(path); if (k === w0.cells.length - 1) { tryPath(path); path = []; showSel([]); } }); } },
+        { text: 'Найденное слово закрашивается цветом. Не получается — «💡 Подсказка» мигнёт первыми двумя буквами слова. В меню можно скрыть список слов: тогда искать интереснее.', target: () => rect(document.querySelector('.side')), avoid: () => rect($('bwrap')), button: 'Дальше' },
+        { text: 'Есть и второй режим — <b>«Поиск слов»</b>: слова идут по прямой, в том числе по диагонали и задом наперёд, а оставшиеся буквы складываются в тайное слово. Выбирайте режим в меню.', target: () => rect($('bwrap')), avoid: () => rect($('bwrap')), button: 'Решить первый филворд' }
+      ], onFinish: () => startNew({ mode: 'fil', level: 1, theme: 'Всё' }), onExit: () => showMenu() });
     });
   }
   // ---------- кнопки ----------
-  $('new-btn').onclick = () => { prefs.theme = $('theme').value; store(LS.prefs, prefs); startNew({ level: prefs.level, theme: prefs.theme }); };
-  $('theme').onchange = () => { prefs.theme = $('theme').value; store(LS.prefs, prefs); };
+  $('new-btn').onclick = () => { prefs.theme = $('theme').value; prefs.list = $('showlist').checked; store(LS.prefs, prefs); startNew({ mode: prefs.mode, level: prefs.level, theme: prefs.theme, list: prefs.list }); };
+  $('theme').onchange = () => { prefs.theme = $('theme').value; store(LS.prefs, prefs); }; $('showlist').onchange = () => { prefs.list = $('showlist').checked; store(LS.prefs, prefs); };
   $('daily-btn').onclick = startDaily; $('resume-btn').onclick = resume; $('menu-btn').onclick = showMenu;
-  $('hint-btn').onclick = hint; $('give-btn').onclick = () => { if (confirm('Открыть все слова? Кроссвычерк не засчитается.')) giveUp(); };
+  $('hint-btn').onclick = hint; $('give-btn').onclick = () => { if (confirm('Открыть все слова? Игра не засчитается.')) giveUp(); };
   $('secret-btn').onclick = checkSecret; $('secret').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkSecret(); }); $('secret-show').onclick = () => showSecret(false);
-  $('w-again').onclick = () => startNew({ level: prefs.level, theme: prefs.theme }); $('w-menu').onclick = showMenu;
+  $('w-again').onclick = () => startNew({ mode: prefs.mode, level: prefs.level, theme: prefs.theme, list: prefs.list }); $('w-menu').onclick = showMenu;
   $('tut-btn').onclick = startTutorial; $('tut-start').onclick = () => { $('tut-offer').classList.add('hidden'); startTutorial(); }; $('tut-later').onclick = () => { try { localStorage.setItem('wordsTutorLater', '1'); } catch (e) {} $('tut-offer').classList.add('hidden'); };
-  addEventListener('resize', () => { if (S) { sizeBoard(); drawCaps(); } });
+  addEventListener('resize', () => { if (S) { sizeBoard(); render(); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
   window.addEventListener('storage', (e) => { if ((e.key === LS.stats || e.key === LS.save) && $('game').classList.contains('hidden')) renderMenu(); });
   if (window.PGSync) PGSync.mountRow($('sync-row'), true);
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('service-worker.js').catch(() => {});
-  window.__ws = { get S() { return S; }, startNew, startDaily, tryWord, lineCells, hint, loadD, showMenu, todayKey };
+  window.__ws = { get S() { return S; }, startNew, startDaily, tryWord, tryPath, lineCells, hint, loadD, showMenu, todayKey, get path() { return path; } };
   renderMenu(); loadD().catch(() => {});
 })();
 </script>
