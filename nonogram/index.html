@@ -2189,7 +2189,7 @@ if (typeof module !== 'undefined') module.exports = NG;
 const $ = (id) => document.getElementById(id);
 const NGSRC = $('ng-engine').textContent;
 const NG = new Function(NGSRC + '\nreturn NG;')();
-const BUILD = '2.2 · 23 октября 2026';
+const BUILD = '2.3 · 23 октября 2026';
 const CAT = { small: 'Малые (до 10)', medium: 'Средние (11–25)', large: 'Большие (26–50)', huge: 'Огромные (51–100)' };
 const catOf = (R, C) => { const m = Math.max(R, C); return m <= 10 ? 'small' : m <= 25 ? 'medium' : m <= 50 ? 'large' : 'huge'; };
 const LS = { save: 'nonogramSave', stats: 'nonogramStats', prefs: 'nonogramPrefs' };
