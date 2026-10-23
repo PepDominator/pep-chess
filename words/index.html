@@ -19,7 +19,7 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true, theme: 'auto' };
+  const DEFAULTS = { sound: true, music: false, musicVol: 0.5, confirm: false, board: 'classic', nums: true, chat: true, showGames: true, theme: 'auto' };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
   // Тема оформления: светлая, тёмная или как в системе
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -139,6 +139,7 @@
         <div id="pg-theme-row"></div>
         <div id="pg-install-row"></div>
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
+        <div class="pg-row"><div><b>Фоновая музыка</b><span class="d">Спокойная мелодия, которая сочиняется прямо в браузере; в каждой игре — своё настроение</span></div>${sw('music')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
         <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
         <div id="pg-sync-row"></div>
@@ -174,6 +175,71 @@
     get visible() { return !!bar && bar.style.display !== 'none'; }
   };
 })();
+// ============ Фоновая музыка Pep Games: сочиняется прямо в браузере (Web Audio), без файлов ============
+(function () {
+  if (window.PGMusic || !window.PGS) return;
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { window.PGMusic = { supported: false }; return; }
+  // настроение по странице: головоломки — спокойно, игры за доской — задумчиво, «Сто к одному» — задорно
+  const page = (location.pathname.match(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words|code)\//) || [, 'hub'])[1];
+  const STYLES = {
+    calm: { bpm: 64, prog: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 52, 55, 60], [55, 59, 62, 67]], scale: [69, 72, 74, 76, 79, 81, 84], notes: 0.45, wave: 'triangle', bell: 0.5 },
+    think: { bpm: 56, prog: [[50, 57, 62, 65], [46, 53, 58, 62], [43, 50, 55, 58], [45, 52, 57, 61]], scale: [62, 65, 67, 69, 72, 74, 77], notes: 0.35, wave: 'sine', bell: 0.6 },
+    show: { bpm: 104, prog: [[48, 55, 60, 64], [45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 59]], scale: [72, 74, 76, 79, 81, 84, 86], notes: 0.7, wave: 'triangle', bell: 0.35, bass: true }
+  };
+  const style = STYLES[{ chess: 'think', draughts: 'think', sto: 'show' }[page] || 'calm'];
+  let ctx = null, master = null, echo = null, timer = null, beat = 0, nextT = 0, playing = false;
+  const f = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function setup() {
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.connect(master); master.lp = lp;
+    echo = ctx.createDelay(1); echo.delayTime.value = 60 / style.bpm * 0.75; const fb = ctx.createGain(); fb.gain.value = 0.32; const wet = ctx.createGain(); wet.gain.value = 0.28;
+    echo.connect(fb); fb.connect(echo); echo.connect(wet); wet.connect(lp);
+  }
+  function voice(freq, t, dur, vol, type, toEcho) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + Math.min(0.6, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    o.connect(g); g.connect(master.lp); if (toEcho) g.connect(echo); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function pluck(freq, t, vol) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + 1.4 * style.bell + 0.3); o.connect(g); g.connect(master.lp); g.connect(echo); o.start(t); o.stop(t + 2); }
+  let lastNote = 3;
+  function schedule() {
+    const spb = 60 / style.bpm;
+    while (nextT < ctx.currentTime + 0.4) {
+      const bar = Math.floor(beat / 4) % style.prog.length, inBar = beat % 4, chord = style.prog[bar];
+      if (inBar === 0) chord.forEach((m, k) => { voice(f(m), nextT, spb * 4.2, k ? 0.035 : 0.05, style.wave, false); voice(f(m) * 1.003, nextT, spb * 4.2, 0.02, 'sine', false); });
+      if (style.bass && (inBar === 0 || inBar === 2)) voice(f(chord[0] - 12), nextT, spb * 0.9, 0.09, 'triangle', false);
+      if (style.bass && inBar % 2 === 1) pluck(f(chord[2] + 12), nextT, 0.035);
+      for (const half of [0, 0.5]) if (Math.random() < style.notes * (half ? 0.5 : 1)) {        // мелодия: шаг на соседнюю ноту лада, изредка — скачок
+        lastNote = Math.max(0, Math.min(style.scale.length - 1, lastNote + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)]));
+        pluck(f(style.scale[lastNote]), nextT + half * spb, 0.05 + Math.random() * 0.03);
+      }
+      beat++; nextT += spb;
+    }
+  }
+  const vol = () => 0.55 * (window.PGS.get().musicVol || 0.5);
+  function start() {
+    if (playing) return; if (!ctx) setup(); if (ctx.state === 'suspended') ctx.resume();
+    playing = true; nextT = ctx.currentTime + 0.1; master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(vol(), ctx.currentTime, 1.2);
+    schedule(); timer = setInterval(schedule, 120);
+  }
+  function stop() { if (!playing) return; playing = false; clearInterval(timer); timer = null; if (ctx) { master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => { if (!playing && ctx) ctx.suspend(); }, 1600); } }
+  const want = () => !!window.PGS.get().music && !document.hidden;
+  function sync() { if (want()) { if (armed) start(); } else stop(); paint(); }
+  // браузеры разрешают звук только после действия пользователя — ждём первого касания или клавиши
+  let armed = false; const arm = () => { armed = true; if (want()) start(); };
+  ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, arm, { once: false, passive: true }));
+  document.addEventListener('visibilitychange', sync); window.addEventListener('pgs-change', sync); window.addEventListener('storage', (e) => { if (e.key === 'pgSettings') sync(); });
+  function toggle() { const on = !window.PGS.get().music; window.PGS.set({ music: on }); armed = true; sync(); }
+  // строка «Фоновая музыка» в меню игры (вставляется над строкой синхронизации) и кнопка в общих настройках
+  function rowHtml() { const on = !!window.PGS.get().music; return `<div class="pgm-row"><div><b>🎵 Фоновая музыка</b><span>${on ? 'Играет спокойная мелодия' : 'Выключена'}</span></div><button type="button" class="pgm-btn${on ? ' on' : ''}" aria-pressed="${on}">${on ? 'Выключить' : 'Включить'}</button></div>`; }
+  function paint() { document.querySelectorAll('.pgm-host').forEach((h) => { h.innerHTML = rowHtml(); h.querySelector('.pgm-btn').onclick = toggle; }); }
+  function mount(host) { if (!host) return; host.classList.add('pgm-host'); paint(); }
+  const css = '.pgm-row { display:flex; justify-content:space-between; align-items:center; gap:10px; border:1px solid var(--k-line); background:var(--k-surf); padding:10px 12px; margin:12px 0 0; font-size:13.5px; } .pgm-row b { display:block; } .pgm-row span { color:var(--k-mu); font-size:12.5px; } .pgm-btn { border:1px solid var(--k-line); background:var(--k-panel); padding:7px 12px; font:700 13px inherit; font-family:inherit; cursor:pointer; color:var(--k-tx); white-space:nowrap; } .pgm-btn.on { background:#3B5D4A; color:#fff; border-color:#3B5D4A; }';
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+  const auto = () => { const s = document.getElementById('sync-row'); if (s && !document.getElementById('pgm-auto')) { const h = document.createElement('div'); h.id = 'pgm-auto'; s.parentNode.insertBefore(h, s); mount(h); } document.querySelectorAll('[data-pgm]').forEach(mount); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', auto); else auto();
+  window.PGMusic = { supported: true, start, stop, toggle, mount, get playing() { return playing; }, style: page };
+})();
 
 </script>
 <script>
@@ -192,6 +258,7 @@
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
     nonogramPrefs: { m: 'lww' }, nonogramSave: { m: 'lww', slow: true }, nonogramStats: { m: 'stats' },
     stoStats: { m: 'lww' },
+    codeStats: { m: 'lww' }, codePrefs: { m: 'lww' }, codeSave: { m: 'lww', slow: true },
     wordsStats: { m: 'lww' }, wordsPrefs: { m: 'lww' }, wordsSave: { m: 'lww', slow: true },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
     pgAch: { m: 'ach' },                                                                      // достижения: объединяются, счётчики — максимум
@@ -563,6 +630,10 @@
     ['wsnolist', 'Филворд', '🙈', 'Вслепую', 'Решите филворд от среднего уровня без списка слов', 1, (c) => Math.min(1, C(c, 'wsnolist'))],
     ['wssecret', 'Филворд', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов в «Поиске слов»', 10, (c) => Math.min(10, C(c, 'wssecret'))],
     ['wsdaily7', 'Филворд', '🗓', 'Неделя слов', 'Решайте филворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
+    ['kw1', 'Ключворд', '🔑', 'Первый ключ', 'Разгадайте первый ключворд', 1, (c) => Math.min(1, C(c, 'kw'))],
+    ['kwhard', 'Ключворд', '🗝', 'Взломщик', 'Разгадайте ключворд сложного уровня', 1, (c) => Math.min(1, C(c, 'kwhard'))],
+    ['kwclean', 'Ключворд', '🕵', 'Без подсказок', 'Разгадайте ключворд от среднего уровня без подсказок и проверок', 1, (c) => Math.min(1, C(c, 'kwclean'))],
+    ['kwdaily7', 'Ключворд', '📅', 'Неделя ключей', 'Решайте ключворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'kwstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -638,7 +709,7 @@
 @keyframes pgaIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
-  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
+  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words|code)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
   function toasts(list) {
     if (!document.body) return; let box = document.getElementById('pga-toasts'); if (!box) { box = document.createElement('div'); box.id = 'pga-toasts'; document.body.appendChild(box); }
     if (list.length > 3) { const rest = list.length - 2; list = list.slice(0, 2).concat([{ id: 'more', icon: '🏅', title: 'Ещё достижений: ' + rest, desc: 'Нажмите, чтобы посмотреть все' }]); }          // не заваливаем экран, если достижений сразу много
@@ -681,7 +752,7 @@
   }
   // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
   function touchDay(s, game, d) {
-    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64 }[game]; if (!gbit) return;
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64, code: 128 }[game]; if (!gbit) return;
     const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
     if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
     const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
@@ -697,8 +768,8 @@
       if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
-    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
-    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words';
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code';
     if (completion) {
       touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
       if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
@@ -709,6 +780,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'code') { inc('kw'); if (d.level >= 3) inc('kwhard'); if (d.level >= 2 && !d.hints && !d.checks) inc('kwclean'); if (d.daily) max('kwstreak', d.streak || 1); }
     if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); if (d.mode === 'fil' && d.noList && d.level >= 2 && !d.hints) inc('wsnolist'); }
     if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }
     if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
@@ -798,6 +870,20 @@
         'Пока ходит соперник, можно задать <b>предварительный ход</b>. Номера клеток можно скрыть в настройках.',
         'Компьютер: движок Scan 3.1, уровни от 1 до 8. По сети можно играть с другом по ссылке или вызвать его из раздела «Друзья».',
         'Партию с компьютером можно продолжить после перезагрузки страницы и на другом устройстве (вход через Google).']]
+    ] },
+    code: { title: 'Правила ключворда', icon: '🔑', sections: [
+      ['Цель игры', ['Ключворд — это кроссворд без вопросов. В каждой клетке вместо буквы стоит число: одинаковые числа означают одну и ту же букву, разные числа — разные буквы. Нужно разгадать все буквы, и тогда в сетке проступят настоящие слова.']],
+      ['Как играть', [
+        'Несколько букв открыты сразу — это <b>ключ</b> (зелёные). Выберите клетку или число в таблице кодов и нажмите букву на клавиатуре: она появится во всех клетках с этим числом.',
+        'Каждая буква встречается только под одним числом. Если поставить букву, которая уже стоит под другим числом, она перенесётся на новое место. «⌫ Стереть» убирает букву.'
+      ]],
+      ['Советы', [
+        'Начните со слов, где уже видно две-три буквы ключа: короткие слова угадываются быстрее всего.',
+        'Самые частые буквы русского языка — О, Е, А, И, Н, Т: числа, которые встречаются чаще других, скорее всего прячут именно их.',
+        'Буква Ь не бывает в начале слова, а Ы и Ъ — почти никогда. После Ж, Ш, Ч, Щ чаще всего стоят И, Е, А, У.',
+        '«✔ Проверить» подсветит ошибки, «💡 Подсказка» откроет букву выбранного числа. Без подсказок и проверок решение засчитывается особо.'
+      ]],
+      ['Ключворд дня', ['Каждый день — один и тот же ключворд для всех, средний уровень.']]
     ] },
     words: { title: 'Правила филворда', icon: '🔍', sections: [
       ['Филворд', [
@@ -1012,8 +1098,9 @@
   }
   // dict: [{ w, t, l }]; o: { level, theme, seed }
   function generate(dict, o) {
-    const L = LEVELS[o.level || 2], R = L.R, C = L.C, rnd = mulberry32((o.seed >>> 0) || 1);
-    const ok = (x) => x.l <= L.maxL && x.w.length >= 4 && x.w.length <= L.maxLen, all = !o.theme || o.theme === 'Всё';
+    const DIRS = { line: [E, S], diag: [SE, NE], back: [W, N, NW, SW] };
+    const L = o.custom ? (() => { const c = o.custom, d = [].concat(DIRS.line, c.diag ? [SE, NE] : [], c.back ? [W, N] : [], c.diag && c.back ? [NW, SW] : []); const area = c.R * c.C; return { name: 'Свой', R: c.R, C: c.C, dirs: d, maxL: c.maxL, maxLen: Math.min(c.max, Math.max(c.R, c.C)), secret: area > 220 ? [6, 12] : area > 120 ? [5, 10] : [4, 8] }; })() : LEVELS[o.level || 2], R = L.R, C = L.C, rnd = mulberry32((o.seed >>> 0) || 1);
+    const minLen = o.custom ? Math.max(3, o.custom.min) : 4, ok = (x) => x.l <= L.maxL && x.w.length >= minLen && x.w.length <= L.maxLen, all = !o.theme || o.theme === 'Всё';
     const clean = (a) => [...new Set(a.map((x) => norm(x.w)))].filter((w) => /^[А-Я]+$/.test(w));
     const pool0 = clean(dict.filter((x) => ok(x) && (all || x.t === o.theme))), extra = all ? [] : clean(dict.filter((x) => ok(x) && x.t !== o.theme));
     const secretPool = [...new Set(dict.filter((x) => x.l <= 2).map((x) => norm(x.w)))].filter((w) => /^[А-Я]+$/.test(w));
@@ -1051,7 +1138,7 @@
       if (!done) continue;
       placed.sort((a, b) => a.w.localeCompare(b.w, 'ru'));
       const themeSet = new Set(pool0); const outside = placed.filter((p) => !themeSet.has(p.w)).length;
-      return { level: o.level || 2, R, C, grid, words: placed, secret: { w: done, cells: holes }, theme: o.theme || 'Всё', seed: o.seed, mixed: outside > 0, outside };
+      return { level: o.custom ? 6 : o.level || 2, custom: o.custom || null, R, C, grid, words: placed, secret: { w: done, cells: holes }, theme: o.theme || 'Всё', seed: o.seed, mixed: outside > 0, outside };
     }
     return null;
   }
@@ -1096,7 +1183,7 @@
     return null;
   }
   function generateFil(dict, o) {
-    const L = FIL[o.level || 2], R = L.R, C = L.C, rnd = mulberry32((o.seed >>> 0) || 1), all = !o.theme || o.theme === 'Всё';
+    const L = o.custom ? { name: 'Свой', R: o.custom.R, C: o.custom.C, min: Math.max(3, o.custom.min), max: Math.max(Math.max(3, o.custom.min), o.custom.max), maxL: o.custom.maxL } : FIL[o.level || 2], R = L.R, C = L.C, rnd = mulberry32((o.seed >>> 0) || 1), all = !o.theme || o.theme === 'Всё';
     const ok = (x) => x.l <= L.maxL && x.w.length >= L.min && x.w.length <= L.max;
     const byLen = (arr) => { const m = {}; for (const w of [...new Set(arr.map((x) => norm(x.w)))].filter((w) => /^[А-Я]+$/.test(w))) (m[w.length] = m[w.length] || []).push(w); return m; };
     const theme = byLen(dict.filter((x) => ok(x) && (all || x.t === o.theme))), other = all ? {} : byLen(dict.filter((x) => ok(x) && x.t !== o.theme));
@@ -1114,7 +1201,7 @@
       if (words.some((a) => words.some((b) => a !== b && b.w.startsWith(a.w)))) continue;
       const grid = new Array(R * C).fill(''); words.forEach((x) => x.cells.forEach((i, k) => { grid[i] = x.w[k]; }));
       words.sort((a, b) => a.w.localeCompare(b.w, 'ru'));
-      return { kind: 'fil', level: o.level || 2, R, C, grid, words, theme: o.theme || 'Всё', seed: o.seed, mixed: outside > 0, outside };
+      return { kind: 'fil', level: o.custom ? 6 : o.level || 2, custom: o.custom || null, R, C, grid, words, theme: o.theme || 'Всё', seed: o.seed, mixed: outside > 0, outside };
     }
     return null;
   }
@@ -1154,8 +1241,8 @@ h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0
 .card.offer { background:#FBF3D6; border-color:#D9C58E; }
 .rec-btn { display:block; width:100%; border:1px dashed var(--border); background:none; color:var(--muted); padding:10px; font-weight:600; font-size:13.5px; cursor:pointer; margin:8px 0; } .rec-btn:hover { color:var(--text); background:var(--k-hover); }
 .title { font-size:13px; color:var(--muted); margin:18px 0 8px; text-align:center; }
-.seg.two { grid-template-columns:1fr 1fr; } .chk { display:block; margin-top:12px; font-size:14px; cursor:pointer; } .chk small { display:block; color:var(--muted); font-size:12px; margin:2px 0 0 24px; } .chk input { margin-right:8px; }
-.seg { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--border); } .seg button { border:none; border-right:1px solid var(--border); background:var(--k-surf); padding:10px 4px; cursor:pointer; font-size:13px; color:var(--text); } .seg button:last-child { border-right:none; } .seg button small { display:block; color:var(--muted); font-size:11px; } .seg button.on { background:var(--green); color:#fff; } .seg button.on small { color:#D8E3DB; }
+.seg.two { grid-template-columns:1fr 1fr; } .seg.three { grid-template-columns:repeat(3,1fr); flex:1; } #custom { margin-top:10px; border:1px solid var(--border); background:var(--k-surf); padding:10px 12px; } .cs-row { display:flex; align-items:center; gap:10px; margin:6px 0; font-size:13.5px; flex-wrap:wrap; } .cs-row > span { width:110px; color:var(--muted); } .cs-row input[type=range] { flex:1; accent-color:var(--green); } .cs-row b { width:28px; text-align:right; } .cs-row label { font-size:13px; cursor:pointer; } .chk { display:block; margin-top:12px; font-size:14px; cursor:pointer; } .chk small { display:block; color:var(--muted); font-size:12px; margin:2px 0 0 24px; } .chk input { margin-right:8px; }
+.seg { display:grid; grid-template-columns:repeat(6,1fr); border:1px solid var(--border); } .seg button { border:none; border-right:1px solid var(--border); background:var(--k-surf); padding:10px 4px; cursor:pointer; font-size:13px; color:var(--text); } .seg button:last-child { border-right:none; } .seg button small { display:block; color:var(--muted); font-size:11px; } .seg button.on { background:var(--green); color:#fff; } .seg button.on small { color:#D8E3DB; }
 select { width:100%; padding:10px; border:1px solid var(--border); background:var(--k-surf); font-size:14px; color:var(--text); }
 .big { display:block; width:100%; padding:15px; border:none; font-size:16px; font-weight:700; cursor:pointer; background:var(--green); color:#fff; box-shadow:0 6px 16px rgba(59,93,74,.25); margin-top:16px; }
 table.stats { width:100%; border-collapse:collapse; font-size:13.5px; } table.stats td { border-bottom:1px solid #ECECE2; padding:7px 4px; } table.stats td:last-child { text-align:right; font-weight:700; }
@@ -1245,6 +1332,14 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     <div class="seg two" id="modes"><button data-m="fil">Филворд<small>слова петляют зигзагом</small></button><button data-m="line">Поиск слов<small>по прямой + тайное слово</small></button></div>
     <div class="title">Уровень</div>
     <div class="seg" id="levels"></div>
+    <div id="custom" class="hidden">
+      <div class="cs-row"><span>Строк</span><input type="range" id="cs-r" min="4" max="16"><b id="cs-rv"></b></div>
+      <div class="cs-row"><span>Столбцов</span><input type="range" id="cs-c" min="4" max="16"><b id="cs-cv"></b></div>
+      <div class="cs-row"><span>Длина слов от</span><input type="range" id="cs-min" min="3" max="10"><b id="cs-minv"></b></div>
+      <div class="cs-row"><span>до</span><input type="range" id="cs-max" min="4" max="12"><b id="cs-maxv"></b></div>
+      <div class="cs-row"><span>Слова</span><div class="seg three" id="cs-l"><button data-v="2">Простые</button><button data-v="3">Обычные</button><button data-v="5">Любые</button></div></div>
+      <div id="cs-dirs" class="cs-row"><span>Направления</span><label><input type="checkbox" id="cs-diag"> по диагонали</label><label><input type="checkbox" id="cs-back"> задом наперёд</label></div>
+    </div>
     <div class="title">Тема</div>
     <select id="theme"></select>
     <label class="chk"><input type="checkbox" id="showlist"> Показывать список слов <small>без списка — интереснее и труднее</small></label>
@@ -1274,7 +1369,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
 <script>
 (() => {
   'use strict';
-  const $ = (id) => document.getElementById(id), WS = window.WS, VERSION = 'Версия 2.3 · 23 октября 2026';
+  const $ = (id) => document.getElementById(id), WS = window.WS, VERSION = 'Версия 2.4 · 23 октября 2026';
   const LS = { stats: 'wordsStats', save: 'wordsSave', prefs: 'wordsPrefs' };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -1285,15 +1380,18 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   const MODES = { fil: { name: 'Филворд', sub: 'Слова прячутся в сетке и петляют зигзагом — вверх, вниз, вправо и влево. Найдите их все: каждая буква принадлежит ровно одному слову.' }, line: { name: 'Поиск слов', sub: 'Слова спрятаны по прямой — в строках, столбцах и по диагонали. Вычеркните все, а оставшиеся буквы сложатся в тайное слово.' } };
   const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const defStats = () => ({ fil: { solved: {}, best: {} }, solved: {}, best: {}, secrets: 0, words: 0, daily: { results: {}, streak: 0, last: null } });
-  let D = null, S = null, prefs = Object.assign({ level: 1, theme: 'Всё', mode: 'fil', list: true }, load(LS.prefs, {})), stats = Object.assign(defStats(), load(LS.stats, {}));
+  const defCustom = () => ({ fil: { R: 8, C: 8, min: 4, max: 8, maxL: 3 }, line: { R: 12, C: 12, min: 4, max: 10, maxL: 3, diag: true, back: false } });
+  let D = null, S = null, prefs = Object.assign({ level: 1, theme: 'Всё', mode: 'fil', list: true, custom: defCustom() }, load(LS.prefs, {})), stats = Object.assign(defStats(), load(LS.stats, {}));
   if (!stats.fil) stats.fil = { solved: {}, best: {} };
   const loadD = () => (D ? Promise.resolve(D) : fetch('words.json').then((r) => r.json()).then((a) => (D = a.map(([w, t, l]) => ({ w, t, l })))));
-  const LV = (mode, l) => (mode === 'fil' ? WS.FIL : WS.LEVELS)[l];
+  if (!prefs.custom) prefs.custom = defCustom();
+  const LV = (mode, l, c) => (l === 6 ? { name: 'Свой', R: (c || prefs.custom[mode]).R, C: (c || prefs.custom[mode]).C } : (mode === 'fil' ? WS.FIL : WS.LEVELS)[l]);
   // ---------- старт ----------
   function startNew(o) {
     loadD().then(() => {
       const mode = o.mode || 'fil', seed = o.seed != null ? o.seed : (Math.random() * 2 ** 31) | 0;
-      const p = mode === 'fil' ? WS.generateFil(D, { level: o.level, theme: o.theme, seed }) : WS.generate(D, { level: o.level, theme: o.theme, seed });
+      const custom = o.level === 6 ? Object.assign({}, o.custom || prefs.custom[mode]) : null;
+      const p = mode === 'fil' ? WS.generateFil(D, { level: o.level, theme: o.theme, seed, custom }) : WS.generate(D, { level: o.level, theme: o.theme, seed, custom });
       if (!p) { toast('Не получилось составить сетку, попробуйте ещё раз'); return; }
       p.kind = mode;
       S = { p, mode, found: [], time: 0, hints: 0, daily: !!o.daily, dateKey: o.daily ? todayKey() : null, secretDone: false, tutorial: !!o.tutorial, list: o.list != null ? o.list : prefs.list };
@@ -1304,7 +1402,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   function resume() { const sv = load(LS.save, null); if (!sv) return; loadD().then(() => { S = sv; if (!S.mode) S.mode = S.p.kind || 'line'; openGame(); }); }
   function openGame() {
     $('menu').classList.add('hidden'); $('win').classList.add('hidden'); $('game').classList.remove('hidden');
-    const L = LV(S.mode, S.p.level); $('lv').innerHTML = `${S.daily ? 'Филворд дня' : MODES[S.mode].name + ' · ' + L.name}<small>${S.p.theme === 'Всё' ? 'все темы' : S.p.theme} · ${S.p.R} × ${S.p.C}</small>`;
+    const L = LV(S.mode, S.p.level, S.p.custom); $('lv').innerHTML = `${S.daily ? 'Филворд дня' : MODES[S.mode].name + ' · ' + L.name}<small>${S.p.theme === 'Всё' ? 'все темы' : S.p.theme} · ${S.p.R} × ${S.p.C}</small>`;
     path = []; pending = null; buildBoard(); render(); startClock();
   }
   // ---------- поле ----------
@@ -1442,20 +1540,38 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   function renderMenu() {
     stats = Object.assign(defStats(), load(LS.stats, stats)); if (!stats.fil) stats.fil = { solved: {}, best: {} };
     const sv = load(LS.save, null); $('resume-card').classList.toggle('hidden', !sv);
-    if (sv) { const m = sv.mode || 'line'; $('resume-info').textContent = `${sv.daily ? 'Филворд дня' : MODES[m].name + ' · ' + LV(m, sv.p.level).name} · найдено ${sv.found.length} из ${sv.p.words.length} · ${fmt(sv.time)}`; }
+    if (sv) { const m = sv.mode || 'line'; $('resume-info').textContent = `${sv.daily ? 'Филворд дня' : MODES[m].name + ' · ' + LV(m, sv.p.level, sv.p.custom).name} · найдено ${sv.found.length} из ${sv.p.words.length} · ${fmt(sv.time)}`; }
     const dr = stats.daily.results[todayKey()]; $('daily-info').textContent = dr != null ? `Решён сегодня за ${fmt(dr)} · серия ${stats.daily.streak} дн.` : 'Один и тот же для всех, средний уровень';
     $('mode-sub').textContent = MODES[prefs.mode].sub;
     $('modes').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.m === prefs.mode); b.onclick = () => { prefs.mode = b.dataset.m; store(LS.prefs, prefs); renderMenu(); }; });
-    $('levels').innerHTML = [1, 2, 3, 4, 5].map((l) => { const L = LV(prefs.mode, l); return `<button data-l="${l}" class="${prefs.level === l ? 'on' : ''}">${L.name}<small>${L.R} × ${L.C}</small></button>`; }).join('');
+    $('levels').innerHTML = [1, 2, 3, 4, 5, 6].map((l) => { const L = LV(prefs.mode, l); return `<button data-l="${l}" class="${prefs.level === l ? 'on' : ''}">${L.name}<small>${L.R} × ${L.C}</small></button>`; }).join('');
     $('levels').querySelectorAll('button').forEach((b) => { b.onclick = () => { prefs.level = +b.dataset.l; store(LS.prefs, prefs); renderMenu(); }; });
+    renderCustom();
     $('theme').innerHTML = THEMES.map((t) => `<option ${t === prefs.theme ? 'selected' : ''}>${t}</option>`).join(''); $('showlist').checked = !!prefs.list;
     $('new-btn').textContent = prefs.mode === 'fil' ? 'Новый филворд' : 'Новый поиск слов';
-    const sum = (o) => [1, 2, 3, 4, 5].reduce((a, l) => a + (o.solved[l] || 0), 0), cell = (o, l) => `${o.solved[l] || 0} / ${o.best[l] ? fmt(o.best[l]) : '—'}`;
+    const sum = (o) => [1, 2, 3, 4, 5, 6].reduce((a, l) => a + (o.solved[l] || 0), 0), cell = (o, l) => `${o.solved[l] || 0} / ${o.best[l] ? fmt(o.best[l]) : '—'}`;
     const total = sum(stats.fil) + sum(stats);
-    $('stats').innerHTML = [['Решено филвордов', sum(stats.fil)]].concat([1, 2, 3, 4, 5].map((l) => [`· ${WS.FIL[l].name}: решено / лучшее время`, cell(stats.fil, l)]), [['Решено «Поиск слов»', sum(stats)], ['Разгадано тайных слов', stats.secrets || 0], ['Найдено слов всего', stats.words || 0]]).map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+    $('stats').innerHTML = [['Решено филвордов', sum(stats.fil)]].concat([1, 2, 3, 4, 5].map((l) => [`· ${WS.FIL[l].name}: решено / лучшее время`, cell(stats.fil, l)]), [['· Свои филворды: решено', stats.fil.solved[6] || 0]], [['Решено «Поиск слов»', sum(stats)], ['Разгадано тайных слов', stats.secrets || 0], ['Найдено слов всего', stats.words || 0]]).map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
     $('ver').textContent = VERSION; let later = false; try { later = !!localStorage.getItem('wordsTutorLater'); } catch (e) {}
     $('tut-offer').classList.toggle('hidden', !!(total || sv || later || (window.PGTutor && PGTutor.isDone('words'))));
   }
+  // ---------- свои настройки ----------
+  function renderCustom() {
+    const on = prefs.level === 6, c = prefs.custom[prefs.mode], maxSide = prefs.mode === 'fil' ? 16 : 18; $('custom').classList.toggle('hidden', !on); if (!on) return;
+    for (const [id, key] of [['cs-r', 'R'], ['cs-c', 'C'], ['cs-min', 'min'], ['cs-max', 'max']]) { const el = $(id); if (id === 'cs-r' || id === 'cs-c') el.max = maxSide; el.value = c[key]; $(id + 'v').textContent = c[key]; }
+    $('cs-l').querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.v === c.maxL));
+    $('cs-dirs').classList.toggle('hidden', prefs.mode === 'fil'); $('cs-diag').checked = !!c.diag; $('cs-back').checked = !!c.back;
+  }
+  function setCustom(key, v) {
+    const c = prefs.custom[prefs.mode]; c[key] = v;
+    if (key === 'min' && c.max < c.min) c.max = c.min; if (key === 'max' && c.min > c.max) c.min = c.max;
+    if (prefs.mode === 'line') { const side = Math.max(c.R, c.C); if (c.max > side) c.max = side; if (c.min > c.max) c.min = c.max; }
+    store(LS.prefs, prefs); renderCustom(); renderMenuSizes();
+  }
+  function renderMenuSizes() { const b = $('levels').querySelector('button[data-l="6"] small'); if (b) { const c = prefs.custom[prefs.mode]; b.textContent = `${c.R} × ${c.C}`; } }
+  [['cs-r', 'R'], ['cs-c', 'C'], ['cs-min', 'min'], ['cs-max', 'max']].forEach(([id, key]) => { $(id).addEventListener('input', () => setCustom(key, +$(id).value)); });
+  $('cs-l').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setCustom('maxL', +b.dataset.v); });
+  $('cs-diag').addEventListener('change', () => setCustom('diag', $('cs-diag').checked)); $('cs-back').addEventListener('change', () => setCustom('back', $('cs-back').checked));
   // ---------- обучение ----------
   function startTutorial() {
     loadD().then(() => {
@@ -1471,7 +1587,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     });
   }
   // ---------- кнопки ----------
-  $('new-btn').onclick = () => { prefs.theme = $('theme').value; prefs.list = $('showlist').checked; store(LS.prefs, prefs); startNew({ mode: prefs.mode, level: prefs.level, theme: prefs.theme, list: prefs.list }); };
+  $('new-btn').onclick = () => { prefs.theme = $('theme').value; prefs.list = $('showlist').checked; store(LS.prefs, prefs); if (prefs.level === 6 && prefs.mode === 'line' && prefs.custom.line.R * prefs.custom.line.C > 250) toast('Составляю большую сетку…'); setTimeout(() => startNew({ mode: prefs.mode, level: prefs.level, theme: prefs.theme, list: prefs.list }), 30); };
   $('theme').onchange = () => { prefs.theme = $('theme').value; store(LS.prefs, prefs); }; $('showlist').onchange = () => { prefs.list = $('showlist').checked; store(LS.prefs, prefs); };
   $('daily-btn').onclick = startDaily; $('resume-btn').onclick = resume; $('menu-btn').onclick = showMenu;
   $('hint-btn').onclick = hint; $('give-btn').onclick = () => { if (confirm('Открыть все слова? Игра не засчитается.')) giveUp(); };

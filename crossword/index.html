@@ -19,7 +19,7 @@
     blue: { n: 'Голубая', l: '#DEE3E6', d: '#8CA2AD' },
     wood: { n: 'Дерево', l: '#F0D9B5', d: '#B58863' }
   };
-  const DEFAULTS = { sound: true, confirm: false, board: 'classic', nums: true, chat: true, showGames: true, theme: 'auto' };
+  const DEFAULTS = { sound: true, music: false, musicVol: 0.5, confirm: false, board: 'classic', nums: true, chat: true, showGames: true, theme: 'auto' };
   function get() { try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULTS); } }
   // Тема оформления: светлая, тёмная или как в системе
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -139,6 +139,7 @@
         <div id="pg-theme-row"></div>
         <div id="pg-install-row"></div>
         <div class="pg-row"><div><b>Звук</b><span class="d">Звуки ходов, взятий и окончания партии</span></div>${sw('sound')}</div>
+        <div class="pg-row"><div><b>Фоновая музыка</b><span class="d">Спокойная мелодия, которая сочиняется прямо в браузере; в каждой игре — своё настроение</span></div>${sw('music')}</div>
         <div class="pg-row"><div><b>Подтверждать ход</b><span class="d">После хода появляется кнопка «Подтвердить» — удобно на телефоне, чтобы не ходить случайно</span></div>${sw('confirm')}</div>
         <div class="pg-row"><div><b>Чат в партии</b><span class="d">Кнопка чата и сообщения соперника в онлайн-партиях. Выключите, если не хотите видеть сообщения</span></div>${sw('chat')}</div>
         <div id="pg-sync-row"></div>
@@ -174,6 +175,71 @@
     get visible() { return !!bar && bar.style.display !== 'none'; }
   };
 })();
+// ============ Фоновая музыка Pep Games: сочиняется прямо в браузере (Web Audio), без файлов ============
+(function () {
+  if (window.PGMusic || !window.PGS) return;
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { window.PGMusic = { supported: false }; return; }
+  // настроение по странице: головоломки — спокойно, игры за доской — задумчиво, «Сто к одному» — задорно
+  const page = (location.pathname.match(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words|code)\//) || [, 'hub'])[1];
+  const STYLES = {
+    calm: { bpm: 64, prog: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 52, 55, 60], [55, 59, 62, 67]], scale: [69, 72, 74, 76, 79, 81, 84], notes: 0.45, wave: 'triangle', bell: 0.5 },
+    think: { bpm: 56, prog: [[50, 57, 62, 65], [46, 53, 58, 62], [43, 50, 55, 58], [45, 52, 57, 61]], scale: [62, 65, 67, 69, 72, 74, 77], notes: 0.35, wave: 'sine', bell: 0.6 },
+    show: { bpm: 104, prog: [[48, 55, 60, 64], [45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 59]], scale: [72, 74, 76, 79, 81, 84, 86], notes: 0.7, wave: 'triangle', bell: 0.35, bass: true }
+  };
+  const style = STYLES[{ chess: 'think', draughts: 'think', sto: 'show' }[page] || 'calm'];
+  let ctx = null, master = null, echo = null, timer = null, beat = 0, nextT = 0, playing = false;
+  const f = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function setup() {
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.connect(master); master.lp = lp;
+    echo = ctx.createDelay(1); echo.delayTime.value = 60 / style.bpm * 0.75; const fb = ctx.createGain(); fb.gain.value = 0.32; const wet = ctx.createGain(); wet.gain.value = 0.28;
+    echo.connect(fb); fb.connect(echo); echo.connect(wet); wet.connect(lp);
+  }
+  function voice(freq, t, dur, vol, type, toEcho) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + Math.min(0.6, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    o.connect(g); g.connect(master.lp); if (toEcho) g.connect(echo); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function pluck(freq, t, vol) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + 1.4 * style.bell + 0.3); o.connect(g); g.connect(master.lp); g.connect(echo); o.start(t); o.stop(t + 2); }
+  let lastNote = 3;
+  function schedule() {
+    const spb = 60 / style.bpm;
+    while (nextT < ctx.currentTime + 0.4) {
+      const bar = Math.floor(beat / 4) % style.prog.length, inBar = beat % 4, chord = style.prog[bar];
+      if (inBar === 0) chord.forEach((m, k) => { voice(f(m), nextT, spb * 4.2, k ? 0.035 : 0.05, style.wave, false); voice(f(m) * 1.003, nextT, spb * 4.2, 0.02, 'sine', false); });
+      if (style.bass && (inBar === 0 || inBar === 2)) voice(f(chord[0] - 12), nextT, spb * 0.9, 0.09, 'triangle', false);
+      if (style.bass && inBar % 2 === 1) pluck(f(chord[2] + 12), nextT, 0.035);
+      for (const half of [0, 0.5]) if (Math.random() < style.notes * (half ? 0.5 : 1)) {        // мелодия: шаг на соседнюю ноту лада, изредка — скачок
+        lastNote = Math.max(0, Math.min(style.scale.length - 1, lastNote + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)]));
+        pluck(f(style.scale[lastNote]), nextT + half * spb, 0.05 + Math.random() * 0.03);
+      }
+      beat++; nextT += spb;
+    }
+  }
+  const vol = () => 0.55 * (window.PGS.get().musicVol || 0.5);
+  function start() {
+    if (playing) return; if (!ctx) setup(); if (ctx.state === 'suspended') ctx.resume();
+    playing = true; nextT = ctx.currentTime + 0.1; master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(vol(), ctx.currentTime, 1.2);
+    schedule(); timer = setInterval(schedule, 120);
+  }
+  function stop() { if (!playing) return; playing = false; clearInterval(timer); timer = null; if (ctx) { master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => { if (!playing && ctx) ctx.suspend(); }, 1600); } }
+  const want = () => !!window.PGS.get().music && !document.hidden;
+  function sync() { if (want()) { if (armed) start(); } else stop(); paint(); }
+  // браузеры разрешают звук только после действия пользователя — ждём первого касания или клавиши
+  let armed = false; const arm = () => { armed = true; if (want()) start(); };
+  ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, arm, { once: false, passive: true }));
+  document.addEventListener('visibilitychange', sync); window.addEventListener('pgs-change', sync); window.addEventListener('storage', (e) => { if (e.key === 'pgSettings') sync(); });
+  function toggle() { const on = !window.PGS.get().music; window.PGS.set({ music: on }); armed = true; sync(); }
+  // строка «Фоновая музыка» в меню игры (вставляется над строкой синхронизации) и кнопка в общих настройках
+  function rowHtml() { const on = !!window.PGS.get().music; return `<div class="pgm-row"><div><b>🎵 Фоновая музыка</b><span>${on ? 'Играет спокойная мелодия' : 'Выключена'}</span></div><button type="button" class="pgm-btn${on ? ' on' : ''}" aria-pressed="${on}">${on ? 'Выключить' : 'Включить'}</button></div>`; }
+  function paint() { document.querySelectorAll('.pgm-host').forEach((h) => { h.innerHTML = rowHtml(); h.querySelector('.pgm-btn').onclick = toggle; }); }
+  function mount(host) { if (!host) return; host.classList.add('pgm-host'); paint(); }
+  const css = '.pgm-row { display:flex; justify-content:space-between; align-items:center; gap:10px; border:1px solid var(--k-line); background:var(--k-surf); padding:10px 12px; margin:12px 0 0; font-size:13.5px; } .pgm-row b { display:block; } .pgm-row span { color:var(--k-mu); font-size:12.5px; } .pgm-btn { border:1px solid var(--k-line); background:var(--k-panel); padding:7px 12px; font:700 13px inherit; font-family:inherit; cursor:pointer; color:var(--k-tx); white-space:nowrap; } .pgm-btn.on { background:#3B5D4A; color:#fff; border-color:#3B5D4A; }';
+  const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
+  const auto = () => { const s = document.getElementById('sync-row'); if (s && !document.getElementById('pgm-auto')) { const h = document.createElement('div'); h.id = 'pgm-auto'; s.parentNode.insertBefore(h, s); mount(h); } document.querySelectorAll('[data-pgm]').forEach(mount); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', auto); else auto();
+  window.PGMusic = { supported: true, start, stop, toggle, mount, get playing() { return playing; }, style: page };
+})();
 
 </script>
 <script>
@@ -192,6 +258,7 @@
     sudokuStats: { m: 'stats' }, crosswordStats: { m: 'stats' },
     nonogramPrefs: { m: 'lww' }, nonogramSave: { m: 'lww', slow: true }, nonogramStats: { m: 'stats' },
     stoStats: { m: 'lww' },
+    codeStats: { m: 'lww' }, codePrefs: { m: 'lww' }, codeSave: { m: 'lww', slow: true },
     wordsStats: { m: 'lww' }, wordsPrefs: { m: 'lww' }, wordsSave: { m: 'lww', slow: true },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
     pgAch: { m: 'ach' },                                                                      // достижения: объединяются, счётчики — максимум
@@ -563,6 +630,10 @@
     ['wsnolist', 'Филворд', '🙈', 'Вслепую', 'Решите филворд от среднего уровня без списка слов', 1, (c) => Math.min(1, C(c, 'wsnolist'))],
     ['wssecret', 'Филворд', '🔐', 'Тайнопись', 'Разгадайте 10 тайных слов в «Поиске слов»', 10, (c) => Math.min(10, C(c, 'wssecret'))],
     ['wsdaily7', 'Филворд', '🗓', 'Неделя слов', 'Решайте филворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'wsstreak'))],
+    ['kw1', 'Ключворд', '🔑', 'Первый ключ', 'Разгадайте первый ключворд', 1, (c) => Math.min(1, C(c, 'kw'))],
+    ['kwhard', 'Ключворд', '🗝', 'Взломщик', 'Разгадайте ключворд сложного уровня', 1, (c) => Math.min(1, C(c, 'kwhard'))],
+    ['kwclean', 'Ключворд', '🕵', 'Без подсказок', 'Разгадайте ключворд от среднего уровня без подсказок и проверок', 1, (c) => Math.min(1, C(c, 'kwclean'))],
+    ['kwdaily7', 'Ключворд', '📅', 'Неделя ключей', 'Решайте ключворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'kwstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -638,7 +709,7 @@
 @keyframes pgaIn { from { transform:translateY(20px); opacity:0; } to { transform:none; opacity:1; } }`;
   const st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
-  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
+  const rootUrl = () => { let p = location.pathname.replace(/index\.html$/, '').replace(/\/(chess|draughts|sudoku|crossword|nonogram|sto|words|code)\/$/, '/'); if (!p.endsWith('/')) p += '/'; return location.origin + p; };
   function toasts(list) {
     if (!document.body) return; let box = document.getElementById('pga-toasts'); if (!box) { box = document.createElement('div'); box.id = 'pga-toasts'; document.body.appendChild(box); }
     if (list.length > 3) { const rest = list.length - 2; list = list.slice(0, 2).concat([{ id: 'more', icon: '🏅', title: 'Ещё достижений: ' + rest, desc: 'Нажмите, чтобы посмотреть все' }]); }          // не заваливаем экран, если достижений сразу много
@@ -681,7 +752,7 @@
   }
   // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
   function touchDay(s, game, d) {
-    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64 }[game]; if (!gbit) return;
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64, code: 128 }[game]; if (!gbit) return;
     const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
     if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
     const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
@@ -697,8 +768,8 @@
       if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
-    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
-    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words';
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code';
     if (completion) {
       touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
       if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
@@ -709,6 +780,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'code') { inc('kw'); if (d.level >= 3) inc('kwhard'); if (d.level >= 2 && !d.hints && !d.checks) inc('kwclean'); if (d.daily) max('kwstreak', d.streak || 1); }
     if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); if (d.mode === 'fil' && d.noList && d.level >= 2 && !d.hints) inc('wsnolist'); }
     if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }
     if (game === 'tutor') { inc('tutor'); if (d.id) max('tut_' + d.id, 1); }
@@ -798,6 +870,20 @@
         'Пока ходит соперник, можно задать <b>предварительный ход</b>. Номера клеток можно скрыть в настройках.',
         'Компьютер: движок Scan 3.1, уровни от 1 до 8. По сети можно играть с другом по ссылке или вызвать его из раздела «Друзья».',
         'Партию с компьютером можно продолжить после перезагрузки страницы и на другом устройстве (вход через Google).']]
+    ] },
+    code: { title: 'Правила ключворда', icon: '🔑', sections: [
+      ['Цель игры', ['Ключворд — это кроссворд без вопросов. В каждой клетке вместо буквы стоит число: одинаковые числа означают одну и ту же букву, разные числа — разные буквы. Нужно разгадать все буквы, и тогда в сетке проступят настоящие слова.']],
+      ['Как играть', [
+        'Несколько букв открыты сразу — это <b>ключ</b> (зелёные). Выберите клетку или число в таблице кодов и нажмите букву на клавиатуре: она появится во всех клетках с этим числом.',
+        'Каждая буква встречается только под одним числом. Если поставить букву, которая уже стоит под другим числом, она перенесётся на новое место. «⌫ Стереть» убирает букву.'
+      ]],
+      ['Советы', [
+        'Начните со слов, где уже видно две-три буквы ключа: короткие слова угадываются быстрее всего.',
+        'Самые частые буквы русского языка — О, Е, А, И, Н, Т: числа, которые встречаются чаще других, скорее всего прячут именно их.',
+        'Буква Ь не бывает в начале слова, а Ы и Ъ — почти никогда. После Ж, Ш, Ч, Щ чаще всего стоят И, Е, А, У.',
+        '«✔ Проверить» подсветит ошибки, «💡 Подсказка» откроет букву выбранного числа. Без подсказок и проверок решение засчитывается особо.'
+      ]],
+      ['Ключворд дня', ['Каждый день — один и тот же ключворд для всех, средний уровень.']]
     ] },
     words: { title: 'Правила филворда', icon: '🔍', sections: [
       ['Филворд', [
@@ -1340,7 +1426,7 @@ if (typeof module !== 'undefined') module.exports = CW;
 const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 const DICT = JSON.parse($('cw-dict').textContent);
-const BUILD = '2.3 · 23 октября 2026';
+const BUILD = '2.4 · 23 октября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
