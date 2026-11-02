@@ -1238,6 +1238,7 @@ select { width:100%; padding:11px 12px; border:1px solid var(--border); backgrou
 .loading { position:fixed; inset:0; z-index:250; background:rgba(238,240,231,.9); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; font-size:15px; color:var(--muted); }
 .loading::before { content:''; width:34px; height:34px; border-radius:50%; border:3px solid var(--k-line); border-top-color:var(--k-acc); animation:spin .8s linear infinite; } @keyframes spin { to { transform:rotate(360deg); } }
 @media (max-width:640px) { .content { padding:0 16px; } .tool { min-width:50px; padding:5px 6px; font-size:11px; } }
+.inks { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; } .inks button { display:flex; align-items:center; gap:6px; border:1px solid var(--k-line); background:var(--k-surf); padding:6px 9px; font:600 12.5px 'Noto Sans',system-ui,sans-serif; color:var(--k-tx); cursor:pointer; } .inks button.on { border-color:var(--k-acc); box-shadow:inset 0 0 0 1px var(--k-acc); background:var(--k-panel); } .inks button i { width:16px; height:16px; display:inline-block; }
 /*PGDARK-VARS*/
 :root{--k-bg:#EEF0E7;--k-panel:#FDFDFA;--k-surf:#F3F2EA;--k-hover:#EAEADF;--k-line:#D9DBCC;--k-line2:#B7BAA5;--k-tx:#2A2E24;--k-mu:#6E7568;--k-mu2:#9A9D8E;--k-gt:#3B5D4A;--k-rt:#A23B33;--k-nt:#2F3A56;--k-warm:#F3EEDD;--k-acc:#3B5D4A;color-scheme:light}
 html[data-theme="dark"]{--k-bg:#131815;--k-panel:#1C221E;--k-surf:#252C27;--k-hover:#2E372F;--k-line:#39443C;--k-line2:#4D5A50;--k-tx:#E5E9DE;--k-mu:#A5AC9B;--k-mu2:#7E8677;--k-gt:#8CC3A0;--k-rt:#E8887E;--k-nt:#A9B9E0;--k-warm:#2B291E;--k-acc:#3B5D4A;--bg:#131815;--panel:#1C221E;--side-bg:#1C221E;--text:#E5E9DE;--muted:#A5AC9B;--ink-muted:#A5AC9B;--border:#39443C;--highlight:#2B3A2E;--green2:#8CC3A0;color-scheme:dark}
@@ -2387,7 +2388,7 @@ if (typeof module !== 'undefined') module.exports = NG;
 const $ = (id) => document.getElementById(id);
 const NGSRC = $('ng-engine').textContent;
 const NG = new Function(NGSRC + '\nreturn NG;')();
-const BUILD = '2.6 · 2 ноября 2026';
+const BUILD = '2.7 · 2 ноября 2026';
 const CAT = { small: 'Малые (до 10)', medium: 'Средние (11–25)', large: 'Большие (26–50)', huge: 'Огромные (51–100)' };
 const catOf = (R, C) => { const m = Math.max(R, C); return m <= 10 ? 'small' : m <= 25 ? 'medium' : m <= 50 ? 'large' : 'huge'; };
 const LS = { save: 'nonogramSave', stats: 'nonogramStats', prefs: 'nonogramPrefs' };
@@ -2462,7 +2463,18 @@ function resume() {
 /* ---------- цвета и холст ---------- */
 let COL = null;
 function readColors() { const cs = getComputedStyle(document.documentElement), g = (n, d) => (cs.getPropertyValue(n) || '').trim() || d; COL = { bg: g('--k-panel', '#FDFDFA'), surf: g('--k-surf', '#F3F2EA'), hover: g('--k-hover', '#EAEADF'), line: g('--k-line', '#D9DBCC'), line2: g('--k-line2', '#B7BAA5'), tx: g('--k-tx', '#2A2E24'), mu: g('--k-mu', '#6E7568'), mu2: g('--k-mu2', '#9A9D8E'), gt: g('--k-gt', '#3B5D4A'), rt: g('--k-rt', '#A23B33'), nt: g('--k-nt', '#2F3A56') }; }
-new MutationObserver(() => { readColors(); draw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+new MutationObserver(() => { readColors(); draw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-pal'] });
+// цвет закраски: «чернила» (по палитре сайта), цветные краски или радуга по строкам
+const INKS = [['ink', 'Чернила', null], ['green', 'Зелёный', ['#2F6B4A', '#7FC79A']], ['blue', 'Синий', ['#2C5DA8', '#8FB2F0']], ['berry', 'Ягодный', ['#9C2F5A', '#F08DB3']], ['amber', 'Янтарный', ['#B06A10', '#F2BB5C']], ['rainbow', 'Радуга', null], ['sunset', 'Закат', null], ['sea', 'Море', null], ['forest', 'Лес', null], ['aqua', 'Акварель', null]];
+// градиенты: [цвет сверху, цвет снизу] для светлой и тёмной темы; «Акварель» идёт по диагонали
+const GRADS = { sunset: [['#E9A23B', '#7A2E6E'], ['#F4C26B', '#C77DBA']], sea: [['#3FA7B8', '#1F3A6E'], ['#7FD3DE', '#7C9BE0']], forest: [['#8DB34A', '#1F5132'], ['#C2DE84', '#6FBF8A']], aqua: [['#5DA9C9', '#C2577A'], ['#9ED2E6', '#F09AB6']] };
+const mix = (a, b, t) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const x = p(a), y = p(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',')})`; };
+function inkAt(r, c, R) {
+  const k = (prefs && prefs.ink) || 'ink', dark = document.documentElement.dataset.theme === 'dark';
+  if (k === 'rainbow') { const h = Math.round((r / Math.max(1, (R || S.R) - 1)) * 300); return `hsl(${h}, ${dark ? 62 : 58}%, ${dark ? 62 : 42}%)`; }
+  if (GRADS[k]) { const [a, b] = GRADS[k][dark ? 1 : 0], RR = Math.max(1, (R || S.R) - 1), CC = Math.max(1, ((S && S.C) || RR + 1) - 1); const t = k === 'aqua' ? (r / RR + c / CC) / 2 : r / RR; return mix(a, b, Math.max(0, Math.min(1, t))); }
+  const it = INKS.find((x) => x[0] === k); return it && it[2] ? it[2][dark ? 1 : 0] : COL.nt;
+}
 const cv = $('cv'), ctx = cv.getContext('2d'), stage = $('stage'), mm = $('minimap'), mctx = mm.getContext('2d');
 let VW = 300, VH = 300, DPR = 1;
 const view = { cell: 24, x: 0, y: 0 };                  // x, y — сдвиг сетки относительно левого верхнего угла игровой области (≤ 0)
@@ -2506,7 +2518,7 @@ function render() {
     const i = r * C + c, v = S.cells[i], x = gx + c * cell, y = gy + r * cell;
     ctx.fillStyle = ((((r / 5) | 0) + ((c / 5) | 0)) & 1) ? COL.hover : COL.surf; ctx.fillRect(x, y, cell, cell);
     if (prefs.hlLine && (r === hover.r || c === hover.c)) { ctx.fillStyle = 'rgba(76,140,100,.16)'; ctx.fillRect(x, y, cell, cell); }
-    if (v === 1) { ctx.fillStyle = S.given[i] ? COL.mu : COL.nt; if (S.hinted[i]) ctx.fillStyle = '#C49A36'; ctx.fillRect(x + 1, y + 1, cell - 1, cell - 1); }
+    if (v === 1) { ctx.fillStyle = S.given[i] ? COL.mu : inkAt(r, c); if (S.hinted[i]) ctx.fillStyle = '#C49A36'; ctx.fillRect(x + 1, y + 1, cell - 1, cell - 1); }
     else if (v === 2) { ctx.strokeStyle = S.given[i] ? COL.mu : COL.mu2; ctx.lineWidth = Math.max(1, cell / 12); const q = cell * 0.28; ctx.beginPath(); ctx.moveTo(x + q, y + q); ctx.lineTo(x + cell - q, y + cell - q); ctx.moveTo(x + cell - q, y + q); ctx.lineTo(x + q, y + cell - q); ctx.stroke(); }
     const bad = (v === 1 && !S.sol[i]) ? (S.wrong || prefs.showErr || S.tutorial) : (v === 2 && S.sol[i] && (prefs.showErr || S.tutorial));
     if (bad || (S.wrong && S.wrong[i])) { ctx.strokeStyle = COL.rt; ctx.lineWidth = Math.max(2, cell / 8); ctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4); }
@@ -2532,7 +2544,7 @@ function render() {
 function drawMini(m) {
   const fits = m.C * m.cell <= VW - m.LW && m.R * m.cell <= VH - m.TH; mm.style.display = fits ? 'none' : 'block'; if (fits) return;
   const mx = innerWidth <= 640 ? 84 : 120, sc = Math.max(1, Math.floor(Math.min(mx / m.C, mx / m.R))), w = m.C * sc, h = m.R * sc; if (mm.width !== w) mm.width = w; if (mm.height !== h) mm.height = h;
-  mctx.clearRect(0, 0, w, h); for (let r = 0; r < m.R; r++) for (let c = 0; c < m.C; c++) { const v = S.cells[r * m.C + c]; if (v === 1) { mctx.fillStyle = COL.nt; mctx.fillRect(c * sc, r * sc, sc, sc); } else { mctx.fillStyle = COL.surf; mctx.globalAlpha = 0.6; mctx.fillRect(c * sc, r * sc, sc, sc); mctx.globalAlpha = 1; } }
+  mctx.clearRect(0, 0, w, h); for (let r = 0; r < m.R; r++) for (let c = 0; c < m.C; c++) { const v = S.cells[r * m.C + c]; if (v === 1) { mctx.fillStyle = inkAt(r, c); mctx.fillRect(c * sc, r * sc, sc, sc); } else { mctx.fillStyle = COL.surf; mctx.globalAlpha = 0.6; mctx.fillRect(c * sc, r * sc, sc, sc); mctx.globalAlpha = 1; } }
   const vx = -view.x / m.cell * sc, vy = -view.y / m.cell * sc, vw = (VW - m.LW) / m.cell * sc, vh = (VH - m.TH) / m.cell * sc; mctx.strokeStyle = '#C49A36'; mctx.lineWidth = 2; mctx.strokeRect(vx + 1, vy + 1, Math.min(w - 2, vw - 2), Math.min(h - 2, vh - 2));
 }
 let mmDown = false; function mmJump(e) { const m = metrics(), r = mm.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height; view.x = -(fx * m.C * m.cell - (VW - m.LW) / 2); view.y = -(fy * m.R * m.cell - (VH - m.TH) / 2); draw(); }
@@ -2603,7 +2615,7 @@ $('t-hint').onclick = hint; $('t-check').onclick = check;
 function resetField() { if (!S || S.paused || S.done) return; const ch = []; for (let i = 0; i < S.cells.length; i++) if (!S.given[i] && S.cells[i] !== 0) setCell(i, 0, ch); if (!ch.length) { toast('Поле уже чистое'); return; } if (!confirm('Стереть все отметки на поле? Открытые заранее клетки останутся. Действие можно отменить.')) { for (let k = ch.length - 1; k >= 0; k--) S.cells[ch[k][0]] = ch[k][1]; countFill(); draw(); return; } commit(ch); toast('Поле очищено: кнопка «Отмена» вернёт всё как было'); persist(); }
 $('t-reset').onclick = resetField;
 function checkWin() { if (!S || S.done) return; if (S.ok === S.total && S.bad === 0) win(); }
-function pictureCanvas() { const c = document.createElement('canvas'), k = Math.max(2, Math.min(8, Math.floor(260 / Math.max(S.R, S.C)))); c.width = S.C * k; c.height = S.R * k; const x = c.getContext('2d'); x.fillStyle = COL.surf; x.fillRect(0, 0, c.width, c.height); x.fillStyle = COL.nt; for (let r = 0; r < S.R; r++) for (let q = 0; q < S.C; q++) if (S.sol[r * S.C + q]) x.fillRect(q * k, r * k, k, k); return c; }
+function pictureCanvas() { const c = document.createElement('canvas'), k = Math.max(2, Math.min(8, Math.floor(260 / Math.max(S.R, S.C)))); c.width = S.C * k; c.height = S.R * k; const x = c.getContext('2d'); x.fillStyle = COL.surf; x.fillRect(0, 0, c.width, c.height); for (let r = 0; r < S.R; r++) for (let q = 0; q < S.C; q++) if (S.sol[r * S.C + q]) { x.fillStyle = inkAt(r, q); x.fillRect(q * k, r * k, k, k); } return c; }
 function win() {
   if (S.tutorial) { S.done = true; draw(); return; }          // обучение: без статистики и окна победы, урок сам скажет «Готово»
   S.done = true; localStorage.removeItem(LS.save); const t = S.time, cat = catOf(S.R, S.C); stats.solved[cat] = (stats.solved[cat] || 0) + 1; const newBest = !stats.best[cat] || t < stats.best[cat]; if (newBest) stats.best[cat] = t;
@@ -2671,8 +2683,9 @@ $('open-prefs').onclick = () => {
   if ($('prefs-ov')) return; const ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'prefs-ov';
   const rows = [['autoX', 'Крестики на готовых линиях', 'Когда строка или столбец собраны, пустые клетки в них сами помечаются крестиками'], ['showErr', 'Показывать ошибки сразу', 'Лишняя закрашенная клетка подсвечивается красным, как только вы её поставили'], ['hlLine', 'Подсвечивать строку и столбец', 'Помогает не потерять нужную линию на большом поле']];
   function paint() {
-    ov.innerHTML = `<div class="panel"><h3>Настройки</h3><div id="pg-theme-row"></div><div id="pg-install-row"></div>${rows.map(([k, t, d]) => `<div class="srow"><div><b>${t}</b><span class="d">${d}</span></div><button class="sw ${prefs[k] ? 'on' : ''}" data-k="${k}"></button></div>`).join('')}<button class="big" id="prefs-close" style="width:calc(100% - 48px);margin:14px 24px 22px;box-shadow:none">Готово</button></div>`;
+    ov.innerHTML = `<div class="panel"><h3>Настройки</h3><div id="pg-theme-row"></div><div class="srow" style="flex-wrap:wrap"><div style="width:100%"><b>Цвет закраски</b><span class="d">Чем закрашиваются клетки — в цвет оформления, цветной краской или радугой по строкам</span><div class="inks">${INKS.map(([k, n, c]) => `<button type="button" data-ink="${k}" class="${(prefs.ink || 'ink') === k ? 'on' : ''}"><i style="background:${k === 'rainbow' ? 'linear-gradient(#E0584B,#E9C46A,#4C9A6A,#2C5DA8,#9C2F5A)' : GRADS[k] ? `linear-gradient(${k === 'aqua' ? '135deg,' : ''}${GRADS[k][0][0]},${GRADS[k][0][1]})` : c ? c[0] : 'var(--k-nt,#2F3A56)'}"></i>${n}</button>`).join('')}</div></div></div><div id="pg-install-row"></div>${rows.map(([k, t, d]) => `<div class="srow"><div><b>${t}</b><span class="d">${d}</span></div><button class="sw ${prefs[k] ? 'on' : ''}" data-k="${k}"></button></div>`).join('')}<button class="big" id="prefs-close" style="width:calc(100% - 48px);margin:14px 24px 22px;box-shadow:none">Готово</button></div>`;
     ov.querySelectorAll('.sw').forEach((b) => { b.onclick = () => { prefs[b.dataset.k] = !prefs[b.dataset.k]; store(LS.prefs, prefs); paint(); if (S) draw(); }; });
+    ov.querySelectorAll('[data-ink]').forEach((b) => { b.onclick = () => { prefs.ink = b.dataset.ink; store(LS.prefs, prefs); paint(); if (S) draw(); }; });
     if (window.PGS && PGS.mountThemeRow) PGS.mountThemeRow(ov.querySelector('#pg-theme-row')); if (window.PGS && PGS.install) PGS.install.mountRow(ov.querySelector('#pg-install-row')); $('prefs-close').onclick = () => ov.remove();
   }
   ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); }); document.body.appendChild(ov); paint();

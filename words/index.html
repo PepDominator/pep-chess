@@ -1479,6 +1479,8 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
     <div class="title">Тема</div>
     <select id="theme"></select>
     <label class="chk"><input type="checkbox" id="showlist"> Показывать список слов <small>без списка — интереснее и труднее</small></label>
+    <div class="title">Цвета найденных слов</div>
+    <div class="seg" id="wpals" style="grid-template-columns:repeat(4,1fr)"></div>
     <button class="big" id="new-btn">Новый филворд</button>
     <div class="title">Ваша статистика</div>
     <table class="stats" id="stats"></table>
@@ -1505,7 +1507,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 <script>
 (() => {
   'use strict';
-  const $ = (id) => document.getElementById(id), WS = window.WS, VERSION = 'Версия 2.6 · 2 ноября 2026';
+  const $ = (id) => document.getElementById(id), WS = window.WS, VERSION = 'Версия 2.7 · 2 ноября 2026';
   const LS = { stats: 'wordsStats', save: 'wordsSave', prefs: 'wordsPrefs' };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -1513,6 +1515,14 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const THEMES = ['Всё', 'Имена', 'Животные', 'Природа', 'Еда и напитки', 'Дом и быт', 'Города и страны', 'Профессии', 'Транспорт и техника', 'Спорт', 'Искусство и музыка', 'Наука и космос', 'Человек и семья', 'Сказки и кино', 'Литература', 'Здоровье'];
   const COLORS = ['#3B5D4A', '#2F3A56', '#B5483C', '#C99A2E', '#6A4C93', '#1D7A8C', '#8C5A2B', '#4A7C2E', '#9C3D6B', '#3D6B9C'];
+  // палитры найденных слов: [название, функция цвета (номер слова, всего слов) → [фон, цвет букв]]
+  const WPALS = {
+    bright: ['Яркая', (n) => [COLORS[n % COLORS.length], '#fff']],
+    pastel: ['Пастель', (n) => [['#F4C7C3', '#C9E4C5', '#C7D7F4', '#F6E3B4', '#E2CCF0', '#BFE3E6', '#F5D0B5', '#D5E8B5', '#F2C6DE', '#C9D3EC'][n % 10], '#2A2E24']],
+    rainbow: ['Радуга', (n, N) => [`hsl(${Math.round((n / Math.max(1, N)) * 320)}, 58%, 46%)`, '#fff']],
+    mono: ['Монохром', (n) => { const acc = getComputedStyle(document.documentElement).getPropertyValue('--k-acc').trim() || '#3B5D4A'; return [`color-mix(in srgb, ${acc} ${[100, 78, 88, 66, 94, 72, 84, 60][n % 8]}%, #fff)`, '#fff']; }]
+  };
+  const wcol = (n, N) => (WPALS[prefs.wpal] || WPALS.bright)[1](n, N);
   const MODES = { fil: { name: 'Филворд', sub: 'Слова прячутся в сетке и петляют зигзагом — вверх, вниз, вправо и влево. Найдите их все: каждая буква принадлежит ровно одному слову.' }, line: { name: 'Поиск слов', sub: 'Слова спрятаны по прямой — в строках, столбцах и по диагонали. Вычеркните все, а оставшиеся буквы сложатся в тайное слово.' } };
   const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const defStats = () => ({ fil: { solved: {}, best: {} }, solved: {}, best: {}, secrets: 0, words: 0, daily: { results: {}, streak: 0, last: null } });
@@ -1557,8 +1567,8 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
     $('wlist').innerHTML = show.length ? show.map(([x, k]) => `<span class="${fset.has(k) ? 'f' : ''}">${x.w}</span>`).join('') : '<span style="color:#A4A897;font-weight:500">Список скрыт — ищите слова сами</span>';
     const ch = $('board').children;
     if (S.mode === 'fil') {
-      for (const el of ch) { el.classList.remove('own'); el.style.background = ''; }
-      S.found.forEach((k, n) => { for (const i of p.words[k].cells) { ch[i].classList.add('own'); ch[i].style.background = COLORS[n % COLORS.length]; } });
+      for (const el of ch) { el.classList.remove('own'); el.style.background = ''; el.style.color = ''; }
+      S.found.forEach((k, n) => { const [bg, fg] = wcol(n, p.words.length); for (const i of p.words[k].cells) { ch[i].classList.add('own'); ch[i].style.background = bg; ch[i].style.color = fg; } });
       drawFilLines(); $('caps').innerHTML = '';
     } else {
       drawCaps(); $('fl').innerHTML = '';
@@ -1572,7 +1582,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
     const cs = csNow(), box = $('caps'); box.innerHTML = '';
     S.found.forEach((k, n) => { const cells = S.p.words[k].cells, a = cells[0], b = cells[cells.length - 1], C = S.p.C;
       const x1 = (a % C + 0.5) * cs, y1 = (((a / C) | 0) + 0.5) * cs, x2 = (b % C + 0.5) * cs, y2 = (((b / C) | 0) + 0.5) * cs, len = Math.hypot(x2 - x1, y2 - y1) + cs * 0.84, ang = Math.atan2(y2 - y1, x2 - x1);
-      const el = document.createElement('div'); el.className = 'cap'; Object.assign(el.style, { left: (x1 - Math.cos(ang) * cs * 0.42) + 'px', top: (y1 - Math.sin(ang) * cs * 0.42 - cs * 0.38) + 'px', width: len + 'px', height: (cs * 0.76) + 'px', background: COLORS[n % COLORS.length], transform: `rotate(${ang}rad)` }); box.appendChild(el); });
+      const el = document.createElement('div'); el.className = 'cap'; Object.assign(el.style, { left: (x1 - Math.cos(ang) * cs * 0.42) + 'px', top: (y1 - Math.sin(ang) * cs * 0.42 - cs * 0.38) + 'px', width: len + 'px', height: (cs * 0.76) + 'px', background: wcol(n, S.p.words.length)[0], transform: `rotate(${ang}rad)` }); box.appendChild(el); });
   }
   function drawFilLines() {
     const cs = csNow(), C = S.p.C, svg = $('fl'), W = cs * C, H = cs * S.p.R; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.width = W + 'px'; svg.style.height = H + 'px';
@@ -1685,6 +1695,8 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
     $('levels').innerHTML = [1, 2, 3, 4, 5, 6].map((l) => { const L = LV(prefs.mode, l); return `<button data-l="${l}" class="${prefs.level === l ? 'on' : ''}">${L.name}<small>${L.R} × ${L.C}</small></button>`; }).join('');
     $('levels').querySelectorAll('button').forEach((b) => { b.onclick = () => { prefs.level = +b.dataset.l; store(LS.prefs, prefs); renderMenu(); }; });
     renderCustom();
+    $('wpals').innerHTML = Object.entries(WPALS).map(([k, [n]]) => `<button data-p="${k}" class="${(prefs.wpal || 'bright') === k ? 'on' : ''}">${n}<small><span style="display:inline-flex;gap:2px">${[0, 1, 2, 3].map((q) => `<i style="width:9px;height:9px;display:inline-block;background:${(WPALS[k][1])(q, 8)[0]}"></i>`).join('')}</span></small></button>`).join('');
+    $('wpals').querySelectorAll('button').forEach((b) => { b.onclick = () => { prefs.wpal = b.dataset.p; store(LS.prefs, prefs); renderMenu(); }; });
     $('theme').innerHTML = THEMES.map((t) => `<option ${t === prefs.theme ? 'selected' : ''}>${t}</option>`).join(''); $('showlist').checked = !!prefs.list;
     $('new-btn').textContent = prefs.mode === 'fil' ? 'Новый филворд' : 'Новый поиск слов';
     const sum = (o) => [1, 2, 3, 4, 5, 6].reduce((a, l) => a + (o.solved[l] || 0), 0), cell = (o, l) => `${o.solved[l] || 0} / ${o.best[l] ? fmt(o.best[l]) : '—'}`;
