@@ -8,6 +8,15 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Ключворд</title>
+<meta name="description" content="Кроссворд без вопросов: разгадайте, какая буква спрятана под каждым числом.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pep Games">
+<meta property="og:title" content="Ключворд — Pep Games">
+<meta property="og:description" content="Кроссворд без вопросов: разгадайте, какая буква спрятана под каждым числом.">
+<meta property="og:image" content="https://pepdominator.github.io/pep-chess/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <script>
 // ============ Общие настройки Pep Games (одни и те же во всех трёх страницах: общее меню, шахматы, шашки) ============
 (function () {
@@ -239,6 +248,28 @@
   const auto = () => { const s = document.getElementById('sync-row'); if (s && !document.getElementById('pgm-auto')) { const h = document.createElement('div'); h.id = 'pgm-auto'; s.parentNode.insertBefore(h, s); mount(h); } document.querySelectorAll('[data-pgm]').forEach(mount); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', auto); else auto();
   window.PGMusic = { supported: true, start, stop, toggle, mount, get playing() { return playing; }, style: page };
+})();
+// ============ Звуки Pep Games для словесных игр: короткие сигналы прямо в браузере, слушаются переключателя «Звук» ============
+(function () {
+  if (window.PGSfx || !window.PGS) return;
+  const AC = window.AudioContext || window.webkitAudioContext; let ctx = null;
+  const f = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function tone(m, t, dur, vol, type, slide) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f(m), t); if (slide) o.frequency.exponentialRampToValueAtTime(f(m + slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  const SOUNDS = {
+    ok: (t) => { tone(76, t, 0.16, 0.16, 'triangle'); tone(83, t + 0.09, 0.26, 0.14, 'triangle'); },             // верно: два восходящих звоночка
+    bad: (t) => { tone(45, t, 0.32, 0.12, 'sawtooth', -2); tone(44, t, 0.32, 0.08, 'square', -2); },              // промах: низкое «бзз»
+    tap: (t) => { tone(88, t, 0.05, 0.05, 'sine'); },                                                           // касание: тихий щелчок
+    flip: (t) => { tone(67, t, 0.12, 0.09, 'triangle', 7); },                                                   // открылась строка
+    win: (t) => { [72, 76, 79, 84].forEach((m, k) => tone(m, t + k * 0.11, 0.42, 0.13, 'triangle')); }          // победа: арпеджио
+  };
+  function play(name) {
+    if (!AC || !window.PGS.get().sound || !SOUNDS[name]) return;
+    try { if (!ctx) ctx = new AC(); if (ctx.state === 'suspended') ctx.resume(); SOUNDS[name](ctx.currentTime + 0.01); } catch (e) {}
+  }
+  window.PGSfx = { play };
 })();
 
 </script>
@@ -539,7 +570,7 @@
     keys.forEach((k, i) => {
       const d = s.d[k], consec = i > 0 && nums[i] === nums[i - 1] + 1, prev = consec ? s.d[keys[i - 1]] : null;
       run = consec ? run + 1 : 1; X.best = Math.max(X.best, run);
-      const full = ((d.q | 0) & 15) === 15; runQ = full ? (prev && ((prev.q | 0) & 15) === 15 ? runQ + 1 : 1) : 0; X.bestQ = Math.max(X.bestQ, runQ); if (full) X.qTotal++;
+      const mk = maskFor(k), full = ((d.q | 0) & mk) === mk; runQ = full ? (prev && ((prev.q | 0) & maskFor(keys[i - 1])) === maskFor(keys[i - 1]) ? runQ + 1 : 1) : 0; X.bestQ = Math.max(X.bestQ, runQ); if (full) X.qTotal++;
       const mor = !!((d.t | 0) & 1); runM = mor ? (prev && ((prev.t | 0) & 1) ? runM + 1 : 1) : 0; X.bestM = Math.max(X.bestM, runM);
       X.maxG = Math.max(X.maxG, pop(d.g)); X.maxN = Math.max(X.maxN, d.n | 0); X.mde = Math.max(X.mde, pop((d.t | 0) & 7)); if ((d.t | 0) & 8) X.nights++; if (((d.w | 0) & 3) === 3) X.dw = true;
       const a = k.split('-').map(Number), wday = new Date(a[0], a[1] - 1, a[2]).getDay(); wd.add(wday); mon[k.slice(0, 7)] = (mon[k.slice(0, 7)] || 0) + 1; if (wday === 6 && i + 1 < keys.length && nums[i + 1] === nums[i] + 1) X.weekend = true;
@@ -561,7 +592,7 @@
     ['early', 'Общие', '🌅', 'Ранняя пташка', 'Завершите партию или головоломку между пятью и восемью утра', 1, (c) => Math.min(1, C(c, 'early'))],
     ['streak3', 'Общие', '✨', 'Три дня подряд', 'Решайте задание дня 3 дня подряд', 3, (c) => C(c, 'streak')],
     ['streak14', 'Общие', '⚡', 'Две недели подряд', 'Решайте задание дня 14 дней подряд', 14, (c) => C(c, 'streak')],
-    ['dailyset', 'Общие', '📆', 'Ежедневный набор', 'Решите судоку, кроссворд и картинку дня в один и тот же день', 1, (c) => Math.min(1, C(c, 'dailyset'))],
+    ['dailyset', 'Общие', '📆', 'Ежедневный набор', 'Решите три ежедневные головоломки в один и тот же день', 1, (c) => Math.min(1, C(c, 'dailyset'))],
     ['allfive', 'Общие', '🎰', 'Пять в одном', 'Завершите партию в шахматах и шашках и решите судоку, кроссворд и японский кроссворд', 5, (c) => (C(c, 'chP') > 0) + (C(c, 'drP') > 0) + (C(c, 'sd') > 0) + (C(c, 'cw') > 0) + (C(c, 'jp') > 0)],
     ['friend3', 'Общие', '👯', 'Компания', 'Добавьте трёх друзей', 3, (c) => C(c, 'friend')],
     ['challenge', 'Общие', '⚔️', 'Вызов брошен', 'Вызовите друга на партию', 1, (c) => Math.min(1, C(c, 'chal'))],
@@ -636,7 +667,7 @@
     ['kwdaily7', 'Ключворд', '📅', 'Неделя ключей', 'Решайте ключворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'kwstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
-    ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение по всем пяти играм', 5, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram'].filter((id) => C(c, 'tut_' + id) > 0).length],
+    ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение во всех восьми играх', 8, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram', 'sto', 'words', 'code'].filter((id) => C(c, 'tut_' + id) > 0).length],
     ['act3', 'Каждый день', '🔥', 'Входит в привычку', 'Завершайте хотя бы одну игру 3 дня подряд', 3, (c, u, X) => X.best],
     ['act7', 'Каждый день', '🗓️', 'Неделя без перерыва', 'Играйте 7 дней подряд', 7, (c, u, X) => X.best],
     ['act14', 'Каждый день', '🏃', 'Две недели в строю', 'Играйте 14 дней подряд', 14, (c, u, X) => X.best],
@@ -655,7 +686,8 @@
     ['owl3', 'Каждый день', '🦉', 'Ночная сова', 'Играйте ночью (с 0 до 5) в 3 разных дня', 3, (c, u, X) => X.nights],
     ['threetimes', 'Каждый день', '🍽️', 'Три приёма', 'Сыграйте утром, днём и вечером одного дня', 3, (c, u, X) => X.mde],
     ['games3day', 'Каждый день', '🎭', 'Три игры за день', 'Сыграйте в три разные игры за один день', 3, (c, u, X) => X.maxG],
-    ['games5day', 'Каждый день', '🎪', 'Все пять за день', 'Сыграйте во все пять игр за один день', 5, (c, u, X) => X.maxG],
+    ['games5day', 'Каждый день', '🎪', 'Пять игр за день', 'Сыграйте в пять разных игр за один день', 5, (c, u, X) => X.maxG],
+    ['games8day', 'Каждый день', '🎡', 'Все восемь за день', 'Сыграйте во все восемь игр за один день', 8, (c, u, X) => X.maxG],
     ['n5day', 'Каждый день', '🏁', 'Марафон дня', 'Завершите 5 игр за один день', 5, (c, u, X) => X.maxN],
     ['n10day', 'Каждый день', '🚀', 'Десять за день', 'Завершите 10 игр за один день', 10, (c, u, X) => X.maxN],
     ['comeback', 'Каждый день', '👋', 'Я вернулся', 'Вернитесь в игру после перерыва в две недели и больше', 1, (c) => Math.min(1, C(c, 'comeback'))],
@@ -748,14 +780,14 @@
   function dailySet(c) {          // судоку, кроссворд и картинка дня решены в один день
     const J = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, d = new Date(), tk = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const has = (k) => { const o = J(k); return !!(o && o.daily && o.daily.results && o.daily.results[tk] != null); };
-    if (has('sudokuStats') && has('crosswordStats') && has('nonogramStats') && dayNum() > (c.dailysetLast || 0)) { c.dailyset = (c.dailyset || 0) + 1; c.dailysetLast = dayNum(); }
+    if (['sudokuStats', 'crosswordStats', 'nonogramStats', 'wordsStats', 'codeStats'].filter(has).length >= 3 && dayNum() > (c.dailysetLast || 0)) { c.dailyset = (c.dailyset || 0) + 1; c.dailysetLast = dayNum(); }
   }
   // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
   function touchDay(s, game, d) {
     const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64, code: 128 }[game]; if (!gbit) return;
     const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
     if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
-    const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4 }[game] || 0); if (d.result === 'win') day.w |= gbit;
+    const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4, words: 16, code: 32 }[game] || 0); if (d.result === 'win') day.w |= gbit;
   }
   function event(game, d) {
     d = d || {}; const s = read(), c = s.c; const inc = (k, n) => { c[k] = (c[k] || 0) + (n || 1); }, max = (k, v) => { c[k] = Math.max(c[k] || 0, v || 0); };
@@ -789,11 +821,23 @@
     if (game === 'rank') { inc('inboard'); if (d.pos && d.pos <= 10) inc('top10'); if (d.pos && d.pos <= 3) inc('podium'); if (d.pos === 1) inc('first1'); }
     write(s); return check();
   }
-  const QUESTS = [[1, '🔢', 'Судоку дня', 'sudoku/'], [2, '🔤', 'Кроссворд дня', 'crossword/'], [4, '🧩', 'Картинка дня', 'nonogram/'], [8, '🎯', 'Завершить любую игру', '']];
+  // ---------- задания на сегодня: каждый день — три ежедневные головоломки из пяти (одни и те же у всех) и «любая игра» ----------
+  const DAILIES = [[1, '🔢', 'Судоку дня', 'sudoku/', 'sudokuStats'], [2, '🔤', 'Кроссворд дня', 'crossword/', 'crosswordStats'], [4, '🧩', 'Картинка дня', 'nonogram/', 'nonogramStats'], [16, '🔍', 'Филворд дня', 'words/', 'wordsStats'], [32, '🔑', 'Ключворд дня', 'code/', 'codeStats']];
+  const ROTATE_SINCE = '2026-10-30';        // до этого дня заданиями были судоку, кроссворд и картинка
+  // все 10 сочетаний «три из пяти» идут по кругу, по одному на день: за любые 10 дней каждая головоломка — ровно 6 раз
+  const COMBOS = [[0, 1, 3], [2, 3, 4], [0, 2, 4], [1, 2, 3], [0, 1, 4], [0, 2, 3], [1, 3, 4], [0, 3, 4], [1, 2, 4], [0, 1, 2]];
+  function dailiesFor(k) {
+    if (k < ROTATE_SINCE) return DAILIES.slice(0, 3);
+    const day = Math.round(Date.UTC(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8, 10)) / 86400000);
+    return COMBOS[((day % 10) + 10) % 10].map((i) => DAILIES[i]);
+  }
+  const maskFor = (k) => dailiesFor(k).reduce((m, x) => m | x[0], 8);
+  const questsFor = (k) => dailiesFor(k).map(([bit, ic, t, href]) => [bit, ic, t, href]).concat([[8, '🎯', 'Завершить любую игру', '']]);
+  const QUESTS = questsFor(keyOf(new Date()));
   function questBits() {
     const s = read(), k = keyOf(new Date()), d = s.d[k] || { q: 0, n: 0 }; let q = d.q | 0;
-    [['sudokuStats', 1], ['crosswordStats', 2], ['nonogramStats', 4]].forEach(([key, bit]) => { try { const o = JSON.parse(localStorage.getItem(key) || 'null'); if (o && o.daily && o.daily.results && o.daily.results[k] != null) q |= bit; } catch (e) {} });
-    if ((d.n | 0) > 0 || (q & 7)) q |= 8; return q & 15;
+    DAILIES.forEach(([bit, , , , key]) => { try { const o = JSON.parse(localStorage.getItem(key) || 'null'); if (o && o.daily && o.daily.results && o.daily.results[k] != null) q |= bit; } catch (e) {} });
+    if ((d.n | 0) > 0 || (q & 55)) q |= 8; return q & maskFor(k);
   }
   const curStreak = (k) => { try { const o = JSON.parse(localStorage.getItem(k) || 'null'), d = o && o.daily; if (!d || !d.last) return 0; const today = keyOf(new Date()), y = keyOf(new Date(Date.now() - 86400000)); return d.last === today || d.last === y ? d.streak || 0 : 0; } catch (e) { return 0; } };
   function list() { const s = read(), X = stats(s); return DEFS.map((d) => ({ id: d.id, group: d.group, icon: d.icon, title: d.title, desc: d.desc, goal: d.goal, secret: d.secret, value: Math.min(d.goal, d.prog(s.c, s.u, X)), got: s.u[d.id] || 0 })); }
@@ -805,7 +849,7 @@
       const row = (x) => { const hid = x.secret && !x.got; return `<div class="pga-item${x.got ? ' on' : ''}${hid ? ' sec' : ''}" data-id="${x.id}"><span class="pga-ic">${hid ? '❓' : x.icon}</span><div class="pga-t"><b>${hid ? 'Секретное достижение' : esc(x.title)}</b><span>${hid ? 'Подсказка: исследуйте игру, и оно найдёт вас' : esc(x.desc)}</span>${!x.got && !hid && x.goal > 1 ? `<div class="pga-bar"><i style="width:${Math.round(100 * x.value / x.goal)}%"></i></div>` : ''}</div><span class="pga-d">${x.got ? new Date(x.got).toLocaleDateString('ru-RU') : (!hid && x.goal > 1 ? x.value + ' / ' + x.goal : '')}</span></div>`; };
       ov.innerHTML = `<div class="pga-panel" role="dialog"><button class="pga-x" aria-label="Закрыть">✕</button><h3>Достижения</h3><p class="pga-sub">Получено ${got} из ${items.length}</p>
         <div class="pga-rank"><span class="pga-rk">Звание: <b>${esc(rk.name)}</b></span>${rk.next ? `<span class="pga-rn">до «${esc(rk.nextName)}»: ещё ${rk.next}</span>` : '<span class="pga-rn">высшее звание!</span>'}</div>
-        <div class="pga-quests"><div class="pga-qh"><b>Задания на сегодня</b><span>${done} из 4${done === 4 ? ' — всё выполнено 🎉' : ''}</span></div>${QUESTS.map(([bit, ic, t, href]) => `<div class="pga-q${q & bit ? ' ok' : ''}"><span class="pga-qi">${q & bit ? '✓' : ic}</span><span class="pga-qt">${esc(t)}</span>${q & bit || !href ? '' : `<a href="${root}${href}">Играть</a>`}</div>`).join('')}</div>
+        <div class="pga-quests"><div class="pga-qh"><b>Задания на сегодня</b><span>${done} из ${QUESTS.length}${done === QUESTS.length ? ' — всё выполнено 🎉' : ''}</span></div>${questsFor(keyOf(new Date())).map(([bit, ic, t, href]) => `<div class="pga-q${q & bit ? ' ok' : ''}"><span class="pga-qi">${q & bit ? '✓' : ic}</span><span class="pga-qt">${esc(t)}</span>${q & bit || !href ? '' : `<a href="${root}${href}">Играть</a>`}</div>`).join('')}</div>
         <div class="pga-streaks"><div class="pga-chip">Дней подряд в игре<b>${X.cur} <i>${X.cur ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия судоку дня<b>${ss} <i>${ss ? '🔥' : ''}</i></b></div><div class="pga-chip">Серия кроссворда дня<b>${sc} <i>${sc ? '🔥' : ''}</i></b></div></div>
         ${groups.map((g) => `<div class="pga-g">${esc(g)}</div>` + items.filter((x) => x.group === g).map(row).join('')).join('')}</div>`;
       ov.querySelector('.pga-x').onclick = close;
@@ -813,7 +857,7 @@
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); document.addEventListener('keydown', onKey); window.addEventListener('pgsync-applied', paint); document.body.appendChild(ov); seed(); paint();
   }
   // значок «сколько заданий на сегодня осталось» на кнопке «Достижения» главной страницы
-  function badge() { const b = document.getElementById('pga-btn'); if (!b) return; let i = b.querySelector('.pga-badge'); if (!i) { i = document.createElement('i'); i.className = 'pga-badge'; b.appendChild(i); } const left = 4 - pop(questBits()); i.textContent = left > 0 ? String(left) : ''; i.style.display = left > 0 ? '' : 'none'; b.title = left > 0 ? 'Заданий на сегодня осталось: ' + left : 'Все задания на сегодня выполнены'; }
+  function badge() { const b = document.getElementById('pga-btn'); if (!b) return; let i = b.querySelector('.pga-badge'); if (!i) { i = document.createElement('i'); i.className = 'pga-badge'; b.appendChild(i); } const left = questsFor(keyOf(new Date())).length - pop(questBits()); i.textContent = left > 0 ? String(left) : ''; i.style.display = left > 0 ? '' : 'none'; b.title = left > 0 ? 'Заданий на сегодня осталось: ' + left : 'Все задания на сегодня выполнены'; }
   window.PGA = { event, seed, check, list, open, defs: DEFS, curStreak, stats: () => stats(read()), questBits, rankOf, badge };
   let lastTheme = null;
   window.addEventListener('pgs-change', () => { try { if (!window.PGS) return; const th = PGS.get().theme, s = read(); let ch = false; if (lastTheme !== null && th !== lastTheme) { s.c.themeSw = (s.c.themeSw || 0) + 1; ch = true; } lastTheme = th; if (th === 'dark' && !(s.c.dark > 0)) { s.c.dark = 1; ch = true; } if (ch) { write(s); check(); } } catch (e) {} });
@@ -1233,9 +1277,47 @@ if (typeof module !== 'undefined') module.exports = CW;
     const byFreq = [...freq.entries()].sort((a, b) => b[1] - a[1]).map(([ch]) => ch).slice(0, L.top);
     const keys = CW.shuffle(byFreq, rnd).slice(0, L.keys).map((ch) => numOf.get(ch));
     const words = p.words.map((w) => ({ r: w.r, c: w.c, dir: w.dir, len: w.len }));
-    return { level: o.level || 2, rows: p.rows, cols: p.cols, grid, num, letters, keys, words, seed, theme: o.theme || 'Всё' };
+    const out = { level: o.level || 2, rows: p.rows, cols: p.cols, grid, num, letters, keys, words, seed, theme: o.theme || 'Всё' };
+    if (o.unique !== false) { const u = ensureUnique(out, dict); out.unique = u.ok; out.addedKeys = u.added || 0; }
+    return out;
   }
-  const api = { LEVELS, make };
+
+  // ---------- проверка единственности: решатель расшифровывает сетку по словарю и ищет второе решение ----------
+  let IDX = null, IDXsrc = null;
+  function index(dict) { if (IDXsrc === dict) return IDX; IDX = {}; for (const x of dict) { const w = x.w.toUpperCase().replace(/Ё/g, 'Е'); if (/^[А-Я]+$/.test(w)) (IDX[w.length] = IDX[w.length] || new Set()).add(w); } for (const k in IDX) IDX[k] = [...IDX[k]]; IDXsrc = dict; return IDX; }
+  function seqs(p) { return p.words.map((w) => Array.from({ length: w.len }, (_, k) => p.num[w.r + (w.dir === 'down' ? k : 0)][w.c + (w.dir === 'across' ? k : 0)])); }
+  // считает решения (до limit); keys — открытые числа. Возвращает { count, sols, aborted }
+  function solve(p, dict, keys, limit, budget) {
+    const ix = index(dict), S = seqs(p), as = {}, used = {}; let steps = 0, aborted = false; const sols = [];
+    for (const n of keys) { as[n] = p.letters[n - 1]; used[p.letters[n - 1]] = n; }
+    const fits = (w, sq) => { const loc = {}; for (let k = 0; k < sq.length; k++) { const n = sq[k], ch = w[k]; if (as[n]) { if (as[n] !== ch) return false; } else { if (used[ch] && used[ch] !== n) return false; if (loc[n] && loc[n] !== ch) return false; if (!loc[n]) { for (const m in loc) if (loc[m] === ch) return false; loc[n] = ch; } } } return true; };
+    const done = S.map(() => false);
+    function rec() {
+      if (aborted || sols.length >= limit) return; if (++steps > budget) { aborted = true; return; }
+      let best = -1, bestC = null;
+      for (let i = 0; i < S.length; i++) { if (done[i]) continue; const sq = S[i]; if (sq.every((n) => as[n])) { done[i] = 'auto'; continue; } const c = (ix[sq.length] || []).filter((w) => fits(w, sq)); if (!c.length) { for (let j = 0; j < S.length; j++) if (done[j] === 'auto') done[j] = false; return; } if (!bestC || c.length < bestC.length) { best = i; bestC = c; if (c.length === 1) break; } }
+      if (best < 0) { if (S.every((sq) => (ix[sq.length] || []).includes(sq.map((n) => as[n]).join('')))) sols.push(Object.assign({}, as)); for (let j = 0; j < S.length; j++) if (done[j] === 'auto') done[j] = false; return; }
+      done[best] = true;
+      for (const w of bestC) {
+        const sq = S[best], added = []; for (let k = 0; k < sq.length; k++) if (!as[sq[k]]) { as[sq[k]] = w[k]; used[w[k]] = sq[k]; added.push(sq[k]); }
+        rec(); for (const n of added) { delete used[as[n]]; delete as[n]; } if (aborted || sols.length >= limit) break;
+      }
+      done[best] = false; for (let j = 0; j < S.length; j++) if (done[j] === 'auto') done[j] = false;
+    }
+    rec(); return { count: sols.length, sols, aborted, steps };
+  }
+  // добавляет буквы в ключ, пока решение не станет единственным
+  function ensureUnique(p, dict, budget) {
+    for (let t = 0; t < 8; t++) {
+      const r = solve(p, dict, p.keys, 2, budget || 60000);
+      if (r.count === 1 && !r.aborted) return { ok: true, added: t };
+      if (r.count >= 2) { const a = r.sols[0], b = r.sols[1], diff = Object.keys(a).map(Number).filter((n) => a[n] !== b[n] && !p.keys.includes(n)); const pick = diff.sort((x, y) => p.letters[x - 1].localeCompare(p.letters[y - 1]))[0]; if (pick) { p.keys.push(pick); continue; } }
+      // перебор слишком долгий — открываем ещё одну частую букву и пробуем снова
+      const cnt = {}; p.num.flat().forEach((n) => { if (n && !p.keys.includes(n)) cnt[n] = (cnt[n] || 0) + 1; }); const n = +Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0]; if (!n) return { ok: false }; p.keys.push(n);
+    }
+    return { ok: false };
+  }
+  const api = { LEVELS, make, solve, ensureUnique };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.KW = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1347,6 +1429,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   <div class="content">
     <div id="resume-card" class="card hidden"><div><b>Продолжить</b><small id="resume-info"></small></div><button id="resume-btn">Играть</button></div>
     <div class="card"><div><b>Ключворд дня</b><small id="daily-info">Один и тот же для всех, средний уровень</small></div><button id="daily-btn">Играть</button></div>
+    <button class="rec-btn" id="pgr-btn" type="button">🏆 Таблица рекордов ключворда дня</button>
     <button class="rec-btn" data-rules="code" type="button">📖 Правила и советы</button>
     <button class="rec-btn" id="tut-btn" type="button" style="margin-top:-4px">🎓 Обучение: как разгадывать (1 минута)</button>
     <div id="tut-offer" class="card offer hidden"><div><b>Играете впервые?</b><small>Короткое обучение на настоящем ключворде — 1 минута</small></div><div style="display:flex;gap:6px"><button id="tut-start">Начать</button><button id="tut-later" style="background:none;color:var(--k-mu);border:1px solid var(--k-line)">Не сейчас</button></div></div>
@@ -1371,13 +1454,13 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     </div>
   </div>
 </div>
-<div id="win" class="hidden"><div class="modal"><div class="brand" id="w-brand">Ключворд разгадан</div><div class="big-num" id="w-time"></div><div class="lines" id="w-lines"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="big" id="w-again" style="margin-top:0">Ещё один</button><button class="big" id="w-menu" style="margin-top:0;background:var(--k-surf);color:var(--k-tx);box-shadow:none;border:1px solid var(--k-line)">В меню</button></div></div></div>
+<div id="win" class="hidden"><div class="modal"><div class="brand" id="w-brand">Ключворд разгадан</div><div class="big-num" id="w-time"></div><div class="lines" id="w-lines"></div><div class="lines" id="pgr-win" style="margin-top:6px"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="big" id="w-again" style="margin-top:0">Ещё один</button><button class="big" id="w-menu" style="margin-top:0;background:var(--k-surf);color:var(--k-tx);box-shadow:none;border:1px solid var(--k-line)">В меню</button></div></div></div>
 <div id="toast"></div>
 
 <script>
 (() => {
   'use strict';
-  const $ = (id) => document.getElementById(id), VERSION = 'Версия 2.4 · 23 октября 2026';
+  const $ = (id) => document.getElementById(id), VERSION = 'Версия 2.5 · 2 ноября 2026';
   const LS = { stats: 'codeStats', save: 'codeSave', prefs: 'codePrefs' };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -1387,7 +1470,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   const CODE2RU = { KeyF: 'А', Comma: 'Б', KeyD: 'В', KeyU: 'Г', KeyL: 'Д', KeyT: 'Е', Semicolon: 'Ж', KeyP: 'З', KeyB: 'И', KeyQ: 'Й', KeyR: 'К', KeyK: 'Л', KeyV: 'М', KeyY: 'Н', KeyJ: 'О', KeyG: 'П', KeyH: 'Р', KeyC: 'С', KeyN: 'Т', KeyE: 'У', KeyA: 'Ф', BracketLeft: 'Х', KeyW: 'Ц', KeyX: 'Ч', KeyI: 'Ш', KeyO: 'Щ', BracketRight: 'Ъ', KeyS: 'Ы', KeyM: 'Ь', Quote: 'Э', Period: 'Ю', KeyZ: 'Я', Backquote: 'Е' };
   const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   let D = null, S = null, prefs = Object.assign({ level: 1 }, load(LS.prefs, {})), stats = Object.assign({ solved: {}, best: {}, daily: { results: {}, streak: 0, last: null } }, load(LS.stats, {}));
-  const loadD = () => (D ? Promise.resolve(D) : fetch('words.json').then((r) => r.json()).then((a) => (D = a.map(([w, t, l]) => ({ w, t: t || 'Общая лексика', l, clues: ['—'] }))))); 
+  const loadD = () => (D ? Promise.resolve(D) : fetch('../data/words.json').then((r) => r.json()).then((a) => (D = a.map(([w, t, l]) => ({ w, t: t || 'Общая лексика', l, clues: ['—'] }))))); 
   // ---------- старт ----------
   function startNew(o) {
     loadD().then(() => {
@@ -1434,7 +1517,7 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
     if (ch === '⌫') { S.ans[n] = ''; save(); render(); return; }
     const other = S.ans.findIndex((x, k) => k !== n && x === ch);
     if (other > 0) { if (p.keys.includes(other)) { toast(`Буква ${ch} уже открыта под числом ${other}`); return; } S.ans[other] = ''; toast(`Буква ${ch} перенесена с числа ${other}`); }
-    S.ans[n] = ch; save(); render();
+    S.ans[n] = ch; window.PGSfx && PGSfx.play('tap'); save(); render();
     if (S.ans.slice(1).every(Boolean)) { if (S.ans.slice(1).every((x, k) => x === p.letters[k])) finish(); else toast('Все числа заполнены, но есть ошибки — нажмите «Проверить»'); return; }
     const nx = nextOpen(n); if (nx) S.sel = nx; render();
   }
@@ -1461,22 +1544,22 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   function check() {
     const p = S.p, bad = []; for (let k = 1; k <= p.letters.length; k++) if (S.ans[k] && S.ans[k] !== p.letters[k - 1]) bad.push(k);
     S.checks++; save();
-    if (!bad.length) { toast('Ошибок нет — продолжайте!'); return; }
+    if (!bad.length) { window.PGSfx && PGSfx.play('ok'); toast('Ошибок нет — продолжайте!'); return; } window.PGSfx && PGSfx.play('bad');
     const set = new Set(bad); $('board').querySelectorAll('.c.l').forEach((el) => el.classList.toggle('bad', set.has(+el.dataset.n))); setTimeout(() => $('board').querySelectorAll('.c.l.bad').forEach((el) => el.classList.remove('bad')), 1800);
     toast(`Неверно: ${bad.length} ${bad.length === 1 ? 'число' : bad.length < 5 ? 'числа' : 'чисел'}`);
   }
   function giveUp() { S.p.letters.forEach((ch, k) => { S.ans[k + 1] = ch; }); S.gaveUp = true; render(); finish(); }
   function finish() {
-    if (S.done) return; S.done = true; stopClock(); S.sel = null; render();
+    if (S.done) return; S.done = true; stopClock(); S.sel = null; render(); if (!S.gaveUp) window.PGSfx && PGSfx.play('win');
     if (!S.tutorial && !S.gaveUp) {
       const lv = S.p.level; stats.solved[lv] = (stats.solved[lv] || 0) + 1; if (!stats.best[lv] || S.time < stats.best[lv]) stats.best[lv] = S.time;
-      if (S.daily) { const d = stats.daily; if (d.results[S.dateKey] == null) { const y = new Date(); y.setDate(y.getDate() - 1); const yk = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`; d.streak = d.last === yk ? (d.streak || 0) + 1 : 1; d.last = S.dateKey; d.results[S.dateKey] = S.time; } }
+      if (S.daily) { const d = stats.daily; if (d.results[S.dateKey] == null) { const y = new Date(); y.setDate(y.getDate() - 1); const yk = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`; d.streak = d.last === yk ? (d.streak || 0) + 1 : 1; d.last = S.dateKey; d.results[S.dateKey] = S.time; d.hints = d.hints || {}; d.hints[S.dateKey] = S.hints; S.firstDaily = true; } }
       store(LS.stats, stats);
       if (window.PGA) PGA.event('code', { level: lv, time: S.time, hints: S.hints, checks: S.checks, daily: S.daily, streak: stats.daily.streak, result: 'win' });
     }
     try { localStorage.removeItem(LS.save); } catch (e) {}
     if (S.tutorial) return;
-    setTimeout(() => { $('win').classList.remove('hidden'); $('w-time').textContent = S.gaveUp ? 'Ответы открыты' : fmt(S.time);
+    setTimeout(() => { $('pgr-win').innerHTML = ''; if (S.firstDaily && window.PGRec) PGRec.winLine($('pgr-win'), 'kw_' + S.dateKey, { time: S.time * 1000, hints: S.hints }); $('win').classList.remove('hidden'); $('w-time').textContent = S.gaveUp ? 'Ответы открыты' : fmt(S.time);
       $('w-lines').innerHTML = `Букв: ${S.p.letters.length} · подсказок: ${S.hints} · проверок: ${S.checks}${!S.gaveUp && stats.best[S.p.level] === S.time ? '<br>Лучшее время на этом уровне!' : ''}`; }, 700);
   }
   // ---------- время, сохранение, меню ----------
@@ -1521,6 +1604,11 @@ html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
   addEventListener('resize', () => { if (S) sizeBoard(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
   window.addEventListener('storage', (e) => { if ((e.key === LS.stats || e.key === LS.save) && $('game').classList.contains('hidden')) renderMenu(); });
+  const dayBefore = (k) => { const d = new Date(k + 'T12:00:00'); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  if (window.PGRec) PGRec.config({
+    boards: () => { const tk = todayKey(), yk = dayBefore(tk); return [{ id: 'kw_' + tk, title: 'Сегодня', sub: 'Ключворд дня · ' + tk }, { id: 'kw_' + yk, title: 'Вчера', sub: 'Ключворд дня · ' + yk }]; },
+    pending: () => { const d = stats.daily, out = [], lim = dayBefore(dayBefore(todayKey())); for (const k of Object.keys(d.results || {})) if (k >= lim && d.hints && d.hints[k] != null) out.push({ id: 'kw_' + k, time: d.results[k] * 1000, hints: d.hints[k] }); return out; },
+    local: (id) => { const k = id.slice(3), d = stats.daily; return d && d.results[k] != null && d.hints && d.hints[k] != null ? { time: d.results[k] * 1000, hints: d.hints[k] } : null; } });
   if (window.PGSync) PGSync.mountRow($('sync-row'), true);
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('service-worker.js').catch(() => {});
   window.__kw = { get S() { return S; }, startNew, startDaily, setLetter, select, hint, check, showMenu, loadD, todayKey };
