@@ -5895,7 +5895,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2.7.6 · 3 ноября 2026';
+        const BUILD = '2.7.7 · 3 ноября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
@@ -6947,7 +6947,7 @@ function createLive(cfg) {
             } catch (e) { console.warn(e); }
         }
 
-        // Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, сыграно не меньше 3 ходов каждым.
+        // Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, и каждый сделал хотя бы один ход (как на lichess и chess.com).
         async function applyOnlineRating(resultCode) {
             try {
                 const OC = window.OnlineChess, u = OC && OC.currentUser, d = onlineLastData;
@@ -6956,10 +6956,16 @@ function createLive(cfg) {
                 const oppUid = amHost ? d.guestUid : d.hostUid;
                 const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : myRatingSnap);
                 const oppR = amHost ? d.guestRating : d.hostRating;
-                if (!oppUid || oppUid === u.uid || myR == null || oppR == null || historySAN.length < 6) return;
+                if (!oppUid || oppUid === u.uid || myR == null || oppR == null) return;
                 const score = resultCode === 'win' ? 1 : resultCode === 'draw' ? 0.5 : 0;
                 const tcx = d.timeControl || onlineTc || {}, rkey = ratingKeyFor('chess', tcx.minutes, tcx.inc);
                 if (!rkey) return;                                          // партия без часов — нерейтинговая
+                if (historySAN.length < 2) {                                // как на lichess и chess.com: рейтинговой партия становится, когда каждый сделал хотя бы один ход
+                    const box = document.getElementById('post-game-buttons'), line = document.createElement('div');
+                    line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;color:var(--k-mu)';
+                    line.textContent = 'Партия закончилась до первых ходов — рейтинг не меняется';
+                    if (box) box.insertBefore(line, box.firstChild); return;
+                }
                 const res = await OC.applyRated({ user: u, key: rkey, gameId: onlineGameId, myRating: myR, oppRating: oppR, score, oppName: onlineOpponentName, oppUid });
                 if (!res) return;
                 const box = document.getElementById('post-game-buttons');

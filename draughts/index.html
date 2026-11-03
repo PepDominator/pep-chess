@@ -2014,7 +2014,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2.7.6 · 3 ноября 2026';
+const BUILD = '2.7.7 · 3 ноября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -2372,17 +2372,21 @@ function publishPublic(code, reason) {
     OD().publishGame(online.id, doc).catch(() => {});      // второй игрок попробует создать ту же запись — правила разрешают только первую
   } catch (e) { console.warn(e); }
 }
-// Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, сыграно не меньше 3 ходов каждым.
+// Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, и каждый сделал хотя бы один ход (как на lichess и chess.com).
 async function applyRating(code) {
   try {
     const u = OD() && OD().currentUser, d = online && online.last;
     if (!u || !d || !d.hostUid) return;
     const amHost = u.uid === d.hostUid, oppUid = amHost ? d.guestUid : d.hostUid;
     const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : online.myRating), oppR = amHost ? d.guestRating : d.hostRating;
-    if (!oppUid || oppUid === u.uid || myR == null || oppR == null || hubMoves.length < 6) return;
+    if (!oppUid || oppUid === u.uid || myR == null || oppR == null) return;
     const score = code === 'win' ? 1 : code === 'draw' ? 0.5 : 0;
     const tcx = online.tc || d.timeControl || {}, rkey = ratingKeyFor('draughts', tcx.minutes, tcx.inc);
     if (!rkey) return;                                        // партия без часов — нерейтинговая
+    if (hubMoves.length < 2) {                                // как на lichess и chess.com: рейтинговой партия становится, когда каждый сделал хотя бы один ход
+      const line = document.createElement('div'); line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;color:var(--k-mu)';
+      line.textContent = 'Партия закончилась до первых ходов — рейтинг не меняется'; $('post').insertBefore(line, $('post').firstChild); return;
+    }
     const res = await OD().applyRated({ user: u, key: rkey, gameId: online.id, myRating: myR, oppRating: oppR, score, oppName: online.oppName, oppUid });
     if (!res) return;
     const line = document.createElement('div');
