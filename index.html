@@ -1642,7 +1642,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.7.7 · 3 ноября 2026</div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.8.0 · 3 ноября 2026</div>
   </footer>
 </div>
 
@@ -1714,6 +1714,7 @@ function ratingBlocks(p, game) {
   return out;
 }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (x) => (typeof x === 'number' && isFinite(x) ? x : 0);      // число из базы: если там не число — показываем 0, а не вставляем как есть (защита от внедрения HTML)
 const initial = (n) => esc((n || '?').trim().charAt(0).toUpperCase() || '?');
 const avatar = (p) => `<span class="av">${p.photoURL ? `<img src="${esc(p.photoURL)}" alt="" referrerpolicy="no-referrer">` : initial(p.displayName)}</span>`;
 let curGame = 'chess', lbToken = 0;
@@ -1731,7 +1732,7 @@ async function renderLeaders() {
   list.forEach((p, i) => {
     const s = p[curGame + '_' + curCat] || {}, row = document.createElement('button');
     row.className = 'lb-row' + (D.me && D.me === p.uid ? ' me' : '');
-    row.innerHTML = `<span class="lb-pos">${i + 1}</span>${avatar(p)}<span><div class="lb-name">${esc(p.displayName || 'Игрок')}</div><div class="lb-sub">${s.g || 0} ${plural(s.g || 0)} · ${s.w || 0} / ${s.d || 0} / ${s.l || 0}</div></span><span class="lb-r">${s.r != null ? s.r : '—'}</span>`;
+    row.innerHTML = `<span class="lb-pos">${i + 1}</span>${avatar(p)}<span><div class="lb-name">${esc(p.displayName || 'Игрок')}</div><div class="lb-sub">${num(s.g)} ${plural(num(s.g))} · ${num(s.w)} / ${num(s.d)} / ${num(s.l)}</div></span><span class="lb-r">${s.r != null ? num(s.r) : '—'}</span>`;      // числа из базы — только как числа (защита от внедрения HTML)
     row.onclick = () => openProfile(p.uid, p);
     box.appendChild(row);
   });
@@ -1748,7 +1749,9 @@ function spark(hist) {
     <polyline points="${xy.map((p) => p.join(',')).join(' ')}" fill="none" stroke="#3B5D4A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
     <circle cx="${last[0]}" cy="${last[1]}" r="4" fill="#3B5D4A"/></svg>`;
 }
-function gameBlock(label, s, extra = '') {
+function gameBlock(label, s0, extra = '') {
+  // статистика из чужого профиля: все поля — только числа (защита от внедрения HTML)
+  const s = s0 ? { r: num(s0.r), g: num(s0.g), w: num(s0.w), d: num(s0.d), l: num(s0.l), peak: num(s0.peak), hist: Array.isArray(s0.hist) ? s0.hist : [] } : null;
   if (!s || !s.g) return `<div class="pg"><div class="pg-top"><span class="pg-title">${label}</span></div><div class="pg-none">Рейтинговых партий ещё нет</div>${extra}</div>`;
   const total = s.g || 1, pct = (n) => Math.round((n || 0) * 100 / total);
   return `<div class="pg"><div class="pg-top"><span class="pg-title">${label}</span><span class="pg-meta">лучший: ${s.peak}</span></div>
@@ -1791,7 +1794,7 @@ async function loadPublicGames(uid, host) {
     const oppName = (g.names && g.names[opp]) || 'Соперник', oppR = g.ratings && g.ratings[opp] != null ? ' (' + g.ratings[opp] + ')' : '';
     const why = g.result && PUB_REASON[g.result.reason] && w !== 'draw' ? ', ' + PUB_REASON[g.result.reason] : '';
     const a = document.createElement('a'); a.className = 'gi'; a.href = `${g.game}/?pub=${encodeURIComponent(g.id)}`;
-    a.innerHTML = `<span class="gi-dot ${res}"></span><span class="gi-g">${GAME_ICON[g.game] || ''}</span><span><div class="gi-t">${txt}${esc(why)} · ${esc(oppName)}${esc(oppR)}</div><div class="gi-m">${dt} · ${g.tc ? g.tc.minutes + '+' + g.tc.inc : ''} · ${me === 'w' ? 'белыми' : 'чёрными'} · ${(g.moves || []).length} полуходов</div></span><span class="gi-open">Смотреть →</span>`;
+    a.innerHTML = `<span class="gi-dot ${res}"></span><span class="gi-g">${GAME_ICON[g.game] || ''}</span><span><div class="gi-t">${txt}${esc(why)} · ${esc(oppName)}${esc(oppR)}</div><div class="gi-m">${dt} · ${g.tc ? num(g.tc.minutes) + '+' + num(g.tc.inc) : ''} · ${me === 'w' ? 'белыми' : 'чёрными'} · ${(g.moves || []).length} полуходов</div></span><span class="gi-open">Смотреть →</span>`;
     box.appendChild(a);
   });
 }
@@ -1915,7 +1918,8 @@ const auth = getAuth(app), db = getFirestore(app); const $ = (id) => document.ge
 
 window.PGData = {
   async leaders(key) {
-    const field = key === 'chess' ? 'rChess' : 'rDraughts';
+    // сортировка по рейтингу нужной категории: chess_blitz → r_chess_blitz (раньше любая категория, кроме «chess», сортировалась по общему рейтингу в шашках)
+    const field = key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key;
     const s = await getDocs(query(collection(db, 'profiles'), orderBy(field, 'desc'), limit(50)));
     return s.docs.map((d) => ({ uid: d.id, ...d.data() }));
   },

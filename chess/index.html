@@ -4171,7 +4171,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
               const q = query(collection(db, 'games'), where('status', '==', 'active'), where('hostPublic', '==', true), limit(30));
               return onSnapshot(q, (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => console.warn('Идущие партии:', e));
             },
-            async publishGame(id, d) { await setDoc(doc(db, 'publicGames', id), { ...d, date: serverTimestamp() }); },
+            async publishGame(id, d) { for (let attempt = 0; ; attempt++) { try { await setDoc(doc(db, 'publicGames', id), { ...d, date: serverTimestamp() }); return; } catch (e) { if (attempt < 3 && /permission|insufficient/i.test(String(e && (e.code || e.message)))) { await new Promise((r) => setTimeout(r, 1500)); continue; } throw e; } } },      // правила v12 принимают копию только после записи результата — она могла ещё не дойти
             async getPublic(id) { const s = await getDoc(doc(db, 'publicGames', id)); return s.exists() ? s.data() : null; },
             async hideMyPublicGames(uid) {
               const s = await getDocs(query(collection(db, 'publicGames'), where('uids', 'array-contains', uid), limit(200))); let n = 0;
@@ -5099,8 +5099,8 @@ function createLive(cfg) {
         }
 
         function applyCustomTime() {
-            const m = Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1);
-            const s = Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0);
+            const m = Math.min(999, Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1));
+            const s = Math.min(999, Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0));
             document.getElementById('v-time').innerText = m;
             document.getElementById('v-inc').innerText = s;
         }
@@ -5248,8 +5248,8 @@ function createLive(cfg) {
                 if (userCol === 'r') userCol = Math.random() > 0.5 ? 'w' : 'b';
                 let minutes;
                 if (document.getElementById('custom-time-row').style.display !== 'none') {
-                    inc = Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0);
-                    minutes = Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1);
+                    inc = Math.min(999, Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0));
+                    minutes = Math.min(999, Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1));
                 } else {
                     inc = parseInt(document.getElementById('in-inc').value);
                     minutes = parseInt(document.getElementById('in-time').value);
@@ -5431,8 +5431,8 @@ function createLive(cfg) {
         function readSelectedTimeControl() {
             let minutes, incSec;
             if (document.getElementById('custom-time-row').style.display !== 'none') {
-                incSec = Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0);
-                minutes = Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1);
+                incSec = Math.min(999, Math.max(0, parseInt(document.getElementById('custom-time-inc').value, 10) || 0));
+                minutes = Math.min(999, Math.max(1, parseInt(document.getElementById('custom-time-min').value, 10) || 1));
             } else {
                 incSec = parseInt(document.getElementById('in-inc').value);
                 minutes = parseInt(document.getElementById('in-time').value);
@@ -5895,7 +5895,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2.7.7 · 3 ноября 2026';
+        const BUILD = '2.8.0 · 3 ноября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });

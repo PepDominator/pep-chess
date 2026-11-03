@@ -2014,7 +2014,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2.7.7 · 3 ноября 2026';
+const BUILD = '2.8.0 · 3 ноября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -3392,7 +3392,7 @@ const OD = {
     const q = query(collection(db, GAMES), where('status', '==', 'active'), where('hostPublic', '==', true), limit(30));
     return onSnapshot(q, (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => console.warn('Идущие партии:', e));
   },
-  async publishGame(id, d) { await setDoc(doc(db, 'publicGames', id), { ...d, date: serverTimestamp() }); },
+  async publishGame(id, d) { for (let attempt = 0; ; attempt++) { try { await setDoc(doc(db, 'publicGames', id), { ...d, date: serverTimestamp() }); return; } catch (e) { if (attempt < 3 && /permission|insufficient/i.test(String(e && (e.code || e.message)))) { await new Promise((r) => setTimeout(r, 1500)); continue; } throw e; } } },      // правила v12 принимают копию только после записи результата — она могла ещё не дойти
   async getPublic(id) { const s = await getDoc(doc(db, 'publicGames', id)); return s.exists() ? s.data() : null; },
   async hideMyPublicGames(uid) {
     const s = await getDocs(query(collection(db, 'publicGames'), where('uids', 'array-contains', uid), limit(200))); let n = 0;
