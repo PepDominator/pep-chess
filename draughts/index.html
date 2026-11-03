@@ -1742,7 +1742,7 @@ window.findCaptureSequencesForPiece = function(board, row, col, piece, capturedS
                         const newBoard = cloneBoard(board);
                         newBoard[row][col] = null;
                         newBoard[lr][lc] = { ...piece };
-                        newBoard[foundEnemy.row][foundEnemy.col] = null; // снимаем сразу (правило: бить одну и ту же нельзя дважды, но клетка освобождается только в конце хода — для поиска дальнейших не важно, т.к. мы её уже исключили через capturedSoFar)
+                        // Побитая фигура остаётся на доске до конца хода (правила ФМЖД, «турецкий удар»): её нельзя бить второй раз и через её клетку нельзя пройти или встать на неё. Снимаются все побитые разом — в applyMove.
                         const newCaptured = [...capturedSoFar, foundEnemy];
                         const newPath = [...path, { row: lr, col: lc }];
                         const further = findCaptureSequencesForPiece(newBoard, lr, lc, piece, newCaptured, newPath);
@@ -1763,7 +1763,7 @@ window.findCaptureSequencesForPiece = function(board, row, col, piece, capturedS
                 if (!capturedSoFar.some(cp => cp.row === mr && cp.col === mc)) {
                     const newBoard = cloneBoard(board);
                     newBoard[row][col] = null;
-                    newBoard[mr][mc] = null;
+                    // побитая шашка остаётся на доске до конца хода — см. комментарий выше
                     newBoard[lr][lc] = { ...piece };
                     const newCaptured = [...capturedSoFar, { row: mr, col: mc }];
                     const newPath = [...path, { row: lr, col: lc }];
@@ -2014,7 +2014,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2.7.1 · 2 ноября 2026';
+const BUILD = '2.7.4 · 3 ноября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -2403,13 +2403,17 @@ function parseInfo(msg) {
 }
 function ensureWorker() {
   if (workerReady) return workerReady;
+  // Движок (8 МБ) скачивается при первой партии с компьютером и дальше берётся из офлайн-кэша.
+  // Если загрузка заметна — говорим об этом, чтобы пауза перед первым ходом не казалась зависанием.
+  let slowNote = setTimeout(() => { slowNote = null; try { setStatus('Загружаю движок шашек… Это нужно только один раз', '#C99A2E'); } catch (e) {} }, 1000);
+  const doneNote = () => { if (slowNote) { clearTimeout(slowNote); slowNote = null; } };
   workerReady = new Promise((resolve, reject) => {
-    try { worker = new Worker('scan_normal.js'); } catch (e) { reject(e); return; }
+    try { worker = new Worker('scan_normal.js'); } catch (e) { doneNote(); reject(e); return; }
     let inited = false; worker.onerror = (e) => reject(e);
     worker.onmessage = (e) => {
       const msg = String(e.data);
       if (msg.includes('wait')) { worker.postMessage('set-param name=variant value=normal'); worker.postMessage('init'); }
-      else if (msg.includes('ready') && !inited) { inited = true; resolve(); }
+      else if (msg.includes('ready') && !inited) { inited = true; doneNote(); resolve(); }
       else if (msg.startsWith('info') && curSearch) { Object.assign(curSearch.last, parseInfo(msg)); if (curSearch.onInfo) curSearch.onInfo({ ...curSearch.last }); }
       else if (msg.startsWith('done') && curSearch) { const c = curSearch; curSearch = null; const m = msg.match(/move=(\S+)/); c.resolve({ ...c.last, move: m ? m[1] : null }); }
     };
@@ -3105,6 +3109,12 @@ async function checkResume() {
 /* ================= PWA / старт ================= */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW не зарегистрирован', e));
+  // Чтобы игра с компьютером работала и без интернета, движок докачивается в кэш сам — через полминуты после открытия,
+  // и только если это не мобильный интернет и не режим экономии трафика (там он скачается при первой партии с компьютером).
+  setTimeout(() => {
+    const c = navigator.connection; if (c && (c.saveData || c.type === 'cellular' || /(^|-)2g$|3g/.test(c.effectiveType || ''))) return;
+    ['scan_normal.js', 'scan_normal.data'].forEach((f) => { fetch(f).catch(() => {}); });     // офлайн-кэш сохранит их при первом обращении
+  }, 30000);
 }
 
 /* ================= интерактивное обучение ================= */
@@ -3147,7 +3157,7 @@ function startTutor() {
   let hist = []; try { hist = JSON.parse(localStorage.getItem('draughtsHistory') || '[]'); } catch (e) {} let later = false; try { later = !!localStorage.getItem('drTutorLater'); } catch (e) {}
   if (!(window.PGTutor && PGTutor.isDone('draughts')) && !later && !(hist && hist.length) && !localStorage.getItem(CUR_KEY)) off.classList.remove('hidden');
 })();
-window.__draughts = { startTutor, get tutor() { return tutor; },  watchGame, openPublicRecord, get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame };
+window.__draughts = { startTutor, get tutor() { return tutor; },  watchGame, openPublicRecord, get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame, engineSearch };
 checkInvite();
 
 // ----- публичные партии и наблюдение за идущей партией -----
@@ -3300,11 +3310,23 @@ const OD = {
   },
   async peekGame(id) { const s = await getDoc(doc(db, GAMES, id)); return s.exists() ? s.data() : null; },
   async joinGame(id, guestName, guestUid, guestRating, guestAuthUid, guestPublic) {
-    const ref = doc(db, GAMES, id); const s = await getDoc(ref);
-    if (!s.exists()) return { ok: false, reason: 'not_found' };
-    const data = s.data(); if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
-    await updateDoc(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, guestAuthUid: guestAuthUid || null, guestSeen: serverTimestamp(), guestPublic: !!guestPublic, startedAt: serverTimestamp() });
-    return { ok: true, data };
+    // Транзакция: проверка «партия ещё ждёт соперника» и запись гостя — одно неделимое действие.
+    // Если двое открыли ссылку одновременно, войдёт только первый; второй получит понятное «партия уже началась».
+    // (Правила Firebase и без этого не пускают второго, но тогда он увидел бы невнятную ошибку доступа.)
+    const ref = doc(db, GAMES, id);
+    try {
+      return await runTransaction(db, async (tx) => {
+        const s = await tx.get(ref);
+        if (!s.exists()) return { ok: false, reason: 'not_found' };
+        const data = s.data(); if (data.status !== 'waiting') return { ok: false, reason: 'already_started' };
+        tx.update(ref, { status: 'active', guestName: guestName || 'Гость', guestUid: guestUid || null, guestRating: guestRating != null ? guestRating : null, guestAuthUid: guestAuthUid || null, guestSeen: serverTimestamp(), guestPublic: !!guestPublic, startedAt: serverTimestamp() });
+        return { ok: true, data };
+      });
+    } catch (e) {
+      // отказ правил из-за того, что место уже занято, — тоже «партия уже началась»
+      try { const s = await getDoc(ref); if (s.exists() && s.data().status !== 'waiting') return { ok: false, reason: 'already_started' }; } catch (e2) {}
+      throw e;
+    }
   },
   listenGame(id, cb, onErr) {
     return onSnapshot(doc(db, GAMES, id), (s) => cb(s.exists() ? s.data() : null), (e) => { console.error(e); if (onErr) onErr(e); });
