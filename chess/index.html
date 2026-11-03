@@ -4140,17 +4140,17 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
             // маркер profiles/{uid}/rated/{gameId} создаётся в той же транзакции.
             async applyRated({ user, key, gameId, myRating, oppRating, score, oppName, oppUid }) {
               const pref = doc(db, 'profiles', user.uid), mref = doc(db, 'profiles', user.uid, 'rated', gameId);
-              return await runTransaction(db, async (tx) => {
+              for (let attempt = 0; ; attempt++) { try { return await runTransaction(db, async (tx) => {
                 const m = await tx.get(mref); if (m.exists()) return null;
                 const p = await tx.get(pref);
                 const data = p.exists() ? p.data() : {};
                 const { delta, next } = eloUpdate(data[key], myRating, oppRating, score, oppName, Date.now());
-                const upd = { [key]: next, [key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key]: next.r, updatedAt: serverTimestamp() };
+                const upd = { [key]: next, [key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key]: next.r, ratedGame: gameId, updatedAt: serverTimestamp() };      // ratedGame: правила v11 принимают изменение рейтинга только вместе с отметкой о сыгранной партии
                 if (p.exists()) tx.update(pref, upd);
                 else tx.set(pref, { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null, ...upd });
-                tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score });
+                tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score, col: 'games' });
                 return { r: next.r, delta, g: next.g };
-              });
+              }); } catch (e) { if (attempt < 3 && /permission|insufficient/i.test(String(e && (e.code || e.message)))) { await new Promise((r) => setTimeout(r, 1500)); continue; } throw e; } }
             },
 
             // ---- анонимный вход: чтобы правила базы отличали игроков партии (Google-аккаунт для игры по-прежнему не нужен) ----
@@ -5895,7 +5895,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2.7.4 · 3 ноября 2026';
+        const BUILD = '2.7.6 · 3 ноября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });

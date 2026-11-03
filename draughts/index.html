@@ -2014,7 +2014,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2.7.4 · 3 ноября 2026';
+const BUILD = '2.7.6 · 3 ноября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -3357,17 +3357,17 @@ const OD = {
   // маркер profiles/{uid}/rated/{gameId} создаётся в той же транзакции.
   async applyRated({ user, key, gameId, myRating, oppRating, score, oppName, oppUid }) {
     const pref = doc(db, 'profiles', user.uid), mref = doc(db, 'profiles', user.uid, 'rated', gameId);
-    return await runTransaction(db, async (tx) => {
+    for (let attempt = 0; ; attempt++) { try { return await runTransaction(db, async (tx) => {
       const m = await tx.get(mref); if (m.exists()) return null;
       const p = await tx.get(pref);
       const data = p.exists() ? p.data() : {};
       const { delta, next } = eloUpdate(data[key], myRating, oppRating, score, oppName, Date.now());
-      const upd = { [key]: next, [key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key]: next.r, updatedAt: serverTimestamp() };
+      const upd = { [key]: next, [key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key]: next.r, ratedGame: gameId, updatedAt: serverTimestamp() };      // ratedGame: правила v11 принимают изменение рейтинга только вместе с отметкой о сыгранной партии
       if (p.exists()) tx.update(pref, upd);
       else tx.set(pref, { displayName: user.displayName || 'Игрок', photoURL: user.photoURL || null, ...upd });
-      tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score });
+      tx.set(mref, { t: serverTimestamp(), opp: oppUid || null, delta, score, col: GAMES });
       return { r: next.r, delta, g: next.g };
-    });
+    }); } catch (e) { if (attempt < 3 && /permission|insufficient/i.test(String(e && (e.code || e.message)))) { await new Promise((r) => setTimeout(r, 1500)); continue; } throw e; } }
   },
 
   // ---- анонимный вход: нужен, чтобы правила базы отличали игроков партии друг от друга (Google-аккаунт для игры не требуется) ----

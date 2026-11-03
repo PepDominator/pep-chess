@@ -1080,6 +1080,8 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
   }
   $('all-ach').onclick = () => { if (window.PGA) PGA.open(); };
   window.addEventListener('storage', render); window.addEventListener('pgr-user', render); window.addEventListener('pgs-change', render);
+  // вход через Google подтверждается через секунду-другую после открытия — перерисовываем, когда модуль синхронизации сообщит об этом
+  window.addEventListener('pgsync-state', render); window.addEventListener('pgsync-applied', render);
   if (window.PGSync) PGSync.mountRow($('pf-sync'), true);
   render(); setTimeout(render, 1500);
   window.__pf = { render };
