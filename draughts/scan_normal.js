@@ -1,3 +1,6 @@
+/*! Scan 3.1 — international draughts engine. Copyright (C) 2015-2019 Fabien Letouzey. Browser build: lidraughts (RoepStoep).
+ * License: GNU General Public License v3 — see ../licenses/GPL-3.0.txt.
+ * Source: https://github.com/RoepStoep/scan-wasm and https://github.com/rhalbersma/scan */
 
 Module = (function () {
   var queue = [];

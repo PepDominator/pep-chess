@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Лицензии и авторы — Pep Games</title>
+<link rel="icon" href="../icon-192.png?v=5">
+<style>
+body { font-family:'Noto Sans',system-ui,sans-serif; background:#EEF0E7; color:#2A2E24; margin:0; padding:24px 16px; line-height:1.55; }
+main { max-width:760px; margin:0 auto; background:#FDFDFA; border:1px solid #D9DBCC; padding:26px 30px; }
+h1 { font:italic 400 28px Georgia,serif; margin:0 0 6px; } h2 { font-size:17px; margin:26px 0 6px; } p, li { font-size:14.5px; } a { color:#2F3A56; }
+.sub { color:#6E7568; font-size:14px; margin-bottom:18px; } .card { border:1px solid #D9DBCC; background:#F8F7F1; padding:12px 16px; margin:10px 0; }
+.card b { font-size:15px; } .lic { display:inline-block; font-size:12.5px; font-weight:700; background:#3B5D4A; color:#fff; padding:1px 7px; margin-left:6px; }
+.back { font-size:13.5px; color:#6E7568; text-decoration:none; } small { color:#6E7568; }
+@media (prefers-color-scheme: dark) { body { background:#131815; color:#E6E9E1; } main, .card { background:#1A201C; border-color:#2E3631; } a { color:#A9B9E0; } .sub, small, .back { color:#A3AA9C; } }
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="../">← Все игры</a>
+<h1>Лицензии и авторы</h1>
+<p class="sub">Pep Games использует несколько свободных программ и материалов других авторов. Ниже — кто их сделал, на каких условиях они распространяются и где взять их исходный код.</p>
+
+<h2>Шахматный движок</h2>
+<div class="card"><b>Stockfish.js 19</b> <span class="lic">GPLv3</span><br>
+Сборка Stockfish для браузера (вариант «lite, single-threaded»). © 2026 Chess.com, LLC; автор сборки — Nathan Rugg. Основан на <a href="https://stockfishchess.org/">Stockfish</a> © T. Romstad, M. Costalba, J. Kiiski, G. Linscott и другие авторы.<br>
+<small>Файлы у нас: <code>chess/stockfish.wasm</code> и загрузчик внутри <code>chess/index.html</code>.<br>
+Исходный код именно этой версии: <a href="https://github.com/nmrugg/stockfish.js/tree/v19.0.1">github.com/nmrugg/stockfish.js (v19.0.1)</a>, готовые файлы — <a href="https://github.com/nmrugg/stockfish.js/releases/tag/v19.0.1">выпуск v19.0.1</a>. Исходный код самого Stockfish — <a href="https://github.com/official-stockfish/Stockfish">github.com/official-stockfish/Stockfish</a>.</small></div>
+
+<h2>Шашечный движок</h2>
+<div class="card"><b>Scan 3.1</b> <span class="lic">GPLv3</span><br>
+Движок международных шашек © 2015–2019 Fabien Letouzey. Сборка для браузера — из проекта <a href="https://lidraughts.org/">lidraughts</a> (RoepStoep).<br>
+<small>Файлы у нас: <code>draughts/scan_normal.js</code> и <code>draughts/scan_normal.data</code>.<br>
+Исходный код: сборка для браузера — <a href="https://github.com/RoepStoep/scan-wasm">github.com/RoepStoep/scan-wasm</a>, исходный Scan 3.1 — <a href="https://github.com/rhalbersma/scan">github.com/rhalbersma/scan</a>.</small></div>
+
+<h2>Правила шахмат</h2>
+<div class="card"><b>chess.js</b> <span class="lic">BSD-2-Clause</span><br>
+© 2020 Jeff Hlywa. Проверка ходов, шах, мат и запись партии в шахматах.<br>
+<small>Встроено в <code>chess/index.html</code> вместе с уведомлением об авторстве. Текст лицензии — <a href="chess.js-LICENSE.txt">chess.js-LICENSE.txt</a>. Проект — <a href="https://github.com/jhlywa/chess.js">github.com/jhlywa/chess.js</a>.</small></div>
+
+<h2>Шахматные фигуры</h2>
+<div class="card"><b>Фигуры Cburnett</b> <span class="lic">GPLv2+</span><br>
+Автор — <a href="https://en.wikipedia.org/wiki/User:Cburnett">Colin M.L. Burnett</a>. Автор выпустил их сразу под тремя лицензиями — GFDL, BSD и GPL (<a href="https://en.wikipedia.org/wiki/User:Cburnett/GFDL_images/Chess">страница автора</a>); в проекте <a href="https://github.com/lichess-org/lila/blob/master/COPYING.md">lichess</a>, откуда взят набор, они указаны под GPLv2 или новее.</div>
+
+<h2>Текст лицензии GPL</h2>
+<p>Полный текст GNU General Public License версии 3 — <a href="GPL-3.0.txt">GPL-3.0.txt</a>. Он распространяется на Stockfish.js и Scan; остальной код Pep Games — работа авторов Pep Games.</p>
+
+<h2>Остальное</h2>
+<ul>
+<li><b>Звуки, музыка, значки, картинки японских кроссвордов, словари, вопросы кроссвордов и обучение</b> созданы для Pep Games. Звуки и музыка синтезируются прямо в браузере.</li>
+<li><b>Вход, синхронизация и игра по сети</b> работают на <a href="https://firebase.google.com/">Firebase</a> (Google). Его код загружается с серверов Google и не входит в файлы сайта.</li>
+<li><b>Вопросы «Сто к одному»</b> собраны по обзорам выпусков телеигры на сайте <a href="https://gameshows.ru/">gameshows.ru</a>. Это не программа и не свободная лицензия, а указание источника; права на телеигру и её материалы принадлежат их владельцам.</li>
+</ul>
+<p><small>Если вы автор чего-то из перечисленного и видите здесь неточность — напишите нам, исправим.</small></p>
+</main>
+</body>
+</html>
