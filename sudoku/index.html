@@ -1252,7 +1252,7 @@ h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0
 .win { background:var(--k-panel); border:1px solid var(--border); width:100%; max-width:380px; text-align:center; padding:28px 26px 24px; box-shadow:0 30px 80px rgba(42,46,36,.3); animation:pop .35s cubic-bezier(.3,1.4,.5,1) both; } @keyframes pop { from { transform:scale(.85); opacity:0; } }
 .win h3 { margin:0 0 4px; font:italic 400 30px Georgia,serif; } .win .big-t { font-family:'Roboto Mono',monospace; font-size:38px; font-weight:700; margin:10px 0 4px; }
 .win .sub { color:var(--muted); font-size:13.5px; line-height:1.6; margin-bottom:16px; }
-.panel { background:var(--k-panel); border:1px solid var(--border); width:100%; max-width:400px; box-shadow:0 30px 80px rgba(42,46,36,.3); }
+.panel { background:var(--k-panel); border:1px solid var(--border); width:100%; max-width:400px; box-shadow:0 30px 80px rgba(42,46,36,.3); max-height:calc(100dvh - 32px); overflow-y:auto; }      /* окно настроек выше экрана — прокручивается, «Готово» всегда достижимо */
 .panel h3 { margin:0; padding:20px 24px 6px; font:italic 400 24px Georgia,serif; }
 .srow { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 24px; border-bottom:1px solid var(--k-line); } .srow b { font-size:14px; font-weight:600; display:block; } .srow span.d { font-size:12px; color:var(--muted); display:block; margin-top:2px; }
 .sw { width:44px; height:24px; flex-shrink:0; background:var(--k-line2); border:none; position:relative; cursor:pointer; padding:0; } .sw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:var(--k-panel); transition:transform .15s; } .sw.on { background:var(--green); } .sw.on::after { transform:translateX(20px); }
@@ -1492,7 +1492,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const SDK = new Function($('sdk-engine').textContent + '\nreturn SDK;')();
-const BUILD = '2.8.1 · 4 ноября 2026';
+const BUILD = '2.8.2 · 4 ноября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
