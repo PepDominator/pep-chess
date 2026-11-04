@@ -1,11 +1,13 @@
 // Офлайн-кэш: тяжёлые файлы движка (8 МБ) НЕ скачиваются при установке — кэшируются при первом использовании
 // (первая партия с компьютером или фоновая докачка не на мобильном интернете) и дальше берутся из кэша сразу; остальное — сеть в приоритете,
 // чтобы обновления index.html подхватывались без ручной очистки кэша.
-const CACHE = 'pep-draughts-v6';
+const CACHE = 'pep-draughts-v7';
 const ASSETS = ['./index.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
+// общие модули страницы (site/shared/) — сохраняем сразу при установке, иначе после первого открытия без интернета их может не оказаться
+const SHARED = ['../shared/pg-settings.js', '../shared/pg-chat.js', '../shared/pg-sync.js', '../shared/pg-friends.js', '../shared/pg-ach.js', '../shared/pg-rules.js', '../shared/pg-tutor.js'];
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.concat(SHARED))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {

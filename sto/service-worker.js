@@ -1,7 +1,9 @@
 // Офлайн-кэш «Сто к одному». Сеть в приоритете; база вопросов кэшируется при первом открытии. Чистим только свои кэши (префикс pep-sto-).
-const CACHE = 'pep-sto-v1';
+const CACHE = 'pep-sto-v2';
 const ASSETS = ['./index.html', './questions.json', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
-self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
+// общие модули страницы (site/shared/) — сохраняем сразу при установке, иначе после первого открытия без интернета их может не оказаться
+const SHARED = ['../shared/pg-settings.js', '../shared/pg-sync.js', '../shared/pg-records.js', '../shared/pg-ach.js', '../shared/pg-rules.js', '../shared/pg-tutor.js'];
+self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.concat(SHARED))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('pep-sto-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });

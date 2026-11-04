@@ -1,10 +1,12 @@
 // Общее меню. Обрабатывает только собственные файлы; страницы игр живут в своих подпапках
 // со своими service worker'ами и сюда не попадают. Чистит только свои кэши (префикс pep-hub-).
-const CACHE = 'pep-hub-v6';
+const CACHE = 'pep-hub-v7';
 const OWN = ['index.html', 'profile/', 'profile/index.html', 'og.png', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 const base = self.registration.scope;
 const isOwn = (url) => { const u = new URL(url); if (!url.startsWith(base)) return false; const rest = u.pathname.slice(new URL(base).pathname.length); return rest === '' || OWN.includes(rest) || rest.startsWith('shared/'); };      // общие модули (с версии 2.9) — тоже свои: без них главная офлайн не работает
-self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./index.html', './manifest.json', './icon-192.png', './icon-512.png'])).then(() => self.skipWaiting())); });
+// общие модули страницы (site/shared/) — сохраняем сразу при установке, иначе после первого открытия без интернета их может не оказаться
+const SHARED = ['./shared/pg-settings.js', './shared/pg-sync.js', './shared/pg-friends.js', './shared/pg-ach.js', './shared/pg-rules.js', './shared/pg-tutor.js'];
+self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./index.html', './manifest.json', './icon-192.png', './icon-512.png'].concat(SHARED))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('pep-hub-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });

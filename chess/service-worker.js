@@ -1,8 +1,10 @@
 // Офлайн-кэш шахмат. Сеть в приоритете — обновления index.html подхватываются сами.
 // Чистим только СВОИ старые кэши (префикс pep-chess-), чтобы не задеть шашки и общее меню.
-const CACHE = 'pep-chess-v6';
+const CACHE = 'pep-chess-v7';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
-self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
+// общие модули страницы (site/shared/) — сохраняем сразу при установке, иначе после первого открытия без интернета их может не оказаться
+const SHARED = ['../shared/pg-settings.js', '../shared/pg-chat.js', '../shared/pg-sync.js', '../shared/pg-friends.js', '../shared/pg-ach.js', '../shared/pg-rules.js', '../shared/pg-tutor.js'];
+self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.concat(SHARED))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     const ks = (await caches.keys()).filter((k) => k.startsWith('pep-chess-') && k !== CACHE), cur = await caches.open(CACHE);
