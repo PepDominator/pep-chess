@@ -1419,6 +1419,23 @@ footer b { color:var(--text); font-weight:600; }
 .acc-btn { display:flex; align-items:center; gap:8px; background:none; border:1px solid transparent; padding:4px 10px 4px 5px; cursor:pointer; font:inherit; font-size:13px; font-weight:600; color:var(--text); transition:background .15s, border-color .15s; }
 .acc-btn:hover, .acc-btn:focus-visible { background:var(--panel); border-color:var(--border); outline:none; }
 .acc-btn .chev { color:var(--muted); font-size:18px; line-height:1; transition:transform .2s var(--ease); } .acc-btn:hover .chev { transform:translateX(3px); }
+.prof.wide.xwide { max-width:940px; }      /* профиль — шире обычного окна (календарь и карточки игр) */
+.pf-sec { padding:16px 28px 18px; border-top:1px solid var(--border); } .pf-sec h4 { font-size:14.5px; margin:0 0 12px; } .pf-sec h4 small { font-weight:400; color:var(--muted); font-size:12.5px; margin-left:6px; }
+.pf-rank { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; } .pf-rank b { font-size:18px; display:block; } .pf-rank small { color:var(--muted); font-size:12.5px; } .pf-rank .pf-rb { flex:1; min-width:200px; }
+.pf-bar { height:8px; background:var(--k-hover); margin-top:6px; overflow:hidden; } .pf-bar i { display:block; height:100%; background:var(--k-acc); }
+.pf-tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; } .pf-tile { background:var(--k-surf); border:1px solid var(--border); padding:10px 12px; } .pf-tile b { display:block; font-size:22px; color:var(--k-nt); } .pf-tile span { font-size:12px; color:var(--muted); }
+.pf-heat { display:grid; grid-auto-flow:column; grid-template-rows:repeat(7, 13px); grid-auto-columns:13px; gap:3px; overflow-x:auto; padding-bottom:4px; justify-content:start; }
+.pf-heat i { width:13px; height:13px; background:var(--k-hover); display:block; } .pf-heat i.l1 { background:#C9D9C6; } .pf-heat i.l2 { background:#94B79A; } .pf-heat i.l3 { background:#5E8A6A; } .pf-heat i.l4 { background:var(--k-acc); } .pf-heat i.future { visibility:hidden; }
+.pf-legend { display:flex; gap:4px; align-items:center; font-size:11.5px; color:var(--muted); margin-top:8px; } .pf-legend i { width:12px; height:12px; display:inline-block; }
+svg.pf-chart { width:100%; height:auto; display:block; } .pf-chart .ax { stroke:var(--k-line); } .pf-chart text { fill:var(--k-mu); font:11px 'Noto Sans',sans-serif; } .pf-chart .bar2 { fill:var(--k-gt); } .pf-chart .ln { fill:none; stroke:var(--k-nt); stroke-width:2.5; } .pf-chart .pt { fill:var(--k-nt); }
+.pf-fav { display:grid; gap:8px; } .pf-fav div { display:grid; grid-template-columns:170px 1fr 64px; gap:10px; align-items:center; font-size:13.5px; } .pf-fav .b { height:10px; background:var(--k-hover); } .pf-fav .b i { display:block; height:100%; background:#2F3A56; } .pf-fav span:last-child { text-align:right; color:var(--muted); }
+.pf-games { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; } .pf-game { background:var(--k-surf); border:1px solid var(--border); padding:10px 12px; text-decoration:none; color:inherit; display:block; } .pf-game:hover { border-color:var(--k-acc); }
+.pf-game .n { font-weight:700; font-size:14px; margin-bottom:6px; } .pf-game dl { margin:0; display:grid; grid-template-columns:1fr auto; gap:2px 8px; font-size:12.5px; } .pf-game dt { color:var(--muted); } .pf-game dd { margin:0; font-weight:700; text-align:right; }
+.pf-seg { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; } .pf-seg button { border:1px solid var(--border); background:var(--k-surf); padding:6px 10px; font:600 12.5px 'Noto Sans',sans-serif; color:var(--text); cursor:pointer; } .pf-seg button.on { background:var(--k-acc); color:#fff; border-color:var(--k-acc); }
+.pf-empty { color:var(--muted); font-size:13.5px; padding:6px 0; }
+.pf-achs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; } .pf-ach { display:flex; gap:10px; align-items:center; background:var(--k-surf); border:1px solid var(--border); padding:10px 12px; } .pf-ach i { font-style:normal; font-size:24px; } .pf-ach b { display:block; font-size:13.5px; } .pf-ach small { color:var(--muted); font-size:12px; }
+.pf-more { display:inline-block; margin-top:10px; border:1px solid var(--border); background:var(--panel); padding:8px 14px; font:600 13px 'Noto Sans',sans-serif; color:var(--text); cursor:pointer; }
+@media (max-width:760px) { .pf-tiles, .pf-games { grid-template-columns:repeat(2,1fr); } .pf-achs { grid-template-columns:1fr; } .pf-fav div { grid-template-columns:118px 1fr 56px; } .pf-sec { padding:14px 16px; } }
 .prof.wide { max-width:660px; }
 .ph .who { min-width:0; } .ph .sub { font-size:12.5px; color:var(--muted); margin-top:3px; }
 .ptabs { display:flex; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--k-surf); }
@@ -1642,7 +1659,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.8.0 · 3 ноября 2026</div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.8.1 · 4 ноября 2026</div>
   </footer>
 </div>
 
@@ -1771,7 +1788,7 @@ function profileBlocks(p, extraFor) {
 }
 async function openProfile(uid, pre) {
   if (window.PGData && window.PGData.me && uid === window.PGData.me) return openMyProfile();
-  document.querySelector('.prof').classList.remove('wide');
+  document.querySelector('.prof').classList.remove('wide', 'xwide'); if (mp) mp.open = false;      // чужой профиль — в обычном окне, наш фоновый пересчёт его не трогает
   const ov = document.getElementById('ov'), body = document.getElementById('prof-body');
   ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
   let p = pre; try { p = (await window.PGData.profile(uid)) || pre; } catch (e) { console.error(e); }
@@ -1799,7 +1816,7 @@ async function loadPublicGames(uid, host) {
   });
 }
 const pubBlock = () => '<div class="pg"><div class="pg-top"><span class="pg-title">Последние публичные партии</span></div><div id="pub-host"></div></div>';
-const closeProfile = () => document.getElementById('ov').classList.add('hidden');
+const closeProfile = () => { document.getElementById('ov').classList.add('hidden'); if (mp) mp.open = false; };      // закрытое окно свежими данными не перерисовываем
 
 // ---------- личный профиль: статистика, рейтинг, партии ----------
 const LOCAL_KEY = { chess: 'chessGameHistory', draughts: 'draughtsHistory' };
@@ -1822,37 +1839,124 @@ let mp = null;
 function rememberProfile() {
   try { sessionStorage.setItem('pgProfState', JSON.stringify({ tab: mp.tab, fg: mp.fg, fs: mp.fs, shown: mp.shown, scroll: document.querySelector('.prof').scrollTop })); } catch (e) {}
 }
+// ============ Профиль: звание, сводка, статистика по всем играм (раньше — отдельная страница profile/) ============
+const PF = (() => {
+  const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
+  const fmt = (sec) => { sec = Math.round(sec); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+  const keyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  const pl = (n, a, b, c) => { const m = n % 10, x = n % 100; return m === 1 && x !== 11 ? a : m >= 2 && m <= 4 && (x < 10 || x >= 20) ? b : c; };
+  const GAMES = [[1, 'chess', '♞', 'Шахматы'], [2, 'draughts', '⛀', 'Шашки'], [4, 'sudoku', '🔢', 'Судоку'], [8, 'crossword', '🔤', 'Кроссворды'], [16, 'nonogram', '🧩', 'Японские кроссворды'], [32, 'sto', '🎤', 'Сто к одному'], [64, 'words', '🔍', 'Филворд'], [128, 'code', '🔑', 'Ключворд']];
+  let dsel = 'sudoku';
+  const ach = () => { const A = load('pgAch', { u: {}, c: {}, d: {} }); return { u: A.u || {}, c: A.c || {}, d: A.d || {} }; };
+  // «Обзор»: звание, сводка, последние достижения
+  function overview() {
+    const { u, c, d } = ach(), C = (k) => c[k] | 0, X = window.PGA ? PGA.stats() : { days: Object.keys(d).length, best: 0, cur: 0, qTotal: 0 };
+    const got = Object.keys(u).length, total = window.PGA ? PGA.defs.length : got, R = window.PGA ? PGA.rankOf(got) : { name: '—', next: 0 };
+    const nextAt = got + (R.next || 0), prevRank = [0, 5, 15, 30, 50, 75, 100, 115].filter((x) => x <= got).pop(), w = R.next ? Math.round(100 * (got - prevRank) / Math.max(1, nextAt - prevRank)) : 100;
+    const days = Object.keys(d).length, totalN = Object.values(d).reduce((a, x) => a + (x.n | 0), 0);
+    const tiles = [[X.days || days, pl(X.days || days, 'день с играми', 'дня с играми', 'дней с играми')], [X.cur || 0, 'дней подряд сейчас'], [X.best || 0, 'лучшая серия'], [totalN, pl(totalN, 'завершённая игра', 'завершённые игры', 'завершённых игр')], [`${got}/${total}`, 'достижений'], [X.qTotal || 0, 'дней со всеми заданиями'], [C('chW') + C('drW'), 'побед в шахматах и шашках'], [C('sd') + C('cw') + C('jp') + C('ws') + C('kw'), 'решённых головоломок']];
+    const defs = window.PGA ? PGA.defs : [], recent = Object.entries(u).sort((a, b) => b[1] - a[1]).map(([id, t]) => [defs.find((x) => x.id === id), t]).filter((x) => x[0]).slice(0, 6);
+    const top = `<div class="pf-sec"><div class="pf-rank"><div class="pf-rb"><small>Звание</small><b id="pf-rank">${esc(R.name)}</b><div class="pf-bar"><i style="width:${w}%"></i></div><small>${R.next ? `ещё ${R.next} ${pl(R.next, 'достижение', 'достижения', 'достижений')} до следующего звания` : 'высшее звание!'}</small></div></div></div>
+      <div class="pf-sec"><div class="pf-tiles" id="pf-tiles">${tiles.map(([v, t]) => `<div class="pf-tile"><b>${esc(v)}</b><span>${t}</span></div>`).join('')}</div></div>`;
+    const achs = `<div class="pf-sec"><h4>Последние достижения</h4><div class="pf-achs" id="pf-achs">${recent.length ? recent.map(([df, t]) => { const dt = new Date(t); return `<div class="pf-ach"><i>${df.icon}</i><div><b>${esc(df.title)}</b><small>${dt.getDate()} ${months[dt.getMonth()]} · ${esc(df.desc)}</small></div></div>`; }).join('') : '<div class="pf-empty">Пока ни одного — первое ждёт после первой партии.</div>'}</div><button class="pf-more" id="pf-all-ach" type="button">Все достижения</button></div>`;
+    return { top, achs };
+  }
+  // «Статистика»: каркас; заполняется в fill(), когда окно уже на экране (календарю нужна ширина)
+  function stats() {
+    return `<div class="pf-sec"><h4>Календарь игр <small id="pf-heat-wk"></small></h4><div class="pf-heat" id="pf-heat"></div><div class="pf-legend">меньше <i style="background:var(--k-hover)"></i><i style="background:#C9D9C6"></i><i style="background:#94B79A"></i><i style="background:#5E8A6A"></i><i style="background:var(--k-acc)"></i> больше</div></div>
+      <div class="pf-sec"><h4>Сыграно по дням <small>последние 30 дней</small></h4><div id="pf-perday"></div></div>
+      <div class="pf-sec"><h4>Любимые игры <small>в сколько дней вы в них играли</small></h4><div class="pf-fav" id="pf-fav"></div></div>
+      <div class="pf-sec"><h4>Игры</h4><div class="pf-games" id="pf-games"></div></div>
+      <div class="pf-sec"><h4>Время решения ежедневных головоломок <small>последние 14 решённых</small></h4><div class="pf-seg" id="pf-dsel"></div><div id="pf-dchart"></div></div>`;
+  }
+  function fill() {
+    const $ = (id) => document.getElementById(id); if (!$('pf-heat')) return;
+    const { c, d } = ach(), C = (k) => c[k] | 0, totalN = Object.values(d).reduce((a, x) => a + (x.n | 0), 0);
+    const today = new Date(); today.setHours(12, 0, 0, 0); const WK = Math.max(12, Math.min(52, Math.floor((($('pf-heat').clientWidth || 300) + 3) / 16)));
+    const start = new Date(today); start.setDate(start.getDate() - 7 * (WK - 1) - ((today.getDay() + 6) % 7)); $('pf-heat-wk').textContent = `последние ${WK} ${pl(WK, 'неделя', 'недели', 'недель')}`;
+    let h = ''; for (let k = 0; k < WK * 7; k++) { const dt = new Date(start); dt.setDate(start.getDate() + k); const n = d[keyOf(dt)] ? d[keyOf(dt)].n | 0 : 0, fut = dt > today;
+      h += `<i class="${fut ? 'future' : n === 0 ? '' : n === 1 ? 'l1' : n <= 3 ? 'l2' : n <= 6 ? 'l3' : 'l4'}" title="${dt.getDate()} ${months[dt.getMonth()]}: ${n} ${pl(n, 'игра', 'игры', 'игр')}"></i>`; }
+    $('pf-heat').innerHTML = h;
+    const pts = []; for (let k = 29; k >= 0; k--) { const dt = new Date(today); dt.setDate(today.getDate() - k); pts.push([dt, d[keyOf(dt)] ? d[keyOf(dt)].n | 0 : 0]); }
+    const mx = Math.max(3, ...pts.map((p) => p[1])), W = 600, H = 150, bw = W / 30;
+    $('pf-perday').innerHTML = totalN ? `<svg class="pf-chart" viewBox="0 0 ${W} ${H + 22}"><line class="ax" x1="0" y1="${H}" x2="${W}" y2="${H}"/>` + pts.map(([dt, n], i) => `<rect class="bar2" x="${i * bw + 3}" y="${H - (n / mx) * (H - 10)}" width="${bw - 6}" height="${(n / mx) * (H - 10)}"><title>${dt.getDate()} ${months[dt.getMonth()]}: ${n}</title></rect>` + (i % 5 === 0 || i === 29 ? `<text x="${i * bw + bw / 2}" y="${H + 16}" text-anchor="middle">${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}</text>` : '')).join('') + `<text x="2" y="12">${mx}</text></svg>` : '<div class="pf-empty">Пока пусто — сыграйте во что-нибудь.</div>';
+    const cnt = GAMES.map(([bit, , ic, n]) => [ic + ' ' + n, Object.values(d).filter((x) => (x.g | 0) & bit).length]).sort((a, b) => b[1] - a[1]), top = Math.max(1, cnt[0][1]);
+    $('pf-fav').innerHTML = cnt[0][1] ? cnt.filter((x) => x[1]).map(([n, v]) => `<div><span>${n}</span><span class="b"><i style="width:${Math.round(100 * v / top)}%"></i></span><span>${v} ${pl(v, 'день', 'дня', 'дней')}</span></div>`).join('') : '<div class="pf-empty">Здесь появятся игры, в которые вы играете чаще всего.</div>';
+    const st = (k) => load(k, {}), sto = st('stoStats'), ws = st('wordsStats'), code = st('codeStats');
+    const pct = (w, p) => (p ? Math.round(100 * w / p) + '%' : '—'), sumS = (o) => Object.values((o && o.solved) || {}).reduce((a, b) => a + (+b || 0), 0);
+    const daily = (k) => { const o = st(k).daily || {}; return `${num(o.streak)} ${pl(num(o.streak), 'день', 'дня', 'дней')}`; };
+    const cards = [
+      ['chess', '♞ Шахматы', [['Партий', C('chP')], ['Побед', C('chW')], ['Ничьих', C('chD')], ['Доля побед', pct(C('chW'), C('chP'))]]],
+      ['draughts', '⛀ Шашки', [['Партий', C('drP')], ['Побед', C('drW')], ['Ничьих', C('drD')], ['Доля побед', pct(C('drW'), C('drP'))]]],
+      ['sudoku', '🔢 Судоку', [['Решено', C('sd')], ['Без ошибок', C('sdclean')], ['Серия судоку дня', daily('sudokuStats')]]],
+      ['crossword', '🔤 Кроссворды', [['Решено', C('cw')], ['Без подсказок', C('cwclean')], ['Суперкроссвордов', C('cwweek')], ['Серия кроссворда дня', daily('crosswordStats')]]],
+      ['nonogram', '🧩 Японские', [['Картинок', C('jp')], ['Без подсказок', C('jpclean')], ['Больших полей', C('jpbig')], ['Серия картинки дня', daily('nonogramStats')]]],
+      ['sto', '🎤 Сто к одному', [['Игр', num(sto.games)], ['Лучший счёт', num(sto.best)], ['Побед в большой игре', num(sto.bigWins)], ['Полных табло', num(sto.fullBoards)]]],
+      ['words', '🔍 Филворд', [['Филвордов', sumS(ws.fil)], ['«Поиск слов»', sumS(ws)], ['Тайных слов', num(ws.secrets)], ['Серия филворда дня', daily('wordsStats')]]],
+      ['code', '🔑 Ключворд', [['Разгадано', sumS(code)], ['Сложных', num((code.solved || {})[3])], ['Серия ключворда дня', daily('codeStats')]]]];
+    $('pf-games').innerHTML = cards.map(([href, n, rows]) => `<a class="pf-game" href="${href}/"><div class="n">${n}</div><dl>${rows.map(([a, b]) => `<dt>${a}</dt><dd>${esc(b)}</dd>`).join('')}</dl></a>`).join('');
+    const DS = [['sudoku', 'Судоку', 'sudokuStats', 1000], ['crossword', 'Кроссворд', 'crosswordStats', 1000], ['nonogram', 'Картинка', 'nonogramStats', 1000], ['words', 'Филворд', 'wordsStats', 1], ['code', 'Ключворд', 'codeStats', 1]];
+    $('pf-dsel').innerHTML = DS.map(([id, n]) => `<button type="button" data-g="${id}" class="${dsel === id ? 'on' : ''}">${n}</button>`).join('');
+    $('pf-dsel').querySelectorAll('button').forEach((b) => { b.onclick = () => { dsel = b.dataset.g; fill(); }; });
+    const [, , key, div] = DS.find((x) => x[0] === dsel), res = (st(key).daily || {}).results || {};
+    const list = Object.keys(res).sort().slice(-14).map((k) => [k, (+res[k] || 0) / (div === 1000 && res[k] > 5000 ? 1000 : 1)]);
+    if (list.length < 2) $('pf-dchart').innerHTML = `<div class="pf-empty">${list.length ? 'Решите ещё хотя бы одну ежедневную головоломку — и появится график.' : 'Решайте ежедневную головоломку — здесь появится график вашего времени.'}</div>`;
+    else { const W2 = 600, H2 = 160, mxT = Math.max(...list.map((x) => x[1])) * 1.15, step = W2 / (list.length - 1), y = (t) => H2 - (t / mxT) * (H2 - 14);
+      const avg = list.reduce((a, x) => a + x[1], 0) / list.length, best = Math.min(...list.map((x) => x[1]));
+      $('pf-dchart').innerHTML = `<svg class="pf-chart" viewBox="-30 0 ${W2 + 50} ${H2 + 24}"><line class="ax" x1="0" y1="${H2}" x2="${W2}" y2="${H2}"/><polyline class="ln" points="${list.map(([, t], i) => `${i * step},${y(t)}`).join(' ')}"/>` + list.map(([k, t], i) => `<circle class="pt" cx="${i * step}" cy="${y(t)}" r="4"><title>${+k.slice(8)} ${months[+k.slice(5, 7) - 1]}: ${fmt(t)}</title></circle>` + (i % 3 === 0 || i === list.length - 1 ? `<text x="${i * step}" y="${H2 + 17}" text-anchor="middle">${+k.slice(8)}.${k.slice(5, 7)}</text>` : '')).join('') + `<text x="-28" y="${y(mxT / 1.15) + 4}">${fmt(mxT / 1.15)}</text></svg><div class="pf-empty">Среднее время — ${fmt(avg)}, лучшее — ${fmt(best)}.</div>`; }
+  }
+  return { overview, stats, fill };
+})();
 async function openMyProfile(restore) {
-  const D = window.PGData; if (!D || !D.me) return;
-  const ov = document.getElementById('ov'), body = document.getElementById('prof-body'), box = document.querySelector('.prof');
-  box.classList.add('wide'); ov.classList.remove('hidden'); body.innerHTML = '<div class="lb-empty">Загрузка…</div>';
-  const [prof, cc, cd] = await Promise.allSettled([D.profile(D.me), D.myGames('chess'), D.myGames('draughts')]);
-  const p = (prof.status === 'fulfilled' && prof.value) || { displayName: D.user && D.user.displayName, photoURL: D.user && D.user.photoURL };
+  const D = window.PGData, me = D && D.me;
+  const ov = document.getElementById('ov'), box = document.querySelector('.prof');
+  box.classList.add('wide', 'xwide'); ov.classList.remove('hidden');
   const localC = loadLocal('chess'), localD = loadLocal('draughts');
-  const cloudFail = cc.status === 'rejected' || cd.status === 'rejected';
-  const cloud = [].concat(cc.status === 'fulfilled' ? cc.value.map((r) => ({ ...r, game: 'chess' })) : [], cd.status === 'fulfilled' ? cd.value.map((r) => ({ ...r, game: 'draughts' })) : []);
-  const items = cloud.map((r) => normalize(r, `${r.game}/?replay=cloud:${encodeURIComponent(r.id)}&from=profile`, true));
-  // локальные копии онлайн-партий, которые уже есть в облаке, не дублируем
-  [].concat(localC, localD).forEach((r) => {
-    if (r.opponent && cloud.some((c) => c.game === r.game && Math.abs(new Date(c.date) - new Date(r.date)) < 10000)) return;
-    items.push(normalize(r, `${r.game}/?replay=local:${r.idx}&from=profile`, !!r.opponent));
-  });
-  items.sort((a, b) => new Date(b.date) - new Date(a.date));
-  mp = { p, items, local: { chess: localC, draughts: localD }, cloudFail, tab: 'ov', fg: 'all', fs: 'all', shown: 25 };
+  const keep = mp && mp.open ? { tab: mp.tab, fg: mp.fg, fs: mp.fs, shown: mp.shown } : null;
+  const build = (p, cloudRows, cloudFail, fresh) => {
+    const items = cloudRows.map((r) => normalize(r, `${r.game}/?replay=cloud:${encodeURIComponent(r.id)}&from=profile`, true));
+    // локальные копии онлайн-партий, которые уже есть в облаке, не дублируем
+    [].concat(localC, localD).forEach((r) => {
+      if (r.opponent && cloudRows.some((c) => c.game === r.game && Math.abs(new Date(c.date) - new Date(r.date)) < 10000)) return;
+      items.push(normalize(r, `${r.game}/?replay=local:${r.idx}&from=profile`, !!r.opponent));
+    });
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const st = (mp && mp.open && mp) || keep || { tab: 'ov', fg: 'all', fs: 'all', shown: 25 };
+    mp = { p, items, local: { chess: localC, draughts: localD }, cloudFail, me, fresh, open: true, tab: st.tab, fg: st.fg, fs: st.fs, shown: st.shown };
+  };
+  // 1) сразу — из запомненного на этом устройстве (без «Загрузка…» и без ожидания входа)
+  let cache = null; try { cache = JSON.parse(localStorage.getItem('pgMyProf') || 'null'); } catch (e) {}
+  if (me && cache && cache.uid === me) build(cache.p, cache.cloud || [], false, false);
+  else build(me ? { displayName: D.user && D.user.displayName, photoURL: D.user && D.user.photoURL } : { displayName: 'Гость' }, [], false, !me);
   if (restore) Object.assign(mp, { tab: restore.tab, fg: restore.fg, fs: restore.fs, shown: restore.shown });
   renderMy();
   if (restore && restore.scroll) document.querySelector('.prof').scrollTop = restore.scroll;
+  if (!me) return;
+  // 2) свежие данные из облака — подставляем тихо, сохраняя вкладку и прокрутку
+  const [prof, cc, cd] = await Promise.allSettled([D.profile(me), D.myGames('chess'), D.myGames('draughts')]);
+  if (!mp || !mp.open) return;
+  const p = (prof.status === 'fulfilled' && prof.value) || mp.p;
+  const cloudFail = cc.status === 'rejected' || cd.status === 'rejected';
+  const cloudRows = [].concat(cc.status === 'fulfilled' ? cc.value.map((r) => ({ ...r, game: 'chess' })) : [], cd.status === 'fulfilled' ? cd.value.map((r) => ({ ...r, game: 'draughts' })) : []);
+  try { localStorage.setItem('pgMyProf', JSON.stringify({ uid: me, p, cloud: cloudRows })); } catch (e) {}
+  const sc = document.querySelector('.prof').scrollTop; build(p, cloudRows, cloudFail, true); renderMy(); document.querySelector('.prof').scrollTop = sc;
 }
+window.addEventListener('pgsync-applied', () => { if (mp && mp.open && !document.getElementById('ov').classList.contains('hidden')) renderMy(); });
 function renderMy() {
   const { p, items, local, cloudFail } = mp, body = document.getElementById('prof-body');
-  const since = (window.PGData.user && window.PGData.user.since) ? `В Pep Games с ${new Date(window.PGData.user.since).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Мой профиль';
+  const since = !mp.me ? 'Войдите через Google — и рейтинг, история и прогресс будут на всех ваших устройствах' : (window.PGData.user && window.PGData.user.since) ? `В Pep Games с ${new Date(window.PGData.user.since).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Мой профиль';
   const rated = ['chess', 'draughts'].reduce((n, g) => n + ratingBlocks(p, g).reduce((m, b) => m + b.s.g, 0), 0);
   let html = `<div class="ph">${avatar(p)}<div class="who"><h3 class="serif">${esc(p.displayName || 'Игрок')}</h3><div class="sub">${esc(since)}</div></div></div>
-    <div class="ptabs"><button data-t="ov" class="${mp.tab === 'ov' ? 'on' : ''}">Обзор</button><button data-t="gm" class="${mp.tab === 'gm' ? 'on' : ''}">Партии (${items.length})</button></div>`;
+    <div class="ptabs"><button data-t="ov" class="${mp.tab === 'ov' ? 'on' : ''}">Обзор</button><button data-t="st" class="${mp.tab === 'st' ? 'on' : ''}">Статистика</button><button data-t="gm" class="${mp.tab === 'gm' ? 'on' : ''}">Партии (${items.length})</button></div>`;
   if (mp.tab === 'ov') {
     const bots = local.chess.concat(local.draughts).filter((r) => !r.opponent).length;
+    const O = PF.overview();
+    html += O.top + (mp.me ? '' : '<div class="pf-sec" id="pf-sync"></div>');
     html += `<div class="chips2"><span>Рейтинговых партий: <b>${rated}</b></span><span>Против бота: <b>${bots}</b></span><span>Всего в истории: <b>${items.length}</b></span></div>`;
-    html += profileBlocks(p, (game) => botStats(game, local[game])) + pubBlock();
+    html += profileBlocks(p, (game) => botStats(game, local[game])) + O.achs + (mp.me ? pubBlock() : '');
+  } else if (mp.tab === 'st') {
+    html += PF.stats();
   } else {
     const list = items.filter((r) => (mp.fg === 'all' || r.game === mp.fg) && (mp.fs === 'all' || (mp.fs === 'online') === r.online));
     const seg = (name, opts) => `<div class="seg" data-f="${name}">${opts.map(([v, l]) => `<button data-v="${v}" class="${mp[name] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -1869,25 +1973,31 @@ function renderMy() {
     }
   }
   body.innerHTML = html;
-  if (mp.tab === 'ov' && document.getElementById('pub-host')) loadPublicGames(window.PGData.me, document.getElementById('pub-host'));
+  if (mp.tab === 'ov' && mp.me && document.getElementById('pub-host')) loadPublicGames(mp.me, document.getElementById('pub-host'));
+  if (mp.tab === 'st') PF.fill();
+  const allAch = document.getElementById('pf-all-ach'); if (allAch) allAch.onclick = () => { if (window.PGA) PGA.open(); };
+  if (!mp.me && window.PGSync && document.getElementById('pf-sync')) PGSync.mountRow(document.getElementById('pf-sync'), true);
   body.querySelectorAll('.gi').forEach((a) => a.addEventListener('click', rememberProfile));
   body.querySelectorAll('.ptabs button').forEach((b) => { b.onclick = () => { mp.tab = b.dataset.t; renderMy(); }; });
   body.querySelectorAll('.filters .seg').forEach((s) => s.querySelectorAll('button').forEach((b) => { b.onclick = () => { mp[s.dataset.f] = b.dataset.v; mp.shown = 25; renderMy(); }; }));
   const more = document.getElementById('more'); if (more) more.onclick = () => { mp.shown += 25; renderMy(); };
 }
 document.getElementById('acc-btn').addEventListener('click', () => openMyProfile());
+document.getElementById('pgp-btn').addEventListener('click', (e) => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; e.preventDefault(); openMyProfile(); });
 
 // Возврат из разбора партии: ссылка вида /?profile=1 (или кнопка «Назад» браузера) сразу открывает профиль на прежнем месте.
 let wantProfile = new URLSearchParams(location.search).get('profile') === '1';
 try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && nav.type === 'back_forward' && sessionStorage.getItem('pgProfState')) wantProfile = true; } catch (e) {}
 if (new URLSearchParams(location.search).get('profile')) history.replaceState(null, '', location.pathname);
-function openWantedProfile() {
-  if (!wantProfile || !window.PGData || !window.PGData.me) return;
+function openWantedProfile(force) {
+  if (!wantProfile) return;
+  if (!(window.PGData && window.PGData.me) && force !== true) return;      // гостю (и без интернета) окно открываем и без Firebase
   wantProfile = false; let st = null;
   try { st = JSON.parse(sessionStorage.getItem('pgProfState') || 'null'); sessionStorage.removeItem('pgProfState'); } catch (e) {}
   openMyProfile(st);
 }
 window.addEventListener('pg-auth', openWantedProfile); window.addEventListener('pg-ready', openWantedProfile); openWantedProfile();
+setTimeout(() => openWantedProfile(true), 2500);      // вход так и не подтвердился — открываем профиль гостя
 document.getElementById('ov-x').onclick = closeProfile;
 document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeProfile(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfile(); });
