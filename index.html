@@ -21,7 +21,7 @@
 <script src="shared/pg-sync.js?v=77f69e1012"></script>
 <script src="shared/pg-friends.js?v=245c705b9c"></script>
 <script src="shared/pg-ach.js?v=f066c7fc2f"></script>
-<script src="shared/pg-rules.js?v=a1487f8464"></script>
+<script src="shared/pg-rules.js?v=f9d2277062"></script>
 <script src="shared/pg-tutor.js?v=1e14fcb6e3"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png?v=5">
@@ -176,6 +176,16 @@ footer b { color:var(--text); font-weight:600; }
 .acc-btn { display:flex; align-items:center; gap:8px; background:none; border:1px solid transparent; padding:4px 10px 4px 5px; cursor:pointer; font:inherit; font-size:13px; font-weight:600; color:var(--text); transition:background .15s, border-color .15s; }
 .acc-btn:hover, .acc-btn:focus-visible { background:var(--panel); border-color:var(--border); outline:none; }
 .acc-btn .chev { color:var(--muted); font-size:18px; line-height:1; transition:transform .2s var(--ease); } .acc-btn:hover .chev { transform:translateX(3px); }
+.fb-ov { position:fixed; inset:0; background:rgba(20,24,20,.45); display:flex; align-items:center; justify-content:center; padding:16px; z-index:60; } .fb-ov.hidden { display:none; }
+.fb-box { position:relative; background:var(--panel,var(--k-panel)); border:1px solid var(--border,var(--k-line)); width:100%; max-width:520px; padding:22px 24px; box-shadow:0 30px 80px rgba(0,0,0,.3); max-height:calc(100dvh - 32px); overflow-y:auto; }
+.fb-box h3 { margin:0 0 6px; font:italic 400 24px Georgia,serif; } .fb-sub { margin:0 0 14px; color:var(--muted,var(--k-mu)); font-size:13.5px; }
+.fb-x { position:absolute; top:10px; right:12px; border:none; background:none; font-size:18px; cursor:pointer; color:var(--muted,var(--k-mu)); }
+.fb-kinds { display:flex; gap:6px; margin-bottom:10px; } .fb-kinds button { flex:1; border:1px solid var(--border,var(--k-line)); background:var(--k-surf,var(--k-surf)); padding:8px; font:600 13px 'Noto Sans',sans-serif; color:var(--text,var(--k-tx)); cursor:pointer; } .fb-kinds button.on { background:var(--green,var(--k-acc)); color:#fff; border-color:var(--green,var(--k-acc)); }
+.fb-box textarea, .fb-box input { width:100%; box-sizing:border-box; border:1px solid var(--border,var(--k-line)); background:var(--k-panel,var(--k-panel)); color:var(--text,var(--k-tx)); padding:10px; font:14px 'Noto Sans',sans-serif; margin-bottom:10px; resize:vertical; }
+.fb-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; } .fb-send { border:none; background:var(--green,var(--k-acc)); color:#fff; padding:10px 20px; font:700 14px 'Noto Sans',sans-serif; cursor:pointer; } .fb-send:disabled { opacity:.6; cursor:default; }
+.fb-note { font-size:13px; color:var(--muted,var(--k-mu)); } .fb-mail { margin-top:14px; padding-top:12px; border-top:1px solid var(--border,var(--k-line)); font-size:13px; color:var(--muted,var(--k-mu)); }
+.fb-mail a { color:var(--navy,var(--k-nt)); }
+.fb-copy { border:1px solid var(--border,var(--k-line)); background:none; color:var(--text,var(--k-tx)); padding:3px 8px; font-size:12px; cursor:pointer; margin-left:4px; }
 .prof.wide.xwide { max-width:940px; }      /* профиль — шире обычного окна (календарь и карточки игр) */
 .pf-sec { padding:16px 28px 18px; border-top:1px solid var(--border); } .pf-sec h4 { font-size:14.5px; margin:0 0 12px; } .pf-sec h4 small { font-weight:400; color:var(--muted); font-size:12.5px; margin-left:6px; }
 .pf-rank { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; } .pf-rank b { font-size:18px; display:block; } .pf-rank small { color:var(--muted); font-size:12.5px; } .pf-rank .pf-rb { flex:1; min-width:200px; }
@@ -340,9 +350,9 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
     <a class="card" href="draughts/" id="card-draughts" aria-label="Играть в шашки">
       <div class="art"><div class="mini" id="mini-draughts"></div></div>
       <div class="info">
-        <h2 class="serif">Международные шашки</h2>
-        <p>Большая доска 10 × 10, дальнобойные дамки и правило большинства. Соперник по силам — от новичка до мастера, а можно сыграть и с другом по сети.</p>
-        <div class="chips"><b>Scan 3.1</b><b>10×10</b><b>По сети</b><b>Офлайн</b></div>
+        <h2 class="serif">Шашки</h2>
+        <p>Международные 10 × 10 с правилом большинства и русские 8 × 8. Соперник по силам — от новичка до мастера, а в международные можно сыграть и с другом по сети.</p>
+        <div class="chips"><b>Scan 3.1</b><b>10×10 и 8×8</b><b>По сети</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-draughts"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
@@ -351,8 +361,8 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
       <div class="art"><div class="mini sdk" id="mini-sudoku" style="background-image:none"></div></div>
       <div class="info">
         <h2 class="serif">Судоку</h2>
-        <p>Девять цифр и чистая логика. Головоломки от лёгких до по-настоящему трудных, заметки для сложных мест и одна общая задача дня для всех.</p>
-        <div class="chips"><b>4 уровня</b><b>Заметки</b><b>Судоку дня</b><b>Офлайн</b></div>
+        <p>Чистая логика на поле 9 × 9 или большом 12 × 12. Головоломки от лёгких до по-настоящему трудных, заметки для сложных мест и одна общая задача дня для всех.</p>
+        <div class="chips"><b>9×9 и 12×12</b><b>Заметки</b><b>Судоку дня</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-sudoku"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
@@ -408,7 +418,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
   <section class="rank" id="rank">
     <div class="rank-head">
       <h2 class="serif">Рейтинг игроков</h2>
-      <div class="seg-wrap"><div class="seg" id="seg"><button class="on" data-g="chess">Шахматы</button><button data-g="draughts">Шашки</button></div><div class="seg" id="seg-cat"><button data-c="bullet">Пуля</button><button class="on" data-c="blitz">Блиц</button><button data-c="rapid">Рапид</button><button data-c="classical">Классика</button></div></div>
+      <div class="seg-wrap"><div class="seg" id="seg"><button class="on" data-g="chess">Шахматы</button><button data-g="draughts">Международные</button><button data-g="ru">Русские</button></div><div class="seg" id="seg-cat"><button data-c="bullet">Пуля</button><button class="on" data-c="blitz">Блиц</button><button data-c="rapid">Рапид</button><button data-c="classical">Классика</button></div></div>
     </div>
     <div class="lb" id="lb"><div class="lb-empty">Загрузка…</div></div>
     <div class="rank-note">Нажмите на игрока, чтобы открыть профиль. <details class="rank-how"><summary>Как считается рейтинг</summary>В таблице игроки с хотя бы одной рейтинговой партией: онлайн, оба вошли через Google, сыграно не меньше 3 ходов каждым. Рейтинг Эло считается отдельно для каждой игры и категории времени: пуля (до 3 минут), блиц (до 8), рапид (до 25), классика (дольше). Категория определяется по формуле «минуты × 60 + добавление × 40 секунд».</details></div>
@@ -416,10 +426,21 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.9.2 · 4 ноября 2026</div><div style="font-size:11px;color:var(--k-mu2)"><a href="licenses/" style="color:inherit">Лицензии и авторы</a></div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.9.7 · 6 ноября 2026</div><div style="font-size:11px;color:var(--k-mu2)"><a href="#" id="fb-open" style="color:inherit">Обратная связь</a> · <a href="licenses/" style="color:inherit">Лицензии и авторы</a></div>
   </footer>
 </div>
 
+
+<div class="fb-ov hidden" id="fb-ov" role="dialog" aria-modal="true" aria-labelledby="fb-title"><div class="fb-box">
+  <button class="fb-x" id="fb-x" type="button" aria-label="Закрыть">✕</button>
+  <h3 id="fb-title">Обратная связь</h3>
+  <p class="fb-sub">Нашли ошибку, есть идея или просто хотите что-то сказать? Напишите — мы читаем каждое сообщение.</p>
+  <div class="fb-kinds" role="radiogroup" aria-label="О чём сообщение"><button type="button" data-k="bug" class="on">Ошибка</button><button type="button" data-k="idea">Предложение</button><button type="button" data-k="other">Другое</button></div>
+  <textarea id="fb-text" maxlength="3000" rows="6" placeholder="Что случилось или что хотелось бы изменить? Если ошибка — в какой игре и что вы делали."></textarea>
+  <input id="fb-contact" maxlength="120" placeholder="Как с вами связаться, если нужен ответ (необязательно)">
+  <div class="fb-row"><button class="fb-send" id="fb-send" type="button">Отправить</button><span class="fb-note" id="fb-note" role="status"></span></div>
+  <div class="fb-mail">Или напишите на почту: <a id="fb-mail" href="mailto:living.ocean.115@gmail.com">living.ocean.115@gmail.com</a> <button type="button" id="fb-copy" class="fb-copy">Скопировать адрес</button></div>
+</div></div>
 <div class="ov hidden" id="ov"><div class="prof" role="dialog" aria-modal="true"><button class="x" id="ov-x" aria-label="Закрыть">✕</button><div id="prof-body"></div></div></div>
 
 <script>
@@ -477,7 +498,7 @@ try { const st = JSON.parse(localStorage.getItem('sudokuStats') || '{}'), n = Ob
 
 
 // ---------- таблица лидеров и профили (данные приходят из модуля ниже через window.PGData) ----------
-const GAME_NAME = { chess: 'Шахматы', draughts: 'Шашки' };
+const GAME_NAME = { chess: 'Шахматы', draughts: 'Международные шашки', ru: 'Русские шашки' };
 const CATS = ['bullet', 'blitz', 'rapid', 'classical'], CAT_NAME = { bullet: 'Пуля', blitz: 'Блиц', rapid: 'Рапид', classical: 'Классика' };
 let curCat = 'blitz';
 // у профиля может быть несколько рейтингов одной игры (по категориям времени) и «прежний» общий — собираем их списком
@@ -535,9 +556,10 @@ function gameBlock(label, s0, extra = '') {
 }
 // Блоки рейтинга профиля: сначала выбранная игра, затем вторая; у каждой — все категории, где есть партии.
 function profileBlocks(p, extraFor) {
-  const order = [curGame, curGame === 'chess' ? 'draughts' : 'chess']; let html = '';
+  const order = [curGame].concat(['chess', 'draughts', 'ru'].filter((g) => g !== curGame)); let html = '';
   order.forEach((game) => {
-    const blocks = ratingBlocks(p, game), extra = typeof extraFor === 'function' ? extraFor(game) : '';
+    const blocks = ratingBlocks(p, game), extra = game === 'ru' ? '' : typeof extraFor === 'function' ? extraFor(game) : '';
+    if (game === 'ru' && !blocks.length) return;      // русские шашки — только если у игрока есть такие партии
     if (!blocks.length) html += gameBlock(GAME_NAME[game], null, extra);
     else blocks.forEach((b, i) => { html += gameBlock(b.label, b.s, i === blocks.length - 1 ? extra : ''); });
   });
@@ -596,6 +618,38 @@ let mp = null;
 function rememberProfile() {
   try { sessionStorage.setItem('pgProfState', JSON.stringify({ tab: mp.tab, fg: mp.fg, fs: mp.fs, shown: mp.shown, scroll: document.querySelector('.prof').scrollTop })); } catch (e) {}
 }
+// ============ Обратная связь ============
+(() => {
+  const EMAIL = 'living.ocean.115@gmail.com', $f = (id) => document.getElementById(id); let kind = 'bug';
+  const ver = () => { const m = (document.querySelector('footer') || document.body).textContent.match(/Версия ([0-9.]+)/); return m ? m[1] : ''; };
+  const mailHref = () => { const t = $f('fb-text').value.trim(), c = $f('fb-contact').value.trim(); const subj = 'Pep Games — ' + ({ bug: 'ошибка', idea: 'предложение', other: 'сообщение' })[kind];
+    return 'mailto:' + EMAIL + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent((t ? t + '\n\n' : '') + (c ? 'Контакт: ' + c + '\n' : '') + 'Версия ' + ver() + ', ' + navigator.userAgent); };
+  const open = () => { $f('fb-ov').classList.remove('hidden'); $f('fb-note').textContent = ''; setTimeout(() => $f('fb-text').focus(), 30); };
+  const close = () => $f('fb-ov').classList.add('hidden');
+  $f('fb-open').addEventListener('click', (e) => { e.preventDefault(); open(); });
+  $f('fb-x').onclick = close; $f('fb-ov').addEventListener('click', (e) => { if (e.target.id === 'fb-ov') close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$f('fb-ov').classList.contains('hidden')) close(); });
+  $f('fb-ov').querySelectorAll('.fb-kinds button').forEach((b) => { b.onclick = () => { kind = b.dataset.k; $f('fb-ov').querySelectorAll('.fb-kinds button').forEach((x) => x.classList.toggle('on', x === b)); }; });
+  $f('fb-mail').addEventListener('click', () => { $f('fb-mail').href = mailHref(); });
+  $f('fb-copy').onclick = async () => { try { await navigator.clipboard.writeText(EMAIL); $f('fb-copy').textContent = 'Скопировано'; } catch (e) { $f('fb-copy').textContent = EMAIL; } setTimeout(() => { $f('fb-copy').textContent = 'Скопировать адрес'; }, 2000); };
+  $f('fb-send').onclick = async () => {
+    const text = $f('fb-text').value.trim(), note = $f('fb-note');
+    if (text.length < 3) { note.textContent = 'Напишите хотя бы пару слов.'; $f('fb-text').focus(); return; }
+    let last = 0; try { last = +localStorage.getItem('pgFbAt') || 0; } catch (e) {}
+    if (Date.now() - last < 60000) { note.textContent = 'Сообщение уже отправлено — следующее можно через минуту.'; return; }
+    $f('fb-send').disabled = true; note.textContent = 'Отправляем…';
+    try {
+      if (!window.PGData || !window.PGData.sendFeedback) throw new Error('нет связи');
+      await Promise.race([window.PGData.sendFeedback({ kind, text, contact: $f('fb-contact').value.trim(), v: ver() }), new Promise((_, rej) => setTimeout(() => rej(new Error('долго')), 10000))]);
+      try { localStorage.setItem('pgFbAt', String(Date.now())); } catch (e) {}
+      note.textContent = 'Спасибо! Сообщение отправлено.'; $f('fb-text').value = '';
+    } catch (e) {
+      note.innerHTML = 'Не получилось отправить отсюда — <a href="' + mailHref().replace(/"/g, '&quot;') + '">напишите на почту</a>, текст уже подставлен.';
+    } finally { $f('fb-send').disabled = false; }
+  };
+  window.__fb = { open, mailHref };
+})();
+
 // ============ Профиль: звание, сводка, статистика по всем играм (раньше — отдельная страница profile/) ============
 const PF = (() => {
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
@@ -703,7 +757,7 @@ window.addEventListener('pgsync-applied', () => { if (mp && mp.open && !document
 function renderMy() {
   const { p, items, local, cloudFail } = mp, body = document.getElementById('prof-body');
   const since = !mp.me ? 'Войдите через Google — и рейтинг, история и прогресс будут на всех ваших устройствах' : (window.PGData.user && window.PGData.user.since) ? `В Pep Games с ${new Date(window.PGData.user.since).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Мой профиль';
-  const rated = ['chess', 'draughts'].reduce((n, g) => n + ratingBlocks(p, g).reduce((m, b) => m + b.s.g, 0), 0);
+  const rated = ['chess', 'draughts', 'ru'].reduce((n, g) => n + ratingBlocks(p, g).reduce((m, b) => m + b.s.g, 0), 0);
   let html = `<div class="ph">${avatar(p)}<div class="who"><h3 class="serif">${esc(p.displayName || 'Игрок')}</h3><div class="sub">${esc(since)}</div></div></div>
     <div class="ptabs"><button data-t="ov" class="${mp.tab === 'ov' ? 'on' : ''}">Обзор</button><button data-t="st" class="${mp.tab === 'st' ? 'on' : ''}">Статистика</button><button data-t="gm" class="${mp.tab === 'gm' ? 'on' : ''}">Партии (${items.length})</button></div>`;
   if (mp.tab === 'ov') {
@@ -784,6 +838,8 @@ const app = initializeApp({
 const auth = getAuth(app), db = getFirestore(app); const $ = (id) => document.getElementById(id);
 
 window.PGData = {
+  // обратная связь: без входа, правила Firebase проверяют вид, длину и время (коллекция feedback; читает владелец в консоли Firebase)
+  async sendFeedback(m) { await setDoc(doc(collection(db, 'feedback')), { kind: m.kind, text: m.text, contact: m.contact || '', page: String(location.pathname).slice(0, 200), ua: String(navigator.userAgent).slice(0, 300), v: m.v, at: serverTimestamp() }); },
   async leaders(key) {
     // сортировка по рейтингу нужной категории: chess_blitz → r_chess_blitz (раньше любая категория, кроме «chess», сортировалась по общему рейтингу в шашках)
     const field = key === 'chess' ? 'rChess' : key === 'draughts' ? 'rDraughts' : 'r_' + key;

@@ -78,7 +78,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 <script src="../shared/pg-sync.js?v=77f69e1012"></script>
 <script src="../shared/pg-friends.js?v=245c705b9c"></script>
 <script src="../shared/pg-ach.js?v=f066c7fc2f"></script>
-<script src="../shared/pg-rules.js?v=a1487f8464"></script>
+<script src="../shared/pg-rules.js?v=f9d2277062"></script>
 <script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png?v=4">
@@ -132,9 +132,9 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 
 /* ---------- Игра ---------- */
 #game { display:flex; align-items:flex-start; gap:0; }
-#board-wrap { position:relative; width:calc(var(--cell)*10); height:calc(var(--cell)*10);
+#board-wrap { position:relative; width:calc(var(--cell)*var(--n,10)); height:calc(var(--cell)*var(--n,10));
   box-shadow:0 2px 14px rgba(42,46,36,.14),0 0 0 1px rgba(42,46,36,.08); user-select:none; touch-action:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
-#board { position:absolute; inset:0; display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(10,1fr); }
+#board { position:absolute; inset:0; display:grid; grid-template-columns:repeat(var(--n,10),1fr); grid-template-rows:repeat(var(--n,10),1fr); }
 .sq { position:relative; }
 .sq.l { background:var(--sq-light); } .sq.d { background:var(--sq-dark); cursor:pointer; }
 .sq .num { position:absolute; top:2px; left:4px; font-size:10px; font-weight:700; color:rgba(42,46,36,.38); pointer-events:none; }
@@ -146,11 +146,11 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
   background:rgba(42,46,36,.35); border-radius:50%; pointer-events:none; }
 .sq.target.cap::after { width:84%; height:84%; background:none; border:5px solid rgba(162,59,51,.55); }
 #pieces { position:absolute; inset:0; pointer-events:none; }
-.piece { position:absolute; left:0; top:0; width:10%; height:10%; background-size:86%; background-repeat:no-repeat; background-position:center;
+.piece { position:absolute; left:0; top:0; width:calc(100% / var(--n,10)); height:calc(100% / var(--n,10)); background-size:86%; background-repeat:no-repeat; background-position:center;
   transition:transform .22s cubic-bezier(.35,.5,.35,1), opacity .18s; will-change:transform; }
 .piece.moving { z-index:20; } .piece.fading { opacity:0; } .piece.noanim { transition:none; }
 
-#side { width:320px; height:calc(var(--cell)*10); background:var(--panel); display:flex; flex-direction:column; }
+#side { width:320px; height:calc(var(--cell)*var(--n,10)); background:var(--panel); display:flex; flex-direction:column; }
 .clock { font-family:'Roboto Mono',ui-monospace,Menlo,monospace; font-size:38px; letter-spacing:1px; color:var(--k-mu2); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
 .clock.active { color:var(--text); } .clock.low { background:#A23B33; color:#fff; }
 .clock .x { font-size:16px; background:none; border:none; color:var(--muted); cursor:pointer; width:28px; height:28px; }
@@ -186,7 +186,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 @media (max-width:760px) {
   body { align-items:flex-start; }
   #game { flex-direction:column; align-items:center; }
-  #side { width:calc(var(--cell)*10); height:auto; min-height:320px; }
+  #side { width:calc(var(--cell)*var(--n,10)); height:auto; min-height:320px; }
   #moves { max-height:160px; min-height:90px; }
   .content { padding:0 16px; }
 }
@@ -256,6 +256,12 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
 .tut-offer { border:1px solid #D9C58E; background:#FBF3D6; padding:10px 12px; margin:6px 0 10px; font-size:13px; line-height:1.45; display:flex; flex-direction:column; gap:4px; }
 .tut-offer span { color:var(--k-mu); } .tut-offer div { display:flex; gap:8px; margin-top:4px; } .tut-offer button { border:1px solid var(--k-line); background:var(--k-panel); padding:6px 10px; font-weight:600; cursor:pointer; } .tut-offer button#tut-start { background:var(--k-acc); color:#fff; border-color:var(--k-acc); }
 .tut-offer.hidden { display:none; } :root[data-theme="dark"] .tut-offer { background:#33301F; border-color:#6B5E33; }
+
+/* выбор вида шашек */
+.variant { display:flex; gap:6px; margin:0 0 14px; } .variant button { flex:1; border:1px solid var(--border,var(--k-line)); background:var(--k-surf,var(--k-surf)); padding:9px 6px; font:700 13px 'Noto Sans',sans-serif; color:var(--text,var(--k-tx)); cursor:pointer; line-height:1.25; }
+.variant button small { display:block; font-weight:500; font-size:11.5px; color:var(--muted,var(--k-mu)); } .variant button.on { background:var(--green,var(--k-acc)); color:#fff; border-color:var(--green,var(--k-acc)); } .variant button.on small { color:#E3EADF; }
+.tab:disabled { opacity:.45; cursor:default; }
+html[data-menu-variant="ru"] #tut-offer { display:none !important; }      /* предложение — про международные; кнопка урока работает для обоих видов */
 </style>
 </head>
 <body>
@@ -268,8 +274,9 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
     <div class="acc-user hidden" id="acc-user"><img id="acc-img" class="acc-img" alt=""><span id="acc-name"></span><button class="acc-out" id="acc-out">Выйти</button></div>
   </div>
   <div class="brand">Pep Draughts</div>
-  <h2 class="serif">Международные шашки</h2>
+  <h2 class="serif" id="v-title">Международные шашки</h2>
   <div class="content">
+    <div class="variant" id="variant" role="radiogroup" aria-label="Вид шашек"><button type="button" data-v="intl" class="on">Международные<small>10 × 10 · бить больше</small></button><button type="button" data-v="ru">Русские<small>8 × 8 · бить любым путём</small></button></div>
     <div class="tabs"><button class="tab active" id="tab-bot">Компьютер</button><button class="tab" id="tab-online">Играть по сети</button></div>
 
     <div id="v-config">
@@ -278,7 +285,7 @@ input[type=text]:focus { outline:none; border-color:var(--green); box-shadow:0 0
       <input type="text" id="nick" placeholder="Вы" maxlength="20" autocomplete="off">
       <div class="title">Время на партию</div>
       <div class="presets" id="presets"></div>
-      <div id="level-box"><div class="title">Сложность (движок Scan 3.1)</div><div class="levels" id="levels"></div></div>
+      <div id="level-box"><div class="title" id="level-title">Сложность (движок Scan 3.1)</div><div class="levels" id="levels"></div></div>
       <div class="title" id="side-title">Сторона</div>
       <div class="sides">
         <div class="side" data-side="b"><i class="b"></i>Чёрные</div>
@@ -525,6 +532,275 @@ window.applyMove = function(board, move) {
 }
 
 
+;
+// ============ Русские шашки 8×8: правила ============
+// Доска — массив 8×8 (строка 0 — сторона чёрных, строка 7 — белых), игровые поля — тёмные: (r + c) % 2 === 1 (a1 = строка 7, столбец 0).
+// Фигура — { color: 'w' | 'b', king: bool }. Белые ходят первыми, «вперёд» для белых — к строке 0.
+// Правила (Федерация шашек России):
+//  • простая ходит на одно поле вперёд по диагонали, бьёт вперёд и назад;
+//  • дамка ходит и бьёт на любое расстояние по диагонали;
+//  • бить обязательно, но из нескольких вариантов можно выбрать ЛЮБОЙ (не обязательно самый длинный), а начатое взятие надо довести до конца;
+//  • побитые шашки снимаются после хода и мешают дальше («турецкий удар»: одну шашку дважды не бьют, через неё не проходят);
+//  • простая, дошедшая до последнего ряда во время взятия, сразу становится дамкой и продолжает бить уже как дамка;
+//  • дамка после взятия может встать на любое свободное поле за побитой шашкой, но если с какого-то из них можно бить дальше — обязана встать на такое.
+// Настройки rules позволяют включить правила английских шашек — только для проверки генератора по известным эталонам.
+(function (root) {
+  const N = 8;
+  const RUSSIAN = { manBackCapture: true, flyingKings: true, promoteContinue: true };
+  const ENGLISH = { manBackCapture: false, flyingKings: false, promoteContinue: false };
+  const DIRS = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const on = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+  const isPlayable = (r, c) => (r + c) % 2 === 1;
+  const fwd = (color) => (color === 'w' ? -1 : 1);
+  const promoRow = (color) => (color === 'w' ? 0 : N - 1);
+
+  function initialBoard() {
+    const b = Array.from({ length: N }, () => Array(N).fill(null));
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      if (!isPlayable(r, c)) continue;
+      if (r <= 2) b[r][c] = { color: 'b', king: false };
+      else if (r >= 5) b[r][c] = { color: 'w', king: false };
+    }
+    return b;
+  }
+  const clone = (b) => b.map((row) => row.map((p) => (p ? { color: p.color, king: p.king } : null)));
+
+  // все законченные серии взятий фигурой с поля (r, c); побитые остаются на доске до конца хода
+  function captureSequences(board, r0, c0, piece, rules) {
+    const out = [], color = piece.color;
+    const work = clone(board); work[r0][c0] = null;          // поле, с которого ушли, свободно
+    const taken = new Set();
+    const key = (r, c) => r * N + c;
+    function rec(r, c, king, path, caps) {
+      let continued = false;
+      for (const [dr, dc] of DIRS) {
+        if (!king && !rules.manBackCapture && dr !== fwd(color)) continue;
+        if (king && rules.flyingKings) {
+          let y = r + dr, x = c + dc;
+          while (on(y, x) && !work[y][x]) { y += dr; x += dc; }
+          if (!on(y, x) || work[y][x].color === color || taken.has(key(y, x))) continue;
+          const ey = y, ex = x; const lands = [];
+          let ly = ey + dr, lx = ex + dc;
+          while (on(ly, lx) && !work[ly][lx]) { lands.push([ly, lx]); ly += dr; lx += dc; }
+          if (!lands.length) continue;
+          taken.add(key(ey, ex));
+          // обязана встать туда, откуда можно бить дальше, если такое поле есть
+          const cont = lands.filter(([a, b2]) => canCaptureFrom(a, b2, true));
+          for (const [a, b2] of (cont.length ? cont : lands)) {
+            continued = true;
+            rec(a, b2, true, path.concat([{ row: a, col: b2 }]), caps.concat([{ row: ey, col: ex }]));
+          }
+          taken.delete(key(ey, ex));
+        } else {
+          const y = r + dr, x = c + dc, ly = r + 2 * dr, lx = c + 2 * dc;
+          if (!on(ly, lx) || !work[y][x] || work[y][x].color === color || taken.has(key(y, x)) || work[ly][lx]) continue;
+          continued = true; taken.add(key(y, x));
+          const crowned = !king && ly === promoRow(color);
+          if (crowned && !rules.promoteContinue) {                         // английские: превращение заканчивает ход
+            out.push({ path: path.concat([{ row: ly, col: lx }]), captures: caps.concat([{ row: y, col: x }]), crowned: true });
+          } else rec(ly, lx, king || crowned, path.concat([{ row: ly, col: lx }]), caps.concat([{ row: y, col: x }]));
+          taken.delete(key(y, x));
+        }
+      }
+      if (!continued && caps.length) out.push({ path, captures: caps, crowned: !piece.king && king });
+    }
+    // можно ли с поля (r, c) продолжить взятие (дамкой) — с учётом уже побитых
+    function canCaptureFrom(r, c, king) {
+      for (const [dr, dc] of DIRS) {
+        let y = r + dr, x = c + dc;
+        if (king && rules.flyingKings) while (on(y, x) && !work[y][x]) { y += dr; x += dc; }
+        if (!on(y, x) || !work[y][x] || work[y][x].color === color || taken.has(key(y, x))) continue;
+        const ly = y + dr, lx = x + dc; if (on(ly, lx) && !work[ly][lx]) return true;
+      }
+      return false;
+    }
+    rec(r0, c0, piece.king, [], []);
+    return out;
+  }
+
+  function legalMoves(board, color, rules = RUSSIAN) {
+    const caps = [], quiet = [];
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const p = board[r][c]; if (!p || p.color !== color) continue;
+      for (const s of captureSequences(board, r, c, p, rules)) {
+        const last = s.path[s.path.length - 1];
+        caps.push({ fromRow: r, fromCol: c, path: [{ row: r, col: c }].concat(s.path), captures: s.captures, finalRow: last.row, finalCol: last.col });      // путь — с исходной клетки, как у международных
+      }
+      if (caps.length) continue;
+      for (const [dr, dc] of DIRS) {
+        if (!p.king && dr !== fwd(color)) continue;
+        let y = r + dr, x = c + dc;
+        while (on(y, x) && !board[y][x]) {
+          quiet.push({ fromRow: r, fromCol: c, path: [{ row: r, col: c }, { row: y, col: x }], captures: [], finalRow: y, finalCol: x });
+          if (!p.king || !rules.flyingKings) break;
+          y += dr; x += dc;
+        }
+      }
+    }
+    if (!caps.length) return quiet;
+    if (rules.dedupe === false) return caps;          // как в опубликованных перфт-таблицах: разные пути одного взятия — разные ходы
+    // одинаковые для игрока ходы (то же начало, конец и набор побитых, разный порядок обхода) — один ход
+    const seen = new Set(), uniq = [];
+    for (const m of caps) { const k = m.fromRow + ',' + m.fromCol + '>' + m.finalRow + ',' + m.finalCol + ':' + m.captures.map((q) => q.row * N + q.col).sort((a, b) => a - b).join('.'); if (!seen.has(k)) { seen.add(k); uniq.push(m); } }
+    return uniq;
+  }
+
+  function applyMove(board, move) {
+    const b = clone(board), p = b[move.fromRow][move.fromCol];
+    b[move.fromRow][move.fromCol] = null;
+    for (const q of move.captures) b[q.row][q.col] = null;
+    // дамкой становится, если дошла до последнего ряда в конце хода или прошла через него во время взятия
+    const crowned = !p.king && (move.finalRow === promoRow(p.color) || move.path.slice(1).some((s) => s.row === promoRow(p.color)));
+    b[move.finalRow][move.finalCol] = { color: p.color, king: p.king || crowned };
+    return { board: b, becomesKing: crowned };
+  }
+
+  const sq = (r, c) => 'abcdefgh'[c] + (N - r);
+  // запись хода: «c3-d4» или «c3:e5:g3»
+  function notation(move) {
+    const from = sq(move.fromRow, move.fromCol);
+    if (!move.captures.length) return from + '-' + sq(move.finalRow, move.finalCol);
+    return [from].concat(move.path.slice(1).map((s) => sq(s.row, s.col))).join(':');
+  }
+  function parseSquare(s) { const c = 'abcdefgh'.indexOf(s[0]), r = N - parseInt(s.slice(1), 10); return on(r, c) ? [r, c] : null; }
+
+  // ---- ничьи (правила Федерации шашек России, упрощённо для онлайн-игры) ----
+  //  • троекратное повторение позиции при той же очереди хода;
+  //  • 15 ходов каждого только дамками, без ходов простыми и без взятий;
+  //  • три дамки (и больше) против одной дамки: если за 15 ходов (с момента такого соотношения) одинокую дамку не взяли;
+  //  • оба соперника с дамками, соотношение сил не меняется (нет взятий и превращений): 2–3 фигуры — 5 ходов, 4–5 — 30, 6–7 — 60.
+  function material(board) {
+    const s = { w: { m: 0, k: 0 }, b: { m: 0, k: 0 } };
+    for (const row of board) for (const p of row) if (p) s[p.color][p.king ? 'k' : 'm']++;
+    return s;
+  }
+  function newDrawState() { return { reps: {}, kingOnly: 0, threeVsOne: 0, eq: 0, eqKey: '' }; }
+  const posKey = (board, turn) => turn + board.map((r) => r.map((p) => (p ? (p.color === 'w' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b')) : '.')).join('')).join('/');
+  // учесть сделанный ход (move — тот, что привёл к board; turn — чья очередь теперь)
+  function drawStep(st, board, turn, move, moverWasKing) {
+    const k = posKey(board, turn); st.reps[k] = (st.reps[k] || 0) + 1;
+    st.kingOnly = move.captures.length === 0 && moverWasKing ? st.kingOnly + 1 : 0;
+    const s = material(board), tot = (x) => x.m + x.k;
+    const tvo = (x, y) => x.m === 0 && x.k >= 3 && y.m === 0 && y.k === 1;
+    st.threeVsOne = tvo(s.w, s.b) || tvo(s.b, s.w) ? st.threeVsOne + 1 : 0;
+    const both = s.w.k > 0 && s.b.k > 0, n = tot(s.w) + tot(s.b), mk = `${s.w.m}.${s.w.k}.${s.b.m}.${s.b.k}`;
+    if (both && n <= 7) { st.eq = mk === st.eqKey ? st.eq + 1 : 1; st.eqKey = mk; } else { st.eq = 0; st.eqKey = ''; }
+    return st;
+  }
+  function drawReason(st, board, turn) {
+    if ((st.reps[posKey(board, turn)] || 0) >= 3) return 'draw-rep';
+    if (st.kingOnly >= 30) return 'draw-kings15';
+    if (st.threeVsOne >= 30) return 'draw-3v1';
+    const s = material(board), n = s.w.m + s.w.k + s.b.m + s.b.k, lim = n <= 3 ? 10 : n <= 5 ? 60 : 120;
+    if (st.eq >= lim) return 'draw-eq';
+    return null;
+  }
+
+  const RU = { N, RUSSIAN, ENGLISH, isPlayable, initialBoard, clone, legalMoves, applyMove, notation, parseSquare, square: sq, material, newDrawState, drawStep, drawReason, posKey };
+  if (typeof module !== 'undefined' && module.exports) module.exports = RU; else root.RU = RU;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+// ============ Русские шашки: компьютерный соперник ============
+// Перебор с альфа-бета-отсечениями и постепенным углублением, пока не выйдет время; взятия досчитываются до спокойной позиции;
+// уже оценённые позиции запоминаются. Оценка — материал, продвижение простых, центр, свой последний ряд, дамка на большой дороге.
+// Уровни 1–5: глубина, время на ход и «шум» (на младших уровнях компьютер нарочно ошибается).
+(function (root) {
+  const RU = root.RU || (typeof require !== 'undefined' ? require('./rules_ru.js') : null);
+  const MAN = 100, KING = 300, WIN = 100000;
+  const LEVELS = {
+    1: { depth: 1, ms: 150, noise: 120 }, 2: { depth: 2, ms: 250, noise: 50 }, 3: { depth: 4, ms: 400, noise: 15 },
+    4: { depth: 7, ms: 900, noise: 0 }, 5: { depth: 14, ms: 1600, noise: 0 },
+  };
+  // большая дорога — диагональ a1–h8: строка + столбец = 7
+  function evaluate(b, side) {
+    let s = 0, wM = 0, bM = 0, wK = 0, bK = 0;
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = b[r][c]; if (!p) continue;
+      let v;
+      if (p.king) { v = KING + (r + c === 7 ? 25 : 0) + (r > 0 && r < 7 && c > 0 && c < 7 ? 8 : 0); if (p.color === 'w') wK++; else bK++; }
+      else {
+        const adv = p.color === 'w' ? 7 - r : r;              // насколько продвинулась
+        v = MAN + adv * 6 + (c >= 2 && c <= 5 && r >= 2 && r <= 5 ? 10 : 0) + (c === 0 || c === 7 ? -6 : 0);
+        if ((p.color === 'w' && r === 7) || (p.color === 'b' && r === 0)) v += 12;   // держим свой последний ряд — не пускаем в дамки
+        if (p.color === 'w') wM++; else bM++;
+      }
+      s += p.color === 'w' ? v : -v;
+    }
+    // меньше фигур на доске — материал весит больше (размен при перевесе выгоден)
+    const tot = wM + bM + wK + bK; const lead = (wM + 3 * wK) - (bM + 3 * bK); s += lead * (24 - tot) * 2;
+    return side === 'w' ? s : -s;
+  }
+  const other = (c) => (c === 'w' ? 'b' : 'w');
+  function order(moves, best) {
+    return moves.map((m) => ({ m, k: (best && sameMove(m, best) ? 1e6 : 0) + m.captures.length * 1000 })).sort((a, b) => b.k - a.k).map((x) => x.m);
+  }
+  const sameMove = (a, b) => a.fromRow === b.fromRow && a.fromCol === b.fromCol && a.finalRow === b.finalRow && a.finalCol === b.finalCol && a.captures.length === b.captures.length;
+
+  function search(board, color, opts = {}) {
+    const L = LEVELS[opts.level || 4] || LEVELS[4];
+    const maxDepth = opts.depth || L.depth, timeMs = opts.ms || L.ms, noise = opts.noise != null ? opts.noise : L.noise;
+    const rnd = opts.random || Math.random;
+    const t0 = Date.now(); let nodes = 0, stop = false;
+    const tt = new Map();
+    const timeUp = () => { if ((++nodes & 1023) === 0 && Date.now() - t0 > timeMs) stop = true; return stop; };
+    function quiesce(b, side, alpha, beta, qd) {
+      const caps = RU.legalMoves(b, side).filter((m) => m.captures.length);
+      const all = caps.length ? caps : null;
+      if (!all) {
+        if (!RU.legalMoves(b, side).length) return -WIN;          // нет ходов — проигрыш
+        return evaluate(b, side);
+      }
+      if (qd > 10) return evaluate(b, side);
+      let best = -Infinity;
+      for (const m of all) { const v = -quiesce(RU.applyMove(b, m).board, other(side), -beta, -alpha, qd + 1); if (v > best) best = v; if (v > alpha) alpha = v; if (alpha >= beta || timeUp()) break; }
+      return best;
+    }
+    function negamax(b, side, depth, alpha, beta, ply) {
+      if (timeUp()) return 0;
+      const moves = RU.legalMoves(b, side);
+      if (!moves.length) return -WIN + ply;                       // нечем ходить — поражение (чем позже, тем лучше)
+      if (depth <= 0) return quiesce(b, side, alpha, beta, 0);
+      const key = RU.posKey(b, side), hit = tt.get(key);
+      if (hit && hit.depth >= depth) { if (hit.flag === 0) return hit.v; if (hit.flag === 1 && hit.v >= beta) return hit.v; if (hit.flag === -1 && hit.v <= alpha) return hit.v; }
+      const a0 = alpha; let best = -Infinity, bestMove = null;
+      for (const m of order(moves, hit && hit.move)) {
+        const v = -negamax(RU.applyMove(b, m).board, other(side), depth - 1 + (moves.length === 1 ? 1 : 0), -beta, -alpha, ply + 1);
+        if (stop) return 0;
+        if (v > best) { best = v; bestMove = m; }
+        if (v > alpha) alpha = v;
+        if (alpha >= beta) break;
+      }
+      tt.set(key, { depth, v: best, flag: best <= a0 ? -1 : best >= beta ? 1 : 0, move: bestMove });
+      return best;
+    }
+    const rootMoves = RU.legalMoves(board, color);
+    if (!rootMoves.length) return null;
+    if (rootMoves.length === 1) return { move: rootMoves[0], score: 0, depth: 0, nodes: 0 };
+    let scored = rootMoves.map((m) => ({ m, v: 0 })), done = 0;
+    for (let d = 1; d <= maxDepth; d++) {
+      const cur = [];
+      let alpha = -Infinity;
+      for (const { m } of scored) {
+        const v = -negamax(RU.applyMove(board, m).board, other(color), d - 1, -Infinity, -alpha, 1);      // окно опирается на лучший уже найденный ход
+        if (stop) break;
+        cur.push({ m, v }); if (v > alpha) alpha = v;
+      }
+      if (stop && cur.length < scored.length) break;              // глубина не досчитана — берём прошлую
+      scored = cur.sort((a, b) => b.v - a.v); done = d;
+      if (Math.abs(scored[0].v) > WIN / 2) break;                  // найден выигрыш или неизбежный проигрыш
+      if (Date.now() - t0 > timeMs * 0.55) break;                  // следующая глубина не успеет
+    }
+    // младшие уровни ошибаются: к оценке ходов добавляется случайный шум
+    let pick = scored[0];
+    if (noise > 0) { pick = scored.map((x) => ({ m: x.m, v: x.v + (rnd() - 0.5) * 2 * noise })).sort((a, b) => b.v - a.v)[0]; }
+    return { move: pick.m, score: scored[0].v, depth: done, nodes, ms: Date.now() - t0 };
+  }
+  const RUAI = { search, evaluate, LEVELS };
+  if (typeof module !== 'undefined' && module.exports) module.exports = RUAI; else root.RUAI = RUAI;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+window.__RU_SRC = "// ============ Русские шашки 8×8: правила ============\n// Доска — массив 8×8 (строка 0 — сторона чёрных, строка 7 — белых), игровые поля — тёмные: (r + c) % 2 === 1 (a1 = строка 7, столбец 0).\n// Фигура — { color: 'w' | 'b', king: bool }. Белые ходят первыми, «вперёд» для белых — к строке 0.\n// Правила (Федерация шашек России):\n//  • простая ходит на одно поле вперёд по диагонали, бьёт вперёд и назад;\n//  • дамка ходит и бьёт на любое расстояние по диагонали;\n//  • бить обязательно, но из нескольких вариантов можно выбрать ЛЮБОЙ (не обязательно самый длинный), а начатое взятие надо довести до конца;\n//  • побитые шашки снимаются после хода и мешают дальше («турецкий удар»: одну шашку дважды не бьют, через неё не проходят);\n//  • простая, дошедшая до последнего ряда во время взятия, сразу становится дамкой и продолжает бить уже как дамка;\n//  • дамка после взятия может встать на любое свободное поле за побитой шашкой, но если с какого-то из них можно бить дальше — обязана встать на такое.\n// Настройки rules позволяют включить правила английских шашек — только для проверки генератора по известным эталонам.\n(function (root) {\n  const N = 8;\n  const RUSSIAN = { manBackCapture: true, flyingKings: true, promoteContinue: true };\n  const ENGLISH = { manBackCapture: false, flyingKings: false, promoteContinue: false };\n  const DIRS = [[-1, -1], [-1, 1], [1, -1], [1, 1]];\n  const on = (r, c) => r >= 0 && r < N && c >= 0 && c < N;\n  const isPlayable = (r, c) => (r + c) % 2 === 1;\n  const fwd = (color) => (color === 'w' ? -1 : 1);\n  const promoRow = (color) => (color === 'w' ? 0 : N - 1);\n\n  function initialBoard() {\n    const b = Array.from({ length: N }, () => Array(N).fill(null));\n    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {\n      if (!isPlayable(r, c)) continue;\n      if (r <= 2) b[r][c] = { color: 'b', king: false };\n      else if (r >= 5) b[r][c] = { color: 'w', king: false };\n    }\n    return b;\n  }\n  const clone = (b) => b.map((row) => row.map((p) => (p ? { color: p.color, king: p.king } : null)));\n\n  // все законченные серии взятий фигурой с поля (r, c); побитые остаются на доске до конца хода\n  function captureSequences(board, r0, c0, piece, rules) {\n    const out = [], color = piece.color;\n    const work = clone(board); work[r0][c0] = null;          // поле, с которого ушли, свободно\n    const taken = new Set();\n    const key = (r, c) => r * N + c;\n    function rec(r, c, king, path, caps) {\n      let continued = false;\n      for (const [dr, dc] of DIRS) {\n        if (!king && !rules.manBackCapture && dr !== fwd(color)) continue;\n        if (king && rules.flyingKings) {\n          let y = r + dr, x = c + dc;\n          while (on(y, x) && !work[y][x]) { y += dr; x += dc; }\n          if (!on(y, x) || work[y][x].color === color || taken.has(key(y, x))) continue;\n          const ey = y, ex = x; const lands = [];\n          let ly = ey + dr, lx = ex + dc;\n          while (on(ly, lx) && !work[ly][lx]) { lands.push([ly, lx]); ly += dr; lx += dc; }\n          if (!lands.length) continue;\n          taken.add(key(ey, ex));\n          // обязана встать туда, откуда можно бить дальше, если такое поле есть\n          const cont = lands.filter(([a, b2]) => canCaptureFrom(a, b2, true));\n          for (const [a, b2] of (cont.length ? cont : lands)) {\n            continued = true;\n            rec(a, b2, true, path.concat([{ row: a, col: b2 }]), caps.concat([{ row: ey, col: ex }]));\n          }\n          taken.delete(key(ey, ex));\n        } else {\n          const y = r + dr, x = c + dc, ly = r + 2 * dr, lx = c + 2 * dc;\n          if (!on(ly, lx) || !work[y][x] || work[y][x].color === color || taken.has(key(y, x)) || work[ly][lx]) continue;\n          continued = true; taken.add(key(y, x));\n          const crowned = !king && ly === promoRow(color);\n          if (crowned && !rules.promoteContinue) {                         // английские: превращение заканчивает ход\n            out.push({ path: path.concat([{ row: ly, col: lx }]), captures: caps.concat([{ row: y, col: x }]), crowned: true });\n          } else rec(ly, lx, king || crowned, path.concat([{ row: ly, col: lx }]), caps.concat([{ row: y, col: x }]));\n          taken.delete(key(y, x));\n        }\n      }\n      if (!continued && caps.length) out.push({ path, captures: caps, crowned: !piece.king && king });\n    }\n    // можно ли с поля (r, c) продолжить взятие (дамкой) — с учётом уже побитых\n    function canCaptureFrom(r, c, king) {\n      for (const [dr, dc] of DIRS) {\n        let y = r + dr, x = c + dc;\n        if (king && rules.flyingKings) while (on(y, x) && !work[y][x]) { y += dr; x += dc; }\n        if (!on(y, x) || !work[y][x] || work[y][x].color === color || taken.has(key(y, x))) continue;\n        const ly = y + dr, lx = x + dc; if (on(ly, lx) && !work[ly][lx]) return true;\n      }\n      return false;\n    }\n    rec(r0, c0, piece.king, [], []);\n    return out;\n  }\n\n  function legalMoves(board, color, rules = RUSSIAN) {\n    const caps = [], quiet = [];\n    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {\n      const p = board[r][c]; if (!p || p.color !== color) continue;\n      for (const s of captureSequences(board, r, c, p, rules)) {\n        const last = s.path[s.path.length - 1];\n        caps.push({ fromRow: r, fromCol: c, path: [{ row: r, col: c }].concat(s.path), captures: s.captures, finalRow: last.row, finalCol: last.col });      // путь — с исходной клетки, как у международных\n      }\n      if (caps.length) continue;\n      for (const [dr, dc] of DIRS) {\n        if (!p.king && dr !== fwd(color)) continue;\n        let y = r + dr, x = c + dc;\n        while (on(y, x) && !board[y][x]) {\n          quiet.push({ fromRow: r, fromCol: c, path: [{ row: r, col: c }, { row: y, col: x }], captures: [], finalRow: y, finalCol: x });\n          if (!p.king || !rules.flyingKings) break;\n          y += dr; x += dc;\n        }\n      }\n    }\n    if (!caps.length) return quiet;\n    if (rules.dedupe === false) return caps;          // как в опубликованных перфт-таблицах: разные пути одного взятия — разные ходы\n    // одинаковые для игрока ходы (то же начало, конец и набор побитых, разный порядок обхода) — один ход\n    const seen = new Set(), uniq = [];\n    for (const m of caps) { const k = m.fromRow + ',' + m.fromCol + '>' + m.finalRow + ',' + m.finalCol + ':' + m.captures.map((q) => q.row * N + q.col).sort((a, b) => a - b).join('.'); if (!seen.has(k)) { seen.add(k); uniq.push(m); } }\n    return uniq;\n  }\n\n  function applyMove(board, move) {\n    const b = clone(board), p = b[move.fromRow][move.fromCol];\n    b[move.fromRow][move.fromCol] = null;\n    for (const q of move.captures) b[q.row][q.col] = null;\n    // дамкой становится, если дошла до последнего ряда в конце хода или прошла через него во время взятия\n    const crowned = !p.king && (move.finalRow === promoRow(p.color) || move.path.slice(1).some((s) => s.row === promoRow(p.color)));\n    b[move.finalRow][move.finalCol] = { color: p.color, king: p.king || crowned };\n    return { board: b, becomesKing: crowned };\n  }\n\n  const sq = (r, c) => 'abcdefgh'[c] + (N - r);\n  // запись хода: «c3-d4» или «c3:e5:g3»\n  function notation(move) {\n    const from = sq(move.fromRow, move.fromCol);\n    if (!move.captures.length) return from + '-' + sq(move.finalRow, move.finalCol);\n    return [from].concat(move.path.slice(1).map((s) => sq(s.row, s.col))).join(':');\n  }\n  function parseSquare(s) { const c = 'abcdefgh'.indexOf(s[0]), r = N - parseInt(s.slice(1), 10); return on(r, c) ? [r, c] : null; }\n\n  // ---- ничьи (правила Федерации шашек России, упрощённо для онлайн-игры) ----\n  //  • троекратное повторение позиции при той же очереди хода;\n  //  • 15 ходов каждого только дамками, без ходов простыми и без взятий;\n  //  • три дамки (и больше) против одной дамки: если за 15 ходов (с момента такого соотношения) одинокую дамку не взяли;\n  //  • оба соперника с дамками, соотношение сил не меняется (нет взятий и превращений): 2–3 фигуры — 5 ходов, 4–5 — 30, 6–7 — 60.\n  function material(board) {\n    const s = { w: { m: 0, k: 0 }, b: { m: 0, k: 0 } };\n    for (const row of board) for (const p of row) if (p) s[p.color][p.king ? 'k' : 'm']++;\n    return s;\n  }\n  function newDrawState() { return { reps: {}, kingOnly: 0, threeVsOne: 0, eq: 0, eqKey: '' }; }\n  const posKey = (board, turn) => turn + board.map((r) => r.map((p) => (p ? (p.color === 'w' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b')) : '.')).join('')).join('/');\n  // учесть сделанный ход (move — тот, что привёл к board; turn — чья очередь теперь)\n  function drawStep(st, board, turn, move, moverWasKing) {\n    const k = posKey(board, turn); st.reps[k] = (st.reps[k] || 0) + 1;\n    st.kingOnly = move.captures.length === 0 && moverWasKing ? st.kingOnly + 1 : 0;\n    const s = material(board), tot = (x) => x.m + x.k;\n    const tvo = (x, y) => x.m === 0 && x.k >= 3 && y.m === 0 && y.k === 1;\n    st.threeVsOne = tvo(s.w, s.b) || tvo(s.b, s.w) ? st.threeVsOne + 1 : 0;\n    const both = s.w.k > 0 && s.b.k > 0, n = tot(s.w) + tot(s.b), mk = `${s.w.m}.${s.w.k}.${s.b.m}.${s.b.k}`;\n    if (both && n <= 7) { st.eq = mk === st.eqKey ? st.eq + 1 : 1; st.eqKey = mk; } else { st.eq = 0; st.eqKey = ''; }\n    return st;\n  }\n  function drawReason(st, board, turn) {\n    if ((st.reps[posKey(board, turn)] || 0) >= 3) return 'draw-rep';\n    if (st.kingOnly >= 30) return 'draw-kings15';\n    if (st.threeVsOne >= 30) return 'draw-3v1';\n    const s = material(board), n = s.w.m + s.w.k + s.b.m + s.b.k, lim = n <= 3 ? 10 : n <= 5 ? 60 : 120;\n    if (st.eq >= lim) return 'draw-eq';\n    return null;\n  }\n\n  const RU = { N, RUSSIAN, ENGLISH, isPlayable, initialBoard, clone, legalMoves, applyMove, notation, parseSquare, square: sq, material, newDrawState, drawStep, drawReason, posKey };\n  if (typeof module !== 'undefined' && module.exports) module.exports = RU; else root.RU = RU;\n})(typeof window !== 'undefined' ? window : globalThis);\n\n// ============ Русские шашки: компьютерный соперник ============\n// Перебор с альфа-бета-отсечениями и постепенным углублением, пока не выйдет время; взятия досчитываются до спокойной позиции;\n// уже оценённые позиции запоминаются. Оценка — материал, продвижение простых, центр, свой последний ряд, дамка на большой дороге.\n// Уровни 1–5: глубина, время на ход и «шум» (на младших уровнях компьютер нарочно ошибается).\n(function (root) {\n  const RU = root.RU || (typeof require !== 'undefined' ? require('./rules_ru.js') : null);\n  const MAN = 100, KING = 300, WIN = 100000;\n  const LEVELS = {\n    1: { depth: 1, ms: 150, noise: 120 }, 2: { depth: 2, ms: 250, noise: 50 }, 3: { depth: 4, ms: 400, noise: 15 },\n    4: { depth: 7, ms: 900, noise: 0 }, 5: { depth: 14, ms: 1600, noise: 0 },\n  };\n  // большая дорога — диагональ a1–h8: строка + столбец = 7\n  function evaluate(b, side) {\n    let s = 0, wM = 0, bM = 0, wK = 0, bK = 0;\n    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {\n      const p = b[r][c]; if (!p) continue;\n      let v;\n      if (p.king) { v = KING + (r + c === 7 ? 25 : 0) + (r > 0 && r < 7 && c > 0 && c < 7 ? 8 : 0); if (p.color === 'w') wK++; else bK++; }\n      else {\n        const adv = p.color === 'w' ? 7 - r : r;              // насколько продвинулась\n        v = MAN + adv * 6 + (c >= 2 && c <= 5 && r >= 2 && r <= 5 ? 10 : 0) + (c === 0 || c === 7 ? -6 : 0);\n        if ((p.color === 'w' && r === 7) || (p.color === 'b' && r === 0)) v += 12;   // держим свой последний ряд — не пускаем в дамки\n        if (p.color === 'w') wM++; else bM++;\n      }\n      s += p.color === 'w' ? v : -v;\n    }\n    // меньше фигур на доске — материал весит больше (размен при перевесе выгоден)\n    const tot = wM + bM + wK + bK; const lead = (wM + 3 * wK) - (bM + 3 * bK); s += lead * (24 - tot) * 2;\n    return side === 'w' ? s : -s;\n  }\n  const other = (c) => (c === 'w' ? 'b' : 'w');\n  function order(moves, best) {\n    return moves.map((m) => ({ m, k: (best && sameMove(m, best) ? 1e6 : 0) + m.captures.length * 1000 })).sort((a, b) => b.k - a.k).map((x) => x.m);\n  }\n  const sameMove = (a, b) => a.fromRow === b.fromRow && a.fromCol === b.fromCol && a.finalRow === b.finalRow && a.finalCol === b.finalCol && a.captures.length === b.captures.length;\n\n  function search(board, color, opts = {}) {\n    const L = LEVELS[opts.level || 4] || LEVELS[4];\n    const maxDepth = opts.depth || L.depth, timeMs = opts.ms || L.ms, noise = opts.noise != null ? opts.noise : L.noise;\n    const rnd = opts.random || Math.random;\n    const t0 = Date.now(); let nodes = 0, stop = false;\n    const tt = new Map();\n    const timeUp = () => { if ((++nodes & 1023) === 0 && Date.now() - t0 > timeMs) stop = true; return stop; };\n    function quiesce(b, side, alpha, beta, qd) {\n      const caps = RU.legalMoves(b, side).filter((m) => m.captures.length);\n      const all = caps.length ? caps : null;\n      if (!all) {\n        if (!RU.legalMoves(b, side).length) return -WIN;          // нет ходов — проигрыш\n        return evaluate(b, side);\n      }\n      if (qd > 10) return evaluate(b, side);\n      let best = -Infinity;\n      for (const m of all) { const v = -quiesce(RU.applyMove(b, m).board, other(side), -beta, -alpha, qd + 1); if (v > best) best = v; if (v > alpha) alpha = v; if (alpha >= beta || timeUp()) break; }\n      return best;\n    }\n    function negamax(b, side, depth, alpha, beta, ply) {\n      if (timeUp()) return 0;\n      const moves = RU.legalMoves(b, side);\n      if (!moves.length) return -WIN + ply;                       // нечем ходить — поражение (чем позже, тем лучше)\n      if (depth <= 0) return quiesce(b, side, alpha, beta, 0);\n      const key = RU.posKey(b, side), hit = tt.get(key);\n      if (hit && hit.depth >= depth) { if (hit.flag === 0) return hit.v; if (hit.flag === 1 && hit.v >= beta) return hit.v; if (hit.flag === -1 && hit.v <= alpha) return hit.v; }\n      const a0 = alpha; let best = -Infinity, bestMove = null;\n      for (const m of order(moves, hit && hit.move)) {\n        const v = -negamax(RU.applyMove(b, m).board, other(side), depth - 1 + (moves.length === 1 ? 1 : 0), -beta, -alpha, ply + 1);\n        if (stop) return 0;\n        if (v > best) { best = v; bestMove = m; }\n        if (v > alpha) alpha = v;\n        if (alpha >= beta) break;\n      }\n      tt.set(key, { depth, v: best, flag: best <= a0 ? -1 : best >= beta ? 1 : 0, move: bestMove });\n      return best;\n    }\n    const rootMoves = RU.legalMoves(board, color);\n    if (!rootMoves.length) return null;\n    if (rootMoves.length === 1) return { move: rootMoves[0], score: 0, depth: 0, nodes: 0 };\n    let scored = rootMoves.map((m) => ({ m, v: 0 })), done = 0;\n    for (let d = 1; d <= maxDepth; d++) {\n      const cur = [];\n      let alpha = -Infinity;\n      for (const { m } of scored) {\n        const v = -negamax(RU.applyMove(board, m).board, other(color), d - 1, -Infinity, -alpha, 1);      // окно опирается на лучший уже найденный ход\n        if (stop) break;\n        cur.push({ m, v }); if (v > alpha) alpha = v;\n      }\n      if (stop && cur.length < scored.length) break;              // глубина не досчитана — берём прошлую\n      scored = cur.sort((a, b) => b.v - a.v); done = d;\n      if (Math.abs(scored[0].v) > WIN / 2) break;                  // найден выигрыш или неизбежный проигрыш\n      if (Date.now() - t0 > timeMs * 0.55) break;                  // следующая глубина не успеет\n    }\n    // младшие уровни ошибаются: к оценке ходов добавляется случайный шум\n    let pick = scored[0];\n    if (noise > 0) { pick = scored.map((x) => ({ m: x.m, v: x.v + (rnd() - 0.5) * 2 * noise })).sort((a, b) => b.v - a.v)[0]; }\n    return { move: pick.m, score: scored[0].v, depth: done, nodes, ms: Date.now() - t0 };\n  }\n  const RUAI = { search, evaluate, LEVELS };\n  if (typeof module !== 'undefined' && module.exports) module.exports = RUAI; else root.RUAI = RUAI;\n})(typeof window !== 'undefined' ? window : globalThis);\n";
+
 </script>
 <script>
 // ============================================================
@@ -654,6 +930,7 @@ const show = (id, on) => $(id).classList.toggle('hidden', !on);
 const CAT_NAME = { bullet: 'Пуля', blitz: 'Блиц', rapid: 'Рапид', classical: 'Классика' };
 function timeCategory(minutes, inc) { if (!minutes) return null; const t = minutes * 60 + 40 * (inc || 0); return t < 180 ? 'bullet' : t < 480 ? 'blitz' : t < 1500 ? 'rapid' : 'classical'; }
 function ratingKeyFor(game, minutes, inc) { const c = timeCategory(minutes, inc); return c ? game + '_' + c : null; }
+const rkGame = (v) => (v === 'ru' ? 'ru' : 'draughts');      // рейтинг русских шашек — свои категории: ru_blitz, ru_rapid…
 
 /* ================= настройки меню ================= */
 const PRESETS = [[1,0],[3,2],[5,0],[5,3],[10,0],[10,5],[15,10],[30,0],[30,20],[60,0],[0,0]];
@@ -672,7 +949,11 @@ for (let l = 1; l <= 8; l++) {
   b.onclick = () => { settings.level = l; saveSettings(); paintMenu(); }; $('levels').appendChild(b);
 }
 document.querySelectorAll('.side').forEach((el) => { el.onclick = () => { settings.side = el.dataset.side; saveSettings(); paintMenu(); }; });
+document.querySelectorAll('#variant button').forEach((b) => { b.onclick = () => { settings.variant = b.dataset.v; saveSettings(); paintMenu(); }; });
 function paintMenu() {
+  { const ru = settings.variant === 'ru'; document.querySelectorAll('#variant button').forEach((b) => b.classList.toggle('on', b.dataset.v === (ru ? 'ru' : 'intl')));
+    $('v-title').textContent = ru ? 'Русские шашки' : 'Международные шашки'; $('level-title').textContent = ru ? 'Сложность' : 'Сложность (движок Scan 3.1)';
+    document.documentElement.dataset.menuVariant = ru ? 'ru' : 'intl'; }      // урок и предложение урока — про международные: для русских скрыты стилем (они появляются позже меню)
   [...$('presets').children].forEach((b, i) => b.classList.toggle('active', i === settings.preset));
   [...$('levels').children].forEach((b, i) => b.classList.toggle('active', i + 1 === settings.level));
   document.querySelectorAll('.side').forEach((el) => el.classList.toggle('active', el.dataset.side === settings.side));
@@ -700,7 +981,7 @@ let turn = 'w', viewIndex = -1, gameOver = false, busy = false, replayMode = fal
 let timers = { w: 600, b: 600 }, incSec = 0, timed = true, lastTick = null, tickHandle = null;
 let sel = null, candidates = [], stepIdx = 1, chosen = [];
 let premove = null, pmSel = null, quietPlies = 0, suppressClick = false;
-let posCounts = {}, egKind = null, egPlies = 0;
+let posCounts = {}, egKind = null, egPlies = 0, egDiag = 0;
 let tutor = null;   // идёт интерактивное обучение: компьютер не отвечает, партия не сохраняется и не считается   // повторения позиции и счётчик правил 16/5 ходов
 let curGameId = null, curTakenOver = false, curLastSavedAt = 0;   // сохранение идущей партии с компьютером (синхронизируется между устройствами)
 let replayFrom = null;  // откуда открыт просмотр: 'profile' (из общего меню), 'history' (из списка партий) или null
@@ -708,7 +989,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2.9.2 · 4 ноября 2026';
+const BUILD = '2.9.7 · 6 ноября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.
@@ -729,7 +1010,7 @@ function createLobby(cfg) {
       const row = document.createElement('div'); row.className = 'lobby-row'; const info = document.createElement('div');
       const t = document.createElement('div'); t.className = 'lobby-t'; t.textContent = (g.hostName || 'Игрок') + (g.hostRating != null ? ' · ' + g.hostRating : '');
       const m = document.createElement('div'); m.className = 'lobby-m'; const cn = cfg.catName(g.timeControl);
-      m.textContent = `${g.timeControl.minutes}+${g.timeControl.inc}${cn ? ' · ' + cn : ''} · ${g.hostColor === 'w' ? 'играет белыми' : 'играет чёрными'}`;
+      m.textContent = `${g.variant === 'ru' ? 'русские · ' : ''}${g.timeControl.minutes}+${g.timeControl.inc}${cn ? ' · ' + cn : ''} · ${g.hostColor === 'w' ? 'играет белыми' : 'играет чёрными'}`;
       info.appendChild(t); info.appendChild(m);
       const b = document.createElement('button'); b.textContent = 'Играть'; b.onclick = () => cfg.onPick(g.id, g); row.appendChild(info); row.appendChild(b); box.appendChild(row);
     });
@@ -744,7 +1025,7 @@ function createLobby(cfg) {
   // Ищем подходящую открытую игру с тем же контролем времени. beforeId — брать только игры «старше» нашей (чтобы две одновременные
   // заявки не разошлись: младшая всегда присоединяется к старшей).
   function findMatch(tc, beforeId) {
-    let c = rows().filter((g) => g.timeControl.minutes === tc.minutes && g.timeControl.inc === tc.inc);
+    let c = rows().filter((g) => g.timeControl.minutes === tc.minutes && g.timeControl.inc === tc.inc && (g.variant || 'intl') === (tc.variant || 'intl'));      // соперник — того же вида шашек
     if (beforeId) c = c.filter((g) => g.id < beforeId);
     return c[0] || null;
   }
@@ -794,9 +1075,38 @@ window.__lobby = lobby;
 const live = createLive({ OD: () => OD(), listEl: $('live-list'), myAuth: () => (OD() && OD().authUid) || null, catName: (tc) => { const c = timeCategory(tc.minutes, tc.inc); return c ? CAT_NAME[c] : ''; }, onWatch: (id) => watchGame(id) });
 window.__live = live;
 
+// ---- вид шашек: международные 10×10 (движок Scan) или русские 8×8 (свой движок) ----
+// Правила и запись ходов подставляются на место общих функций окна — сотни мест вызова при этом не меняются.
+const INTL = { getLegalMoves: window.getLegalMoves, applyMove: window.applyMove, createInitialBoard: window.createInitialBoard, isPlayable: window.isPlayable,
+  rowColToSquare: window.rowColToSquare, moveToHubNotation: window.moveToHubNotation, findMoveForNotation: window.findMoveForNotation };
+const RUV = { getLegalMoves: (b, c) => RU.legalMoves(b, c), applyMove: (b, m) => RU.applyMove(b, m), createInitialBoard: () => RU.initialBoard(), isPlayable: RU.isPlayable,
+  rowColToSquare: (r, c) => RU.square(r, c), moveToHubNotation: (m) => RU.notation(m), findMoveForNotation: (legal, s) => legal.find((m) => RU.notation(m) === String(s).replace(/x/g, ':')) || null };
+let variant = 'intl', N = 10, ruDraw = null;
+function setVariant(v) {
+  variant = v === 'ru' ? 'ru' : 'intl'; N = variant === 'ru' ? 8 : 10;
+  Object.assign(window, variant === 'ru' ? RUV : INTL);
+  document.documentElement.style.setProperty('--n', N); document.documentElement.dataset.variant = variant;
+  ruDraw = variant === 'ru' ? RU.newDrawState() : null;
+}
+// компьютер в русских шашках — в фоновом потоке (страница не подвисает, пока он думает); 8 уровней меню → 5 уровней движка с разным временем
+const RU_LEVELS = [{ level: 1 }, { level: 2 }, { level: 3 }, { level: 3, ms: 700 }, { level: 4 }, { level: 4, ms: 1400 }, { level: 5 }, { level: 5, ms: 2600, depth: 18 }];
+let ruWorker = null, ruSeq = 0; const ruPending = {};
+function ruThink(board, color, lvl) {
+  const opts = RU_LEVELS[Math.max(0, Math.min(7, (lvl || 3) - 1))];
+  return new Promise((resolve) => {
+    try {
+      if (!ruWorker) {
+        ruWorker = new Worker(URL.createObjectURL(new Blob([window.__RU_SRC + '\nonmessage = (e) => { const r = RUAI.search(e.data.board, e.data.color, e.data.opts); postMessage({ id: e.data.id, move: r && r.move }); };'], { type: 'application/javascript' })));
+        ruWorker.onmessage = (e) => { const f = ruPending[e.data.id]; delete ruPending[e.data.id]; if (f) f(e.data.move); };
+        ruWorker.onerror = () => { ruWorker = null; };
+      }
+      const id = ++ruSeq; ruPending[id] = resolve; ruWorker.postMessage({ id, board, color, opts });
+    } catch (err) { const r = RUAI.search(board, color, opts); resolve(r && r.move); }      // без фоновых потоков — считаем здесь
+  });
+}
 const sqNum = (r, c) => rowColToSquare(r, c);
 const flipped = () => userColor === 'b';
-const dispRC = (r, c) => (flipped() ? [9 - r, 9 - c] : [r, c]);
+const dispRC = (r, c) => (flipped() ? [N - 1 - r, N - 1 - c] : [r, c]);
 const other = (c) => (c === 'w' ? 'b' : 'w');
 const lastBoard = () => positions[positions.length - 1];
 
@@ -804,7 +1114,7 @@ function resize() {
   const stacked = window.innerWidth <= 760;
   const availW = stacked ? window.innerWidth - 24 : window.innerWidth - 24 - 320;
   const availH = window.innerHeight - 24;
-  const cell = Math.max(32, Math.floor(Math.min(availW / 10, stacked ? availW / 10 : availH / 10, 84)));
+  const cell = Math.max(32, Math.floor(Math.min(availW / N, stacked ? availW / N : availH / N, N === 8 ? 80 : 84)));
   document.documentElement.style.setProperty('--cell', cell + 'px');
 }
 window.addEventListener('resize', resize); resize();
@@ -812,15 +1122,16 @@ window.addEventListener('resize', resize); resize();
 /* ================= доска ================= */
 function buildBoard() {
   const el = $('board'); el.innerHTML = '';
-  for (let dr = 0; dr < 10; dr++) for (let dc = 0; dc < 10; dc++) {
-    const r = flipped() ? 9 - dr : dr, c = flipped() ? 9 - dc : dc;
+  resize();
+  for (let dr = 0; dr < N; dr++) for (let dc = 0; dc < N; dc++) {
+    const r = flipped() ? N - 1 - dr : dr, c = flipped() ? N - 1 - dc : dc;
     const d = document.createElement('div'); const pl = isPlayable(r, c);
     d.className = 'sq ' + (pl ? 'd' : 'l'); d.dataset.r = r; d.dataset.c = c;
     if (pl) { const n = document.createElement('span'); n.className = 'num'; n.textContent = sqNum(r, c); d.appendChild(n); d.onclick = () => { if (suppressClick) return; onSquare(r, c); }; }
     el.appendChild(d);
   }
 }
-const sqEl = (r, c) => { const [dr, dc] = dispRC(r, c); return $('board').children[dr * 10 + dc]; };
+const sqEl = (r, c) => { const [dr, dc] = dispRC(r, c); return $('board').children[dr * N + dc]; };
 const pieceKey = (p) => (p.color === 'w' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b'));
 function placePiece(el, r, c) { const [dr, dc] = dispRC(r, c); el.style.transform = `translate(${dc * 100}%, ${dr * 100}%)`; }
 function makePiece(p, r, c) {
@@ -830,7 +1141,7 @@ function makePiece(p, r, c) {
 function renderPieces() {
   const layer = $('pieces'); layer.innerHTML = '';
   const b = positions[viewIndex < 0 ? positions.length - 1 : viewIndex];
-  for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) if (b[r][c]) layer.appendChild(makePiece(b[r][c], r, c));
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (b[r][c]) layer.appendChild(makePiece(b[r][c], r, c));
 }
 const pieceElAt = (r, c) => $('pieces').querySelector(`.piece[data-r="${r}"][data-c="${c}"]`);
 function paintMarks() {
@@ -917,10 +1228,10 @@ function tryPremove() {
 /* ================= перетаскивание ================= */
 let drag = null;
 function evRC(e) {
-  const rect = $('board').getBoundingClientRect(), cell = rect.width / 10;
+  const rect = $('board').getBoundingClientRect(), cell = rect.width / N;
   const dc = Math.floor((e.clientX - rect.left) / cell), dr = Math.floor((e.clientY - rect.top) / cell);
-  if (dc < 0 || dc > 9 || dr < 0 || dr > 9) return null;
-  return flipped() ? [9 - dr, 9 - dc] : [dr, dc];
+  if (dc < 0 || dc > N - 1 || dr < 0 || dr > N - 1) return null;
+  return flipped() ? [N - 1 - dr, N - 1 - dc] : [dr, dc];
 }
 $('board-wrap').addEventListener('pointerdown', (e) => {
   if (e.button > 0 || gameOver || busy || replayMode || viewIndex >= 0 || turn !== userColor) return;
@@ -936,7 +1247,7 @@ $('board-wrap').addEventListener('pointermove', (e) => {
   if (!drag) return;
   if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return;
   drag.moved = true; if (!drag.el) return; drag.el.classList.add('drag');
-  const rect = $('board').getBoundingClientRect(), cell = rect.width / 10;
+  const rect = $('board').getBoundingClientRect(), cell = rect.width / N;
   drag.el.style.transform = `translate(${e.clientX - rect.left - cell / 2}px, ${e.clientY - rect.top - cell / 2}px)`;
 });
 // Касание прервали (системный жест, входящий звонок): возвращаем фигуру на место и снимаем выбор
@@ -966,7 +1277,7 @@ async function animateMove(move) {
   }
   await sleep(110);
 }
-const displayNotation = (m) => `${sqNum(m.fromRow, m.fromCol)}${m.captures.length ? 'x' : '-'}${sqNum(m.finalRow, m.finalCol)}`;
+const displayNotation = (m) => (variant === 'ru' ? RU.notation(m) : `${sqNum(m.fromRow, m.fromCol)}${m.captures.length ? 'x' : '-'}${sqNum(m.finalRow, m.finalCol)}`);
 function playSnd(n) { try { const a = sounds[n]; if (a) { a.currentTime = 0; a.play().catch(() => {}); } } catch (e) {} }
 
 async function playMove(move, byUser, opts = {}) {
@@ -979,7 +1290,7 @@ async function playMove(move, byUser, opts = {}) {
   quietPlies = (move.captures.length || !before[move.fromRow][move.fromCol].king) ? 0 : quietPlies + 1;
   if (opts.remoteTimes) { timers.w = opts.remoteTimes.w; timers.b = opts.remoteTimes.b; } else if (timed) timers[mover] += incSec;
   lastTick = null; turn = other(turn); viewIndex = -1;
-  { const k = posKey(after, turn); posCounts[k] = (posCounts[k] || 0) + 1; const kind = endgameKind(after); egPlies = kind && kind === egKind ? egPlies + 1 : (kind ? 1 : 0); egKind = kind; }
+  { const k = posKey(after, turn); posCounts[k] = (posCounts[k] || 0) + 1; egStep(after); if (variant === 'ru') RU.drawStep(ruDraw, after, turn, move, !!before[move.fromRow][move.fromCol].king); }
   renderPieces(); renderMoves(); playSnd(move.captures.length ? 'capture' : 'move');
   busy = false;
   if (tutor) { tutor.moves++; tutor.last = move; paintMarks(); return; }
@@ -1004,14 +1315,18 @@ function resultText(code, reason) {
     case 'draw-rep': return 'Ничья (троекратное повторение позиции)';
     case 'draw-16': return 'Ничья (правило 16 ходов)';
     case 'draw-5': return 'Ничья (правило 5 ходов)';
+    case 'draw-kings15': return 'Ничья (15 ходов только дамками)';
+    case 'draw-3v1': return 'Ничья (три дамки против одной — 15 ходов)';
+    case 'draw-eq': return 'Ничья (соотношение сил не меняется)';
     default: return win ? 'Победа' : code === 'draw' ? 'Ничья' : 'Поражение';
   }
 }
 function checkEnd() {
   const board = lastBoard();
   if (getLegalMoves(board, turn).length === 0) { endGame(turn !== userColor ? 'win' : 'loss', 'nomoves'); return true; }
+  if (variant === 'ru') { const why = RU.drawReason(ruDraw, board, turn); if (why) { endGame('draw', why); return true; } return false; }      // русские шашки — свои правила ничьей
   if ((posCounts[posKey(board, turn)] || 0) >= 3) { endGame('draw', 'draw-rep'); return true; }
-  if (egKind === '16' && egPlies >= 32) { endGame('draw', 'draw-16'); return true; }
+  if (egKind === '16' && (egPlies >= 32 || egDiag >= 10)) { endGame('draw', 'draw-16'); return true; }
   if (egKind === '5' && egPlies >= 10) { endGame('draw', 'draw-5'); return true; }
   let onlyKings = true;
   for (const row of board) for (const p of row) if (p && !p.king) onlyKings = false;
@@ -1019,14 +1334,37 @@ function checkEnd() {
   return false;
 }
 const posKey = (board, t) => t + board.map((r) => r.map((p) => (p ? (p.color === 'w' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b')) : '.')).join('')).join('/');
-// Упрощённые правила FMJD: 3 фигуры (хотя бы одна дамка) против одной дамки — 16 ходов (32 полухода); 1–2 фигуры против одной дамки — 5 ходов (10 полуходов).
+// Правила ФМЖД для окончаний (Annex 1, ст. 6.3–6.4):
+//  '16' — одинокая дамка против трёх дамок, двух дамок и простой или дамки и двух простых: не больше 16 ходов каждому (32 полухода);
+//         если одинокая дамка занимает большую диагональ — не больше 5 ходов; взятие в течение этих 16 ходов предел НЕ отменяет;
+//  '5'  — одинокая дамка против двух дамок, дамки и простой или одной дамки: не больше 5 ходов каждому (10 полуходов).
+//  Против одних простых (без дамки) эти пределы не действуют.
 function endgameKind(board) {
   const s = { w: { m: 0, k: 0 }, b: { m: 0, k: 0 } };
   for (const row of board) for (const p of row) if (p) s[p.color][p.king ? 'k' : 'm']++;
   const lone = (x) => x.m === 0 && x.k === 1, tot = (x) => x.m + x.k;
-  if ((lone(s.w) && tot(s.b) === 3 && s.b.k >= 1) || (lone(s.b) && tot(s.w) === 3 && s.w.k >= 1)) return '16';
-  if ((lone(s.w) && tot(s.b) >= 1 && tot(s.b) <= 2) || (lone(s.b) && tot(s.w) >= 1 && tot(s.w) <= 2)) return '5';
+  for (const [me, op] of [[s.w, s.b], [s.b, s.w]]) {
+    if (!lone(me) || op.k < 1) continue;
+    if (tot(op) === 3) return '16';
+    if (tot(op) <= 2) return '5';
+  }
   return null;
+}
+// одинокая дамка (в окончании '16') стоит на большой диагонали — от угла 46 до угла 5, то есть r + c = 9
+function loneKingOnLongDiagonal(board) {
+  const cnt = { w: 0, b: 0 }; let pos = { w: null, b: null };
+  for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) { const p = board[r][c]; if (p) { cnt[p.color]++; if (p.king) pos[p.color] = [r, c]; } }
+  for (const col of ['w', 'b']) if (cnt[col] === 1 && pos[col]) return pos[col][0] + pos[col][1] === 9;
+  return false;
+}
+// счётчики окончаний после очередного полухода (одно место для игры и для восстановления партии)
+function egStep(after) {
+  if (variant === 'ru') return;          // правила окончаний ФМЖД — только для международных шашек (у русских свои: RU.drawStep)
+  const kind = endgameKind(after);
+  if (egKind === '16' && kind === '5') egPlies++;                    // взятие внутри 16 ходов: предел 16 ходов остаётся (ст. 6.3)
+  else if (kind && kind === egKind) egPlies++;
+  else { egKind = kind; egPlies = kind ? 1 : 0; }
+  egDiag = egKind === '16' && kind === '16' && loneKingOnLongDiagonal(after) ? egDiag + 1 : 0;   // дамка на большой диагонали: не больше 5 ходов
 }
 function endGame(code, reason) {
   if (gameOver) return; clearPending(); curClear();
@@ -1039,7 +1377,7 @@ function endGame(code, reason) {
     '<button class="p" id="p-rematch">РЕВАНШ</button>' + '<button class="s" id="p-ana">РАЗОБРАТЬ ПАРТИЮ</button><button class="s" id="p-menu">В МЕНЮ</button>';
   if ($('p-rematch')) $('p-rematch').onclick = () => (mode === 'bot' ? startGame({ mode: 'bot' }) : requestRematch());
   $('p-menu').onclick = toMenu;
-  $('p-ana').onclick = () => { if (lastRec) viewRecord(lastRec, { analyze: true }); };
+  $('p-ana').onclick = () => { if (lastRec) viewRecord(lastRec, { analyze: true }); }; if (variant === 'ru') $('p-ana').style.display = 'none';      // разбор движком Scan — только для международных
   paintMarks();
   if (mode === 'online' && online) {
     clearActive(); if (online.beat) { clearInterval(online.beat); online.beat = null; }
@@ -1062,7 +1400,7 @@ function publishPublic(code, reason) {
     const doc = { game: 'draughts', uids: [wHost ? d.hostUid : d.guestUid, wHost ? d.guestUid : d.hostUid], authUids: [d.hostAuthUid, d.guestAuthUid],
       names: { w: (wHost ? d.hostName : d.guestName) || 'Игрок', b: (wHost ? d.guestName : d.hostName) || 'Игрок' },
       ratings: { w: (wHost ? d.hostRating : d.guestRating) != null ? (wHost ? d.hostRating : d.guestRating) : null, b: (wHost ? d.guestRating : d.hostRating) != null ? (wHost ? d.guestRating : d.hostRating) : null },
-      result: { winner, reason }, tc: d.timeControl, moves: hubMoves.slice() };
+      result: { winner, reason }, tc: d.timeControl, moves: hubMoves.slice(), ...(variant === 'ru' ? { variant: 'ru' } : {}) };
     OD().publishGame(online.id, doc).catch(() => {});      // второй игрок попробует создать ту же запись — правила разрешают только первую
   } catch (e) { console.warn(e); }
 }
@@ -1075,7 +1413,7 @@ async function applyRating(code) {
     const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : online.myRating), oppR = amHost ? d.guestRating : d.hostRating;
     if (!oppUid || oppUid === u.uid || myR == null || oppR == null) return;
     const score = code === 'win' ? 1 : code === 'draw' ? 0.5 : 0;
-    const tcx = online.tc || d.timeControl || {}, rkey = ratingKeyFor('draughts', tcx.minutes, tcx.inc);
+    const tcx = online.tc || d.timeControl || {}, rkey = ratingKeyFor(rkGame(variant), tcx.minutes, tcx.inc);
     if (!rkey) return;                                        // партия без часов — нерейтинговая
     if (hubMoves.length < 2) {                                // как на lichess и chess.com: рейтинговой партия становится, когда каждый сделал хотя бы один ход
       const line = document.createElement('div'); line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;color:var(--k-mu)';
@@ -1135,11 +1473,11 @@ function stopSearch() { if (curSearch && worker) { try { worker.postMessage('sto
 async function askEngine(board, color, depth) { return (await engineSearch({ board, color, depth, mode: 'think' })).move; }
 async function botMove() {
   const board = lastBoard(), legal = getLegalMoves(board, turn); if (!legal.length || gameOver) return;
-  setStatus('Scan думает…', '#e0a800');
+  setStatus(variant === 'ru' ? 'Компьютер думает…' : 'Scan думает…', '#e0a800');
   const startedLen = positions.length; let move = null;
   try {
     const t0 = Date.now();
-    const notation = legal.length === 1 ? null : await askEngine(board, turn, LEVEL_DEPTH[level - 1]);
+    const notation = legal.length === 1 ? null : variant === 'ru' ? (await ruThink(board, turn, level).then((m) => (m ? RU.notation(m) : null))) : await askEngine(board, turn, LEVEL_DEPTH[level - 1]);
     if (gameOver || positions.length !== startedLen) return;
     if (notation) move = findMoveForNotation(legal, notation);
     const spent = Date.now() - t0; if (spent < 450) await sleep(450 - spent);
@@ -1378,15 +1716,16 @@ function startGame(cfg = { mode: 'bot' }) {
     userColor = cfg.color; timed = cfg.minutes > 0; incSec = cfg.inc;
     timers = { w: (cfg.data && cfg.data.whiteTimeMs != null ? cfg.data.whiteTimeMs : cfg.minutes * 60000) / 1000, b: (cfg.data && cfg.data.blackTimeMs != null ? cfg.data.blackTimeMs : cfg.minutes * 60000) / 1000 };
   }
+  setVariant(R ? (R.variant || 'intl') : mode === 'bot' ? (settings.variant || 'intl') : mode === 'online' ? ((cfg.data && cfg.data.variant) || 'intl') : mode === 'tutor' ? (cfg.variant || 'intl') : 'intl');
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = [];
   turn = 'w'; viewIndex = -1; gameOver = false; busy = false; replayMode = false; quietPlies = 0;
-  posCounts = {}; posCounts[posKey(positions[0], 'w')] = 1; egKind = null; egPlies = 0;
+  posCounts = {}; posCounts[posKey(positions[0], 'w')] = 1; egKind = null; egPlies = 0; egDiag = 0;
   if (R) {                     // продолжение: повторяем записанные ходы, восстанавливая позицию, счётчики повторений и правило 16/5 ходов
     for (const h of R.hub) {
       const before = lastBoard(), mv = findMoveForNotation(getLegalMoves(before, turn), h); if (!mv) break;
       const after = applyMove(before, mv).board; positions.push(after); hubMoves.push(h); shownMoves.push(displayNotation(mv)); lastMoveSq.push([[mv.fromRow, mv.fromCol], [mv.finalRow, mv.finalCol]]);
       quietPlies = (mv.captures.length || !before[mv.fromRow][mv.fromCol].king) ? 0 : quietPlies + 1; turn = other(turn);
-      const k = posKey(after, turn); posCounts[k] = (posCounts[k] || 0) + 1; const kind = endgameKind(after); egPlies = kind && kind === egKind ? egPlies + 1 : (kind ? 1 : 0); egKind = kind;
+      const k = posKey(after, turn); posCounts[k] = (posCounts[k] || 0) + 1; egStep(after); if (variant === 'ru') RU.drawStep(ruDraw, after, turn, mv, !!before[mv.fromRow][mv.fromCol].king);
     }
   } else if (mode === 'bot') { curGameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); curClear(); }
   if (window.__live) window.__live.stop(); stopWatch();
@@ -1397,7 +1736,7 @@ function startGame(cfg = { mode: 'bot' }) {
   { const orat = mode === 'online' ? oppRating() : null, mine = mode === 'online' && online ? online.myRating : null;
     if (mine != null) $('name-bottom').textContent += ' · ' + mine;
     $('name-top').textContent = mode === 'online' ? ((online && online.oppName) || 'Соперник') + (orat != null ? ' · ' + orat : '') + (userColor === 'w' ? ' · чёрные' : ' · белые')
-      : 'Scan 3.1 · уровень ' + level + (userColor === 'w' ? ' · чёрные' : ' · белые'); }
+      : (variant === 'ru' ? 'Компьютер' : 'Scan 3.1') + ' · уровень ' + level + (userColor === 'w' ? ' · чёрные' : ' · белые'); }
   ['move', 'capture', 'end'].forEach((k) => { const a = sounds[k]; a.play().then(() => a.pause()).catch(() => {}); }); playSnd('start');
   resize(); buildBoard(); renderPieces(); renderMoves(); updateStatus(); paintMarks(); updateClocks(); updateButtons();
   stopClock(); tickHandle = setInterval(tick, 100); if (R) curSave();      // продолжили партию: сразу «захватываем» её, чтобы другие устройства узнали
@@ -1451,7 +1790,7 @@ function curSave() {
   if (curTakenOver || mode !== 'bot' || gameOver || replayMode || !curGameId) return;
   if (hubMoves.length < 1) { curClear(); return; }
   curLastSavedAt = Date.now();
-  try { localStorage.setItem(CUR_KEY, JSON.stringify({ v: 1, id: curGameId, dev: curDev(), at: curLastSavedAt, userColor, level, timed, incSec, timers: { w: Math.round(timers.w * 10) / 10, b: Math.round(timers.b * 10) / 10 }, hub: hubMoves.slice() })); } catch (e) {}
+  try { localStorage.setItem(CUR_KEY, JSON.stringify({ v: 1, variant, id: curGameId, dev: curDev(), at: curLastSavedAt, userColor, level, timed, incSec, timers: { w: Math.round(timers.w * 10) / 10, b: Math.round(timers.b * 10) / 10 }, hub: hubMoves.slice() })); } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) curSave(); }); window.addEventListener('pagehide', curSave);
 function paintResume() {
@@ -1484,7 +1823,7 @@ const loadHistory = () => { try { return JSON.parse(localStorage.getItem(HKEY) |
 function saveHistory(text, code) {
   if (!shownMoves.length) return;
   const rec = { date: new Date().toISOString(), userColor, level: mode === 'bot' ? level : null, opponent: mode === 'online' ? (online && online.oppName) || 'Соперник' : null, oppUid: mode === 'online' && online && online.last ? ((online.host ? online.last.guestUid : online.last.hostUid) || null) : null,
-    result: code, resultText: text, hub: hubMoves.slice(), shown: shownMoves.slice() };
+    ...(variant === 'ru' ? { variant: 'ru' } : {}), result: code, resultText: text, hub: hubMoves.slice(), shown: shownMoves.slice() };
   lastRec = rec;
   if (window.PGA) PGA.event('draughts', { result: code, online: mode === 'online', level: mode === 'bot' ? level : null, moves: hubMoves.length, color: userColor });
   const list = loadHistory(); list.unshift(rec);
@@ -1515,6 +1854,7 @@ function viewRecord(rec, opts = {}) {
   const keepIdx = opts.keepView && replayMode ? viewIndex : null;
   if (window.PGChat) PGChat.detach(); dropAna(); replayFrom = opts.from || null; show('setup', false); show('share', true); $('sh-msg').textContent = '';
   userColor = rec.userColor; mode = 'bot'; replayMode = true; gameOver = true; stopClock(); timed = false;
+  setVariant(rec.variant || 'intl');
   positions = [createInitialBoard()]; hubMoves = []; shownMoves = []; lastMoveSq = []; let t = 'w';
   for (const h of rec.hub) {
     const mv = findMoveForNotation(getLegalMoves(lastBoard(), t), h); if (!mv) break;
@@ -1524,7 +1864,7 @@ function viewRecord(rec, opts = {}) {
   turn = t; viewIndex = -1; resetSel(); show('history', false); show('game', true); show('post', false); show('actions', false); show('banner', false);
   $('name-bottom').textContent = 'Просмотр: ' + rec.resultText;
   resize(); buildBoard(); renderPieces(); renderMoves(); setStatus('Просмотр партии'); $('t-top').textContent = $('t-bottom').textContent = '—';
-  $('name-top').textContent = rec.opponent ? `${rec.opponent} (по сети)` : 'Scan 3.1' + (rec.level ? ' · уровень ' + rec.level : '');
+  $('name-top').textContent = rec.opponent ? `${rec.opponent} (по сети)` : (rec.variant === 'ru' ? 'Компьютер' : 'Scan 3.1') + (rec.level ? ' · уровень ' + rec.level : '');
   ana = newAna(rec); show('ana', true); renderAna();
   if (opts.labels) { $('name-top').textContent = opts.labels.top; $('name-bottom').textContent = opts.labels.bottom; }
   if (opts.noShare) show('share', false);
@@ -1596,11 +1936,11 @@ async function createOnline(open = false) {
   if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу сетевой игры. Проверьте интернет.');
   const [minutes, inc] = PRESETS[settings.preset];
   const hostColor = open || settings.side === 'r' ? (Math.random() > 0.5 ? 'w' : 'b') : settings.side;
-  const u = OD().currentUser, key = ratingKeyFor('draughts', minutes, inc);
+  const u = OD().currentUser, key = ratingKeyFor(rkGame(settings.variant), minutes, inc);
   try {
     const authUid = await OD().ensureAuth();
     const hostRating = u && key ? await OD().getRating(u.uid, key).catch(() => null) : null;
-    const id = await OD().createGame({ minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating, hostAuthUid: authUid, open, hostPublic: !!(u && PGS.get().showGames !== false) });
+    const id = await OD().createGame({ variant: settings.variant, minutes, inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating, hostAuthUid: authUid, open, hostPublic: !!(u && PGS.get().showGames !== false) });
     leaveOnline();
     online = { role: 'host', authUid, myRating: hostRating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: { minutes, inc }, quick: open };
     online.unsub = OD().listenGame(id, onSnap, (e) => { if (online && online.started) onlineError('получить обновление (подписка оборвалась)', e); });
@@ -1626,7 +1966,7 @@ async function prepareJoin(id) {
   if (!data) return menuError('Игра с таким кодом не найдена.');
   if (data.status !== 'waiting') return menuError('Эта игра уже началась или завершилась.');
   pendingJoin = id; const tc = data.timeControl || { minutes: 10, inc: 0 };
-  $('inv-text').textContent = `${data.hostName || 'Игрок'}${data.hostRating != null ? ' (рейтинг ' + data.hostRating + ')' : ''} приглашает вас на партию (${tc.minutes ? tc.minutes + '+' + tc.inc : 'без часов'}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
+  $('inv-text').textContent = `${data.hostName || 'Игрок'}${data.hostRating != null ? ' (рейтинг ' + data.hostRating + ')' : ''} приглашает вас на партию${data.variant === 'ru' ? ' в русские шашки' : ''} (${tc.minutes ? tc.minutes + '+' + tc.inc : 'без часов'}). Вы будете играть ${data.hostColor === 'w' ? 'чёрными' : 'белыми'}.`;
   $('inv-nick').value = $('nick').value; showView('invite');
 }
 $('join-btn').onclick = () => {
@@ -1639,7 +1979,7 @@ async function joinGameNow(id, name) {
   const u = OD().currentUser, authUid = await OD().ensureAuth();
   const pre = await OD().peekGame(id);
   if (!pre || pre.status !== 'waiting') { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
-  const key = pre.timeControl ? ratingKeyFor('draughts', pre.timeControl.minutes, pre.timeControl.inc) : null;
+  const key = pre.timeControl ? ratingKeyFor(rkGame(pre.variant), pre.timeControl.minutes, pre.timeControl.inc) : null;
   const guestRating = u && key ? await OD().getRating(u.uid, key).catch(() => null) : null;
   let res; try { res = await OD().joinGame(id, name, u ? u.uid : null, guestRating, authUid, !!(u && PGS.get().showGames !== false)); } catch (e) { console.error(e); showView('config'); return menuError('Не удалось присоединиться — возможно, игру уже заняли.'); }
   if (!res.ok) { showView('config'); return menuError('Эта игра уже началась или завершилась.'); }
@@ -1659,7 +1999,7 @@ $('quick-btn').onclick = async () => {
   show('err', false); const [minutes, inc] = PRESETS[settings.preset];
   if (!minutes) return menuError('Для поиска соперника выберите партию с часами.');
   if (!(await waitOnline())) return menuError('Не удалось подключиться к серверу сетевой игры.');
-  const m = lobby.findMatch({ minutes, inc });
+  const m = lobby.findMatch({ minutes, inc, variant: settings.variant || 'intl' });
   if (m) return joinOpen(m.id);
   await createOnline(true);
 };
@@ -1667,7 +2007,7 @@ $('quick-btn').onclick = async () => {
 let quickBusy = false;
 async function quickCheck() {
   if (quickBusy || !online || online.started || !online.quick || !online.host) return;
-  const better = lobby.findMatch(online.tc, online.id); if (!better) return;
+  const better = lobby.findMatch({ ...online.tc, variant }, online.id); if (!better) return;      // ждём соперника того же вида шашек
   quickBusy = true;
   try { const mine = online; await OD().cancelGame(mine.id).catch(() => {}); leaveOnline(mine); await joinOpen(better.id); } finally { quickBusy = false; }
 }
@@ -1759,8 +2099,8 @@ async function requestRematch() {
   if (!online) return;
   const prev = online, authUid = await OD().ensureAuth(), u = OD().currentUser, tc = prev.tc || { minutes: 10, inc: 0 };
   try {
-    const rk = ratingKeyFor('draughts', tc.minutes, tc.inc), rating = u && rk ? await OD().getRating(u.uid, rk).catch(() => null) : null, hostColor = other(prev.myColor);
-    const id = await OD().createGame({ minutes: tc.minutes, inc: tc.inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating: rating, hostAuthUid: authUid });
+    const rk = ratingKeyFor(rkGame(variant), tc.minutes, tc.inc), rating = u && rk ? await OD().getRating(u.uid, rk).catch(() => null) : null, hostColor = other(prev.myColor);
+    const id = await OD().createGame({ minutes: tc.minutes, inc: tc.inc, hostColor, hostName: myNick(), hostUid: u ? u.uid : null, hostRating: rating, hostAuthUid: authUid, variant });
     await OD().offerRematch(prev.id, id, prev.myColor);
     leaveOnline(prev); clearActive();
     online = { role: 'host', authUid, myRating: rating, last: null, id, myColor: hostColor, host: true, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc };
@@ -1777,7 +2117,7 @@ function showRematchInvite(newId) {
     try {
       const authUid = await OD().ensureAuth(), u = OD().currentUser, prev = online;
       const data = await OD().peekGame(newId); if (!data || data.status !== 'waiting') { $('p-accept').textContent = 'Реванш уже недоступен'; return; }
-      const rk = data.timeControl ? ratingKeyFor('draughts', data.timeControl.minutes, data.timeControl.inc) : null, rating = u && rk ? await OD().getRating(u.uid, rk).catch(() => null) : null;
+      const rk = data.timeControl ? ratingKeyFor(rkGame(data.variant), data.timeControl.minutes, data.timeControl.inc) : null, rating = u && rk ? await OD().getRating(u.uid, rk).catch(() => null) : null;
       const res = await OD().joinGame(newId, myNick(), u ? u.uid : null, rating, authUid);
       if (!res.ok) { $('p-accept').textContent = 'Реванш уже недоступен'; return; }
       online = { role: 'guest', authUid, myRating: rating, last: null, id: newId, myColor: res.data.hostColor === 'w' ? 'b' : 'w', host: false, started: false, syncing: false, pending: null, suppress: false, oppName: null, tc: res.data.timeControl, prev };
@@ -1816,7 +2156,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 
 /* ================= интерактивное обучение ================= */
-const emptyBoard = () => Array.from({ length: 10 }, () => Array(10).fill(null));
+const emptyBoard = () => Array.from({ length: N }, () => Array(N).fill(null));      // 10×10 или 8×8 — по виду шашек
 function tBoard(list) { const b = emptyBoard(); for (const [r, c, color, king] of list) b[r][c] = { color, king: !!king }; return b; }
 const count = (color) => { let n = 0; for (const row of lastBoard()) for (const p of row) if (p && p.color === color) n++; return n; };
 const hasKing = () => lastBoard().some((row) => row.some((p) => p && p.color === 'w' && p.king));
@@ -1829,12 +2169,14 @@ async function demoMove(hand, pick) {
   const pts = [[mv.fromRow, mv.fromCol]].concat(mv.path.slice(1).map((p) => [p.row, p.col])); resetSel();
   await hand.path(pts.map(([r, c]) => { const b = sqBox(r, c); return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; }), (i) => onSquare(pts[i][0], pts[i][1]));
 }
-function startTutor() {
+function startTutor(v) {
   if (window.PGTutor && PGTutor.active()) PGTutor.stop();
-  startGame({ mode: 'tutor', color: 'w', minutes: 0, inc: 0 }); tutor = { moves: 0, last: null, base: 0 };
+  const ru = (v || settings.variant) === 'ru';
+  startGame({ mode: 'tutor', color: 'w', minutes: 0, inc: 0, variant: ru ? 'ru' : 'intl' }); tutor = { moves: 0, last: null, base: 0 };
   $('name-top').textContent = 'Обучение'; setStatus('Обучение: делайте ходы за белых', '#3B5D4A');
   const pos = (list) => () => { window.__draughts.setBoard(tBoard(list), 'w'); tutor.base = tutor.moves; tutor.bCount = count('b'); resetSel(); paintMarks(); };
   const moved = () => tutor.moves > tutor.base, took = (n) => tutor.bCount - count('b') >= n;
+  if (ru) { runTutorRu(pos, moved, took); return; }
   PGTutor.run({ id: 'draughts', title: 'Обучение шашкам', steps: [
     { text: 'Это <b>международные шашки</b>: доска 10 × 10, у каждого по 20 шашек. Шашки стоят и ходят <b>только по тёмным клеткам</b>. Вы играете <b>белыми</b>, они внизу.', target: boardBox, button: 'Понятно', enter: pos([[6, 3, 'w'], [1, 0, 'b']]) },
     { text: 'Простая шашка ходит <b>по диагонали вперёд на одну клетку</b>. Нажмите на белую шашку, а потом на одну из подсвеченных клеток.', target: () => sqsBox([[6, 3], [5, 2], [5, 4]]), done: moved, demo: (h) => demoMove(h), enter: pos([[6, 3, 'w'], [1, 0, 'b']]) },
@@ -1848,14 +2190,29 @@ function startTutor() {
     { text: 'Вы знаете все правила! 🎉 Выигрывает тот, кто <b>забрал или запер</b> все шашки соперника. Если ошибётесь с ходом, игра подскажет, что нужно бить.', target: boardBox, button: 'Сыграть с компьютером (уровень 1)' }
   ].map((st) => Object.assign({ avoid: boardBox }, st)), onFinish: () => { tutor = null; startGame({ mode: 'bot', level: 1 }); }, onExit: () => { if (tutor) { tutor = null; toMenu(); } } });
 }
+// ---- урок русских шашек (доска 8×8: строка 0 — сторона чёрных, a1 = строка 7, столбец 0) ----
+function runTutorRu(pos, moved, took) {
+  PGTutor.run({ id: 'draughts_ru', title: 'Обучение русским шашкам', steps: [
+    { text: 'Это <b>русские шашки</b>: доска 8 × 8, у каждого по 12 шашек. Играют <b>только по тёмным клеткам</b>. Вы играете <b>белыми</b>, они внизу. Ходы записываются как в шахматах: «c3-d4».', target: boardBox, button: 'Понятно', enter: pos([[5, 2, 'w'], [1, 0, 'b']]) },
+    { text: 'Простая шашка ходит <b>по диагонали вперёд на одну клетку</b>. Нажмите на белую шашку, а потом на одну из подсвеченных клеток.', target: () => sqsBox([[5, 2], [4, 1], [4, 3]]), done: moved, demo: (h) => demoMove(h), enter: pos([[5, 2, 'w'], [1, 0, 'b']]) },
+    { text: 'Рядом чёрная шашка, а за ней пусто — её можно <b>побить</b>: перепрыгнуть через неё. Бить <b>обязательно</b>: если есть взятие, обычный ход сделать нельзя.', target: () => sqsBox([[5, 2], [4, 3], [3, 4]]), done: () => took(1), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[5, 2, 'w'], [4, 3, 'b'], [0, 7, 'b']]) },
+    { text: 'Простая шашка бьёт <b>и назад</b>. Побейте чёрную шашку позади белой.', target: () => sqsBox([[3, 4], [4, 3], [5, 2]]), done: () => took(1), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[3, 4, 'w'], [4, 3, 'b'], [0, 7, 'b']]) },
+    { text: 'Если после взятия можно бить ещё — бьют <b>дальше в тот же ход</b>. Побейте обе чёрные шашки: нажимайте клетки по очереди.', target: () => sqsBox([[7, 2], [6, 3], [5, 4], [4, 3], [3, 2]]), done: () => took(2), demo: (h) => demoMove(h, (m) => m.captures.length >= 2), enter: pos([[7, 2, 'w'], [6, 3, 'b'], [4, 3, 'b'], [0, 7, 'b']]) },
+    { text: '<b>Главное отличие от международных:</b> если побить можно по-разному, выбирайте <b>любой</b> путь — даже тот, где берётся меньше. Налево — одна шашка, направо — две. Побейте любым путём.', target: () => sqsBox([[5, 2], [4, 1], [3, 0], [4, 3], [3, 4], [2, 5], [1, 6]]), done: () => took(1), praise: 'Верно: в русских шашках разрешён любой путь!', demo: (h) => demoMove(h, (m) => m.captures.length === 1), enter: pos([[5, 2, 'w'], [4, 1, 'b'], [4, 3, 'b'], [2, 5, 'b'], [0, 7, 'b']]) },
+    { text: '<b>Особенность русских шашек:</b> если простая шашка дошла до последнего ряда <b>во время взятия</b>, она сразу становится дамкой и бьёт дальше <b>уже как дамка</b>. Побейте обе чёрные шашки.', target: () => sqsBox([[2, 3], [1, 4], [0, 5], [1, 6], [2, 7]]), done: () => took(2) && hasKing(), praise: 'Шашка стала дамкой прямо во время взятия!', demo: (h) => demoMove(h, (m) => m.captures.length >= 2), enter: pos([[2, 3, 'w'], [1, 4, 'b'], [1, 6, 'b'], [6, 7, 'b']]) },
+    { text: '<b>Дамка</b> ходит по диагонали <b>на любое число клеток</b>, вперёд и назад. Сделайте дамкой ход подальше — хотя бы через две клетки.', target: boardBox, done: () => moved() && tutor.last && Math.abs(tutor.last.finalRow - tutor.last.fromRow) >= 2, demo: (h) => demoMove(h, (m) => Math.abs(m.finalRow - m.fromRow) >= 3), enter: pos([[7, 0, 'w', 1], [0, 1, 'b']]) },
+    { text: 'Дамка бьёт <b>издалека</b> и может встать на любую свободную клетку за побитой шашкой. Побейте чёрную шашку дамкой.', target: () => sqsBox([[7, 0], [4, 3], [3, 4]]), done: () => took(1), demo: (h) => demoMove(h, (m) => m.captures.length), enter: pos([[7, 0, 'w', 1], [4, 3, 'b'], [0, 1, 'b']]) },
+    { text: 'Вы знаете все правила! 🎉 Выигрывает тот, кто <b>забрал или запер</b> все шашки соперника. Если ошибётесь с ходом, игра подскажет, что нужно бить.', target: boardBox, button: 'Сыграть с компьютером (уровень 1)' }
+  ].map((st) => Object.assign({ avoid: boardBox }, st)), onFinish: () => { tutor = null; settings.variant = 'ru'; saveSettings(); startGame({ mode: 'bot', level: 1 }); }, onExit: () => { if (tutor) { tutor = null; toMenu(); } } });
+}
 (function tutorMenu() {
-  const sb = $('start-btn'); if (!sb) return; const b = document.createElement('button'); b.className = 'start alt'; b.id = 'tut-btn'; b.type = 'button'; b.textContent = '🎓 Обучение: правила за 3 минуты'; b.onclick = startTutor; sb.insertAdjacentElement('afterend', b);
+  const sb = $('start-btn'); if (!sb) return; const b = document.createElement('button'); b.className = 'start alt'; b.id = 'tut-btn'; b.type = 'button'; b.textContent = '🎓 Обучение: правила за 3 минуты'; b.onclick = () => startTutor(settings.variant); sb.insertAdjacentElement('afterend', b);
   const off = document.createElement('div'); off.id = 'tut-offer'; off.className = 'tut-offer hidden'; off.innerHTML = '<b>Впервые играете в международные шашки?</b><span>Правила отличаются от русских: бить можно назад, а брать нужно больше шашек. Обучение — 3 минуты.</span><div><button type="button" id="tut-start">Начать обучение</button><button type="button" id="tut-later">Не сейчас</button></div>';
-  sb.insertAdjacentElement('beforebegin', off); $('tut-start').onclick = () => { off.classList.add('hidden'); startTutor(); }; $('tut-later').onclick = () => { try { localStorage.setItem('drTutorLater', '1'); } catch (e) {} off.classList.add('hidden'); };
+  sb.insertAdjacentElement('beforebegin', off); $('tut-start').onclick = () => { off.classList.add('hidden'); startTutor('intl'); }; $('tut-later').onclick = () => { try { localStorage.setItem('drTutorLater', '1'); } catch (e) {} off.classList.add('hidden'); };
   let hist = []; try { hist = JSON.parse(localStorage.getItem('draughtsHistory') || '[]'); } catch (e) {} let later = false; try { later = !!localStorage.getItem('drTutorLater'); } catch (e) {}
   if (!(window.PGTutor && PGTutor.isDone('draughts')) && !later && !(hist && hist.length) && !localStorage.getItem(CUR_KEY)) off.classList.remove('hidden');
 })();
-window.__draughts = { startTutor, get tutor() { return tutor; },  watchGame, openPublicRecord, get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame, engineSearch };
+window.__draughts = { startTutor, get tutor() { return tutor; },  watchGame, openPublicRecord, get pending() { return pendingMove; }, explainDenied, get ana() { return ana; }, recordText, endgameKind, posKey, playMove, setBoard(board, t) { positions = [board]; hubMoves = []; shownMoves = []; lastMoveSq = []; turn = t; posCounts = {}; posCounts[posKey(board, t)] = 1; egKind = null; egPlies = 0; egDiag = 0; quietPlies = 0; renderPieces(); renderMoves(); }, get state() { return { turn, userColor, positions, shownMoves, hubMoves, gameOver, busy, mode, timers }; }, onSquare, startGame, engineSearch, setVariant, ruThink, get variant() { return variant; }, endgameKind, loneKingOnLongDiagonal, egStep, get eg() { return { egKind, egPlies, egDiag }; }, set eg(v) { egKind = v.egKind; egPlies = v.egPlies; egDiag = v.egDiag || 0; } };
 checkInvite();
 
 // ----- публичные партии и наблюдение за идущей партией -----
@@ -1890,7 +2247,7 @@ const timed_ = (d) => !!(d.timeControl && d.timeControl.minutes);
 // ----- экспорт партии и ссылка «посмотреть без входа» -----
 function recordText(rec) {
   const dt = rec.date ? new Date(rec.date).toLocaleDateString('ru-RU') : '';
-  const me = rec.userColor === 'w' ? 'белые' : 'чёрные', opp = rec.opponent ? `${rec.opponent} (по сети)` : 'Scan 3.1' + (rec.level ? `, уровень ${rec.level}` : '');
+  const me = rec.userColor === 'w' ? 'белые' : 'чёрные', opp = rec.opponent ? `${rec.opponent} (по сети)` : (rec.variant === 'ru' ? 'компьютер' : 'Scan 3.1') + (rec.level ? `, уровень ${rec.level}` : '') + (rec.variant === 'ru' ? ' · русские шашки' : '');
   const lines = []; for (let i = 0; i < rec.shown.length; i += 2) lines.push(`${i / 2 + 1}. ${rec.shown[i]}${rec.shown[i + 1] ? ' ' + rec.shown[i + 1] : ''}`);
   return `Pep Draughts · международные шашки · ${dt}\nЯ — ${me}, соперник — ${opp}\n${rec.resultText}\n\n${lines.join(' ')}`;
 }
@@ -1996,12 +2353,12 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 const OD = {
   ready: false, currentUser: null,
 
-  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid, open, hostPublic }) {
+  async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid, open, hostPublic, variant }) {
     const id = randomId();
     await setDoc(doc(db, GAMES, id), {
       createdAt: serverTimestamp(), status: 'waiting', hostColor, hostName: hostName || 'Хост', hostUid: hostUid || null,
       hostRating: hostRating != null ? hostRating : null, guestRating: null, guestName: null, guestUid: null,
-      hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, open: !!open, hostPublic: !!hostPublic, guestPublic: false, timeControl: { minutes, inc }, moves: [],
+      hostAuthUid: hostAuthUid || null, guestAuthUid: null, hostSeen: serverTimestamp(), guestSeen: null, rematch: null, open: !!open, hostPublic: !!hostPublic, guestPublic: false, timeControl: { minutes, inc }, moves: [], variant: variant === 'ru' ? 'ru' : 'intl',
       whiteTimeMs: minutes * 60000, blackTimeMs: minutes * 60000, lastMoveAt: null, drawOfferBy: null, result: null
     });
     return id;
@@ -2116,7 +2473,7 @@ const OD = {
   async offerRematch(oldId, newId, byColor) { await updateDoc(doc(db, GAMES, oldId), { rematch: { id: newId, by: byColor } }); },
   async shareGame(rec) {
     const id = randomId(10);
-    await setDoc(doc(db, SHARED, id), { game: 'draughts', date: rec.date || null, userColor: rec.userColor, result: rec.result, resultText: rec.resultText || '',
+    await setDoc(doc(db, SHARED, id), { game: 'draughts', ...(rec.variant === 'ru' ? { variant: 'ru' } : {}), date: rec.date || null, userColor: rec.userColor, result: rec.result, resultText: rec.resultText || '',
       opponent: rec.opponent || null, level: rec.level || null, hub: rec.hub || [], shown: rec.shown || [], sharedAt: serverTimestamp() });
     return id;
   },

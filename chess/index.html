@@ -69,7 +69,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 <script src="../shared/pg-sync.js?v=77f69e1012"></script>
 <script src="../shared/pg-friends.js?v=245c705b9c"></script>
 <script src="../shared/pg-ach.js?v=f066c7fc2f"></script>
-<script src="../shared/pg-rules.js?v=a1487f8464"></script>
+<script src="../shared/pg-rules.js?v=f9d2277062"></script>
 <script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon-512.png?v=4">
@@ -3049,7 +3049,7 @@ function createLobby(cfg) {
       const row = document.createElement('div'); row.className = 'lobby-row'; const info = document.createElement('div');
       const t = document.createElement('div'); t.className = 'lobby-t'; t.textContent = (g.hostName || 'Игрок') + (g.hostRating != null ? ' · ' + g.hostRating : '');
       const m = document.createElement('div'); m.className = 'lobby-m'; const cn = cfg.catName(g.timeControl);
-      m.textContent = `${g.timeControl.minutes}+${g.timeControl.inc}${cn ? ' · ' + cn : ''} · ${g.hostColor === 'w' ? 'играет белыми' : 'играет чёрными'}`;
+      m.textContent = `${g.variant === 'ru' ? 'русские · ' : ''}${g.timeControl.minutes}+${g.timeControl.inc}${cn ? ' · ' + cn : ''} · ${g.hostColor === 'w' ? 'играет белыми' : 'играет чёрными'}`;
       info.appendChild(t); info.appendChild(m);
       const b = document.createElement('button'); b.textContent = 'Играть'; b.onclick = () => cfg.onPick(g.id, g); row.appendChild(info); row.appendChild(b); box.appendChild(row);
     });
@@ -3064,7 +3064,7 @@ function createLobby(cfg) {
   // Ищем подходящую открытую игру с тем же контролем времени. beforeId — брать только игры «старше» нашей (чтобы две одновременные
   // заявки не разошлись: младшая всегда присоединяется к старшей).
   function findMatch(tc, beforeId) {
-    let c = rows().filter((g) => g.timeControl.minutes === tc.minutes && g.timeControl.inc === tc.inc);
+    let c = rows().filter((g) => g.timeControl.minutes === tc.minutes && g.timeControl.inc === tc.inc && (g.variant || 'intl') === (tc.variant || 'intl'));      // соперник — того же вида шашек
     if (beforeId) c = c.filter((g) => g.id < beforeId);
     return c[0] || null;
   }
@@ -4587,7 +4587,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2.9.2 · 4 ноября 2026';
+        const BUILD = '2.9.7 · 6 ноября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
