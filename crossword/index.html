@@ -384,7 +384,7 @@ const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 let DICT = null, DICT_TEXT = '';              // словарь подгружается отдельным файлом после открытия страницы (и хранится для офлайна)
 const dictReady = fetch('dict.json').then((r) => { if (!r.ok) throw new Error('dict'); return r.text(); }).then((s) => { DICT_TEXT = s; DICT = JSON.parse(s); return DICT; });
-const BUILD = '2.10.0 · 6 ноября 2026';
+const BUILD = '2.10.1 · 6 ноября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
@@ -401,7 +401,7 @@ const readStats = () => { const s = load(LS.stats, {}); s.solved = Object.assign
 let stats = readStats();
 let S = null, lastTick = 0;
 $('ver').textContent = 'Версия ' + BUILD;
-const THEMES = ["Общая лексика", "Армия и оружие", "Время и погода", "Города и страны", "Деньги и право", "Дом и быт", "Еда и напитки", "Животные", "Здоровье", "Игры и головоломки", "Искусство и музыка", "История и мифы", "Компьютеры и связь", "Литература", "Люди и типажи", "Мифы и религия", "Наука и космос", "Общество и власть", "Пословицы и поговорки", "Праздники", "Природа", "Профессии", "Село и сад", "Сказки и кино", "Спорт", "Транспорт и техника", "Футбол", "Характер и чувства", "Человек и семья", "Язык и школа"];
+const THEMES = ["Общая лексика", "Армия и оружие", "Время и погода", "Города и страны", "Деньги и право", "Дом и быт", "Еда и напитки", "Животные", "Здоровье", "Игры и головоломки", "Имена", "Искусство и музыка", "История и мифы", "Компьютеры и связь", "Литература", "Люди и типажи", "Мифы и религия", "Наука и космос", "Общество и власть", "Пословицы и поговорки", "Праздники", "Природа", "Профессии", "Село и сад", "Сказки и кино", "Спорт", "Транспорт и техника", "Футбол", "Характер и чувства", "Человек и семья", "Язык и школа"];
 $('theme').innerHTML = '<option value="">Любая тема (всё вперемешку)</option>' + THEMES.map((t) => `<option value="${t}">${t}</option>`).join('');
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -704,12 +704,19 @@ if (window.PGRec) PGRec.config({
 /* ---------- интерактивное обучение ---------- */
 async function startTutorial() {
   if (generating) return; generating = true; showLoading(true); let p = null;
-  try { p = await generateAsync({ words: 6, level: 1, theme: null, seed: 20261014 }); } finally { showLoading(false); generating = false; }
+  // учебный кроссворд должен содержать слово по горизонтали, пересекающееся со словом по вертикали (на этом строится урок);
+  // перебираем постоянные зёрна — урок не зависит от того, как пополняется словарь
+  const cellsW = (w) => Array.from({ length: w.len }, (_, i) => (w.r + (w.dir === 'down' ? i : 0)) + ':' + (w.c + (w.dir === 'across' ? i : 0)));
+  // нужно горизонтальное слово, которое пересекается с вертикальным, но не в первой клетке (иначе нажатие на неё выберет вертикальное)
+  const goodAcross = (q, w) => { const down = new Set(q.words.filter((x) => x.dir === 'down').flatMap(cellsW)), cs = cellsW(w); return w.dir === 'across' && !down.has(cs[0]) && cs.slice(1).some((x) => down.has(x)); };
+  const hasCross = (q) => q.words.some((w) => goodAcross(q, w));
+  try { for (let s = 0; s < 12 && !(p && hasCross(p)); s++) p = await generateAsync({ words: 6, level: 1, theme: null, seed: 20261014 + s }); } finally { showLoading(false); generating = false; }
   if (!p) { toast('Не удалось подготовить обучение, попробуйте ещё раз'); return; }
   S = newState(p, { size: p.size, words: p.words.length, level: 1, theme: null, daily: false, dateKey: null, tutorial: true }); openGame();
   const P = S.puz, key = (r, c) => r * P.cols + c, cellsOf = (w) => Array.from({ length: w.len }, (_, k) => key(w.r + (w.dir === 'down' ? k : 0), w.c + (w.dir === 'across' ? k : 0)));
   let A = -1, X = -1, D = -1;     // слово по горизонтали, клетка пересечения и слово по вертикали через неё
-  P.words.forEach((w, i) => { if (A >= 0 || w.dir !== 'across') return; for (const ci of cellsOf(w)) { const e = P.cellWords[ci]; if (e && e.down >= 0) { A = i; X = ci; D = e.down; break; } } });
+  P.words.forEach((w, i) => { if (A >= 0 || w.dir !== 'across') return; const cs = cellsOf(w), e0 = P.cellWords[cs[0]]; if (e0 && e0.down >= 0) return;      // первая клетка — не пересечение
+    for (const ci of cs) { const e = P.cellWords[ci]; if (e && e.down >= 0) { A = i; X = ci; D = e.down; break; } } });
   if (A < 0) { A = 0; X = cellsOf(P.words[0])[0]; D = -1; }
   const WA = P.words[A], ans = cellsOf(WA).map((ci) => ansAt(ci)).join('').toUpperCase();
   const rectOf = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; };

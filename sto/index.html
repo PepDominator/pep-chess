@@ -495,7 +495,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id), E = window.STO;
-  const VERSION = 'Версия 2.10.0 · 6 ноября 2026';
+  const VERSION = 'Версия 2.10.1 · 6 ноября 2026';
   const LS = { stats: 'stoStats', seen: 'stoSeen' };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
