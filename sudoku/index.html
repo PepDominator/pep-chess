@@ -68,7 +68,8 @@ h2 { font-weight:400; font-style:italic; font-size:27px; margin:0; padding:8px 0
 #sboard { display:grid; grid-template-columns:repeat(var(--sz,9),var(--cell)); grid-template-rows:repeat(var(--sz,9),var(--cell)); gap:0; user-select:none; touch-action:manipulation; }
 .cell { position:relative; width:var(--cell); height:var(--cell); background:var(--sq-light); border-right:1px solid var(--k-line2); border-bottom:1px solid var(--k-line2); display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .cell.alt { background:color-mix(in srgb, var(--sq-dark) 40%, var(--sq-light)); }
-.cell.br { border-right:2px solid #2A2E24; } .cell.bb { border-bottom:2px solid #2A2E24; } .cell:nth-child(9n) { border-right:none; } .cell:nth-child(n+73) { border-bottom:none; }
+.cell.br { border-right:2px solid #2A2E24; } .cell.bb { border-bottom:2px solid #2A2E24; } html:not([data-sz="12"]) .cell:nth-child(9n) { border-right:none; } html:not([data-sz="12"]) .cell:nth-child(n+73) { border-bottom:none; }
+html[data-sz="12"] .cell:nth-child(12n) { border-right:none; } html[data-sz="12"] .cell:nth-child(n+133) { border-bottom:none; }      /* у края поля — без внутренней линии; для каждого размера своё */
 .cell .v { font-size:calc(var(--cell)*.58); line-height:1; font-weight:500; color:var(--navy); pointer-events:none; }
 .cell.given .v { color:var(--k-tx); font-weight:700; }
 .cell.peer { background:color-mix(in srgb, var(--k-acc) 14%, var(--sq-light)); } .cell.alt.peer { background:color-mix(in srgb, var(--k-acc) 14%, color-mix(in srgb, var(--sq-dark) 40%, var(--sq-light))); }
@@ -350,7 +351,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const { SDK, SDK12 } = new Function($('sdk-engine').textContent + '\nreturn { SDK, SDK12 };')();      // 9×9 и 12×12
-const BUILD = '2.9.7 · 6 ноября 2026';
+const BUILD = '2.9.8 · 6 ноября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };

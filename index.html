@@ -8,11 +8,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Pep Games — шахматы, шашки, судоку и кроссворды</title>
-<meta name="description" content="Шахматы, шашки, судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. С компьютером, по сети и с друзьями — офлайн и без рекламы.">
+<meta name="description" content="Шахматы, шашки (международные и русские), судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. С компьютером и по сети — бесплатно, без рекламы и даже без интернета.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pep Games">
 <meta property="og:title" content="Pep Games — восемь игр для ума">
-<meta property="og:description" content="Шахматы, шашки, судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. С компьютером, по сети и с друзьями — офлайн и без рекламы.">
+<meta property="og:description" content="Восемь игр для ума — бесплатно и без рекламы: шахматы, шашки, судоку, кроссворды и другие. С компьютером, по сети и даже без интернета.">
 <meta property="og:image" content="https://pepdominator.github.io/pep-chess/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -96,7 +96,7 @@ h1 { font-weight:400; font-style:italic; font-size:clamp(34px, 6vw, 56px); line-
 .cwm { display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); background:var(--k-panel) !important; background-image:none !important; padding:7%; }
 .cwm b { background:transparent; display:flex; align-items:center; justify-content:center; font:700 clamp(9px,1.6vw,17px) Georgia,serif; color:var(--k-nt); } .cwm b.w { background:var(--k-surf); box-shadow:0 0 0 1.3px #2A2E24 inset; } .cwm b.n { color:transparent; transition:color .5s; } .card:hover .cwm b.n, .card:focus-visible .cwm b.n { color:var(--k-gt); }
 .sdk { background:var(--k-panel); display:grid; grid-template-columns:repeat(9,1fr); grid-template-rows:repeat(9,1fr); }
-.sdk b { display:flex; align-items:center; justify-content:center; font:600 clamp(9px,1.5vw,16px) Georgia,serif; color:var(--k-tx); border:.5px solid var(--k-line); } .sdk b.r3 { border-right:1.5px solid #2A2E24; } .sdk b.b3 { border-bottom:1.5px solid #2A2E24; } .sdk b.n { color:var(--k-gt); opacity:0; transition:opacity .5s; } .card:hover .sdk b.n, .card:focus-visible .sdk b.n { opacity:1; }
+.sdk b { display:flex; align-items:center; justify-content:center; font:600 clamp(9px,1.5vw,16px) Georgia,serif; color:var(--k-tx); border-right:1px solid var(--k-line); border-bottom:1px solid var(--k-line); } .sdk b:nth-child(9n) { border-right:none; } .sdk b:nth-child(n+73) { border-bottom:none; } .sdk b.r3 { border-right:2px solid #2A2E24; } .sdk b.b3 { border-bottom:2px solid #2A2E24; } .sdk b.n { color:transparent; transition:color .5s; } .card:hover .sdk b.n, .card:focus-visible .sdk b.n { color:var(--k-gt); }      /* прячем только цифру — линии клетки остаются видны */
 .card::before { content:''; position:absolute; left:0; right:0; top:0; height:2px; background:var(--green); transform:scaleX(0); transform-origin:left; transition:transform .45s var(--ease); z-index:2; }
 .card:hover, .card:focus-visible { transform:translateY(-6px); box-shadow:0 26px 60px rgba(42,46,36,.14), 0 4px 10px rgba(42,46,36,.06); border-color:var(--k-line2); outline:none; }
 .card:hover::before, .card:focus-visible::before { transform:scaleX(1); }
@@ -183,10 +183,7 @@ footer b { color:var(--text); font-weight:600; }
 .fb-kinds { display:flex; gap:6px; margin-bottom:10px; } .fb-kinds button { flex:1; border:1px solid var(--border,var(--k-line)); background:var(--k-surf,var(--k-surf)); padding:8px; font:600 13px 'Noto Sans',sans-serif; color:var(--text,var(--k-tx)); cursor:pointer; } .fb-kinds button.on { background:var(--green,var(--k-acc)); color:#fff; border-color:var(--green,var(--k-acc)); }
 .fb-box textarea, .fb-box input { width:100%; box-sizing:border-box; border:1px solid var(--border,var(--k-line)); background:var(--k-panel,var(--k-panel)); color:var(--text,var(--k-tx)); padding:10px; font:14px 'Noto Sans',sans-serif; margin-bottom:10px; resize:vertical; }
 .fb-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; } .fb-send { border:none; background:var(--green,var(--k-acc)); color:#fff; padding:10px 20px; font:700 14px 'Noto Sans',sans-serif; cursor:pointer; } .fb-send:disabled { opacity:.6; cursor:default; }
-.fb-note { font-size:13px; color:var(--muted,var(--k-mu)); } .fb-mail { margin-top:14px; padding-top:12px; border-top:1px solid var(--border,var(--k-line)); font-size:13px; color:var(--muted,var(--k-mu)); }
-.fb-mail a { color:var(--navy,var(--k-nt)); }
-.fb-copy { border:1px solid var(--border,var(--k-line)); background:none; color:var(--text,var(--k-tx)); padding:3px 8px; font-size:12px; cursor:pointer; margin-left:4px; }
-.prof.wide.xwide { max-width:940px; }      /* профиль — шире обычного окна (календарь и карточки игр) */
+.fb-note { font-size:13px; color:var(--muted,var(--k-mu)); } .prof.wide.xwide { max-width:940px; }      /* профиль — шире обычного окна (календарь и карточки игр) */
 .pf-sec { padding:16px 28px 18px; border-top:1px solid var(--border); } .pf-sec h4 { font-size:14.5px; margin:0 0 12px; } .pf-sec h4 small { font-weight:400; color:var(--muted); font-size:12.5px; margin-left:6px; }
 .pf-rank { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; } .pf-rank b { font-size:18px; display:block; } .pf-rank small { color:var(--muted); font-size:12.5px; } .pf-rank .pf-rb { flex:1; min-width:200px; }
 .pf-bar { height:8px; background:var(--k-hover); margin-top:6px; overflow:hidden; } .pf-bar i { display:block; height:100%; background:var(--k-acc); }
@@ -333,7 +330,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
   <header>
     <div class="brand">Pep Games</div>
     <h1 class="serif">Во что сыграем?</h1>
-    <p class="lead">Восемь игр для ума: шахматы и шашки с друзьями или против компьютера, судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. Всё работает офлайн и ставится как приложение.</p>
+    <p class="lead">Восемь игр для ума — бесплатно и без рекламы. Шахматы и шашки с компьютером или с друзьями, судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. Играйте даже без интернета и ставьте на телефон как приложение.</p>
   </header>
 
   <main class="cards">
@@ -341,7 +338,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
       <div class="art"><div class="mini" id="mini-chess"></div></div>
       <div class="info">
         <h2 class="serif">Шахматы</h2>
-        <p>Вечная игра королей. Сыграйте с компьютером любой силы — от новичка до гроссмейстера, — разберите партию ход за ходом или позовите друга по ссылке.</p>
+        <p>Вечная игра королей. Сыграйте с компьютером любой силы — от новичка до гроссмейстера, — позовите друга по ссылке и разберите партию ход за ходом.</p>
         <div class="chips"><b>Stockfish 19</b><b>По сети</b><b>Анализ</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-chess"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -351,8 +348,8 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
       <div class="art"><div class="mini" id="mini-draughts"></div></div>
       <div class="info">
         <h2 class="serif">Шашки</h2>
-        <p>Международные 10 × 10 с правилом большинства и русские 8 × 8. Соперник по силам — от новичка до мастера, а в международные можно сыграть и с другом по сети.</p>
-        <div class="chips"><b>Scan 3.1</b><b>10×10 и 8×8</b><b>По сети</b><b>Офлайн</b></div>
+        <p>Два вида на выбор: международные 10 × 10 и русские 8 × 8. Компьютер подстроится под ваш уровень, а с друзьями можно сыграть по сети — с рейтингом и таблицей лидеров.</p>
+        <div class="chips"><b>10×10 и 8×8</b><b>По сети</b><b>Обучение</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-draughts"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
@@ -390,7 +387,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
       <div class="art"><div class="mini stomini"><svg viewBox="0 0 250 250" aria-hidden="true"><text x="125" y="46" text-anchor="middle" class="sto-t">100 : 1</text><rect x="34" y="62" width="182" height="24" class="sto-open"/><rect x="44" y="71" width="88" height="6" class="sto-ink"/><rect x="180" y="66" width="28" height="16" class="sto-pts"/><rect x="34" y="92" width="182" height="24" class="sto-tile"/><circle cx="125" cy="104" r="8" class="sto-num" style="--d:0.0s"/><g class="sto-rv" style="--d:0.0s"><rect x="34" y="92" width="182" height="24" class="sto-open"/><rect x="44" y="101" width="62" height="6" class="sto-ink"/><rect x="180" y="96" width="28" height="16" class="sto-pts"/></g><rect x="34" y="122" width="182" height="24" class="sto-open"/><rect x="44" y="131" width="70" height="6" class="sto-ink"/><rect x="180" y="126" width="28" height="16" class="sto-pts"/><rect x="34" y="152" width="182" height="24" class="sto-tile"/><circle cx="125" cy="164" r="8" class="sto-num" style="--d:0.22s"/><g class="sto-rv" style="--d:0.22s"><rect x="34" y="152" width="182" height="24" class="sto-open"/><rect x="44" y="161" width="54" height="6" class="sto-ink"/><rect x="180" y="156" width="28" height="16" class="sto-pts"/></g><rect x="34" y="182" width="182" height="24" class="sto-tile"/><circle cx="125" cy="194" r="8" class="sto-num" style="--d:0.44s"/><g class="sto-rv" style="--d:0.44s"><rect x="34" y="182" width="182" height="24" class="sto-open"/><rect x="44" y="191" width="76" height="6" class="sto-ink"/><rect x="180" y="186" width="28" height="16" class="sto-pts"/></g><rect x="34" y="212" width="182" height="24" class="sto-tile"/><circle cx="125" cy="224" r="8" class="sto-num" style="--d:0.66s"/><g class="sto-rv" style="--d:0.66s"><rect x="34" y="212" width="182" height="24" class="sto-open"/><rect x="44" y="221" width="40" height="6" class="sto-ink"/><rect x="180" y="216" width="28" height="16" class="sto-pts"/></g></svg></div></div>
       <div class="info">
         <h2 class="serif">Сто к одному</h2>
-        <p>Угадайте, что ответили сто человек. Тысячи настоящих вопросов из телеигры, азарт большой игры на время и спокойная тренировка без спешки.</p>
+        <p>Угадайте, что ответили сто человек. Тысячи настоящих вопросов из телеигры: азартная большая игра на время или спокойная тренировка без спешки.</p>
         <div class="chips"><b>3800 вопросов</b><b>Большая игра</b><b>Тренировка</b><b>Офлайн</b></div>
         <div class="foot"><span class="count" id="cnt-sto"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
@@ -426,7 +423,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.9.7 · 6 ноября 2026</div><div style="font-size:11px;color:var(--k-mu2)"><a href="#" id="fb-open" style="color:inherit">Обратная связь</a> · <a href="licenses/" style="color:inherit">Лицензии и авторы</a></div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.9.8 · 6 ноября 2026</div><div style="font-size:11px;color:var(--k-mu2)"><a href="#" id="fb-open" style="color:inherit">Обратная связь</a> · <a href="licenses/" style="color:inherit">Лицензии и авторы</a></div>
   </footer>
 </div>
 
@@ -439,7 +436,6 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
   <textarea id="fb-text" maxlength="3000" rows="6" placeholder="Что случилось или что хотелось бы изменить? Если ошибка — в какой игре и что вы делали."></textarea>
   <input id="fb-contact" maxlength="120" placeholder="Как с вами связаться, если нужен ответ (необязательно)">
   <div class="fb-row"><button class="fb-send" id="fb-send" type="button">Отправить</button><span class="fb-note" id="fb-note" role="status"></span></div>
-  <div class="fb-mail">Или напишите на почту: <a id="fb-mail" href="mailto:living.ocean.115@gmail.com">living.ocean.115@gmail.com</a> <button type="button" id="fb-copy" class="fb-copy">Скопировать адрес</button></div>
 </div></div>
 <div class="ov hidden" id="ov"><div class="prof" role="dialog" aria-modal="true"><button class="x" id="ov-x" aria-label="Закрыть">✕</button><div id="prof-body"></div></div></div>
 
@@ -620,18 +616,14 @@ function rememberProfile() {
 }
 // ============ Обратная связь ============
 (() => {
-  const EMAIL = 'living.ocean.115@gmail.com', $f = (id) => document.getElementById(id); let kind = 'bug';
+  const $f = (id) => document.getElementById(id); let kind = 'bug';
   const ver = () => { const m = (document.querySelector('footer') || document.body).textContent.match(/Версия ([0-9.]+)/); return m ? m[1] : ''; };
-  const mailHref = () => { const t = $f('fb-text').value.trim(), c = $f('fb-contact').value.trim(); const subj = 'Pep Games — ' + ({ bug: 'ошибка', idea: 'предложение', other: 'сообщение' })[kind];
-    return 'mailto:' + EMAIL + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent((t ? t + '\n\n' : '') + (c ? 'Контакт: ' + c + '\n' : '') + 'Версия ' + ver() + ', ' + navigator.userAgent); };
   const open = () => { $f('fb-ov').classList.remove('hidden'); $f('fb-note').textContent = ''; setTimeout(() => $f('fb-text').focus(), 30); };
   const close = () => $f('fb-ov').classList.add('hidden');
   $f('fb-open').addEventListener('click', (e) => { e.preventDefault(); open(); });
   $f('fb-x').onclick = close; $f('fb-ov').addEventListener('click', (e) => { if (e.target.id === 'fb-ov') close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$f('fb-ov').classList.contains('hidden')) close(); });
   $f('fb-ov').querySelectorAll('.fb-kinds button').forEach((b) => { b.onclick = () => { kind = b.dataset.k; $f('fb-ov').querySelectorAll('.fb-kinds button').forEach((x) => x.classList.toggle('on', x === b)); }; });
-  $f('fb-mail').addEventListener('click', () => { $f('fb-mail').href = mailHref(); });
-  $f('fb-copy').onclick = async () => { try { await navigator.clipboard.writeText(EMAIL); $f('fb-copy').textContent = 'Скопировано'; } catch (e) { $f('fb-copy').textContent = EMAIL; } setTimeout(() => { $f('fb-copy').textContent = 'Скопировать адрес'; }, 2000); };
   $f('fb-send').onclick = async () => {
     const text = $f('fb-text').value.trim(), note = $f('fb-note');
     if (text.length < 3) { note.textContent = 'Напишите хотя бы пару слов.'; $f('fb-text').focus(); return; }
@@ -644,10 +636,10 @@ function rememberProfile() {
       try { localStorage.setItem('pgFbAt', String(Date.now())); } catch (e) {}
       note.textContent = 'Спасибо! Сообщение отправлено.'; $f('fb-text').value = '';
     } catch (e) {
-      note.innerHTML = 'Не получилось отправить отсюда — <a href="' + mailHref().replace(/"/g, '&quot;') + '">напишите на почту</a>, текст уже подставлен.';
+      note.textContent = 'Не получилось отправить. Проверьте интернет и попробуйте ещё раз — текст сообщения сохранён.';
     } finally { $f('fb-send').disabled = false; }
   };
-  window.__fb = { open, mailHref };
+  window.__fb = { open };
 })();
 
 // ============ Профиль: звание, сводка, статистика по всем играм (раньше — отдельная страница profile/) ============
