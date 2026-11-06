@@ -14,6 +14,7 @@
     nonogramPrefs: { m: 'lww' }, nonogramSave: { m: 'lww', slow: true }, nonogramStats: { m: 'stats' },
     stoStats: { m: 'lww' },
     codeStats: { m: 'lww' }, codePrefs: { m: 'lww' }, codeSave: { m: 'lww', slow: true },
+    fiveStats: { m: 'lww' }, fiveSave: { m: 'lww', slow: true },      // «Пять букв»: статистика и начатая игра
     wordsStats: { m: 'lww' }, wordsPrefs: { m: 'lww' }, wordsSave: { m: 'lww', slow: true },
     chessGameHistory: { m: 'history', limit: 100 }, draughtsHistory: { m: 'history', limit: 100 },
     pgAch: { m: 'ach' },                                                                      // достижения: объединяются, счётчики — максимум

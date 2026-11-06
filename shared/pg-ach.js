@@ -113,6 +113,10 @@
     ['kwhard', 'Ключворд', '🗝', 'Взломщик', 'Разгадайте ключворд сложного уровня', 1, (c) => Math.min(1, C(c, 'kwhard'))],
     ['kwclean', 'Ключворд', '🕵', 'Без подсказок', 'Разгадайте ключворд от среднего уровня без подсказок и проверок', 1, (c) => Math.min(1, C(c, 'kwclean'))],
     ['kwdaily7', 'Ключворд', '📅', 'Неделя ключей', 'Решайте ключворд дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'kwstreak'))],
+    ['fv1', 'Пять букв', '🟩', 'Первое слово', 'Угадайте первое слово в «Пяти буквах»', 1, (c) => Math.min(1, C(c, 'fvwin'))],
+    ['fv2', 'Пять букв', '🎯', 'Со второй попытки', 'Угадайте слово всего за две попытки', 1, (c) => Math.min(1, C(c, 'fv2'))],
+    ['fv25', 'Пять букв', '📚', 'Знаток слов', 'Угадайте 25 слов', 25, (c) => Math.min(25, C(c, 'fvwin'))],
+    ['fvdaily7', 'Пять букв', '📅', 'Неделя слов', 'Угадывайте слово дня 7 дней подряд', 7, (c) => Math.min(7, C(c, 'fvstreak'))],
     // ---- каждый день ----
     ['tutor1', 'Общие', '🎓', 'Прилежный ученик', 'Пройдите интерактивное обучение по любой игре', 1, (c) => Math.min(1, C(c, 'tutor'))],
     ['tutorall', 'Общие', '🏫', 'Отличник', 'Пройдите обучение во всех восьми играх', 8, (c) => ['chess', 'draughts', 'sudoku', 'crossword', 'nonogram', 'sto', 'words', 'code'].filter((id) => C(c, 'tut_' + id) > 0).length],
@@ -232,7 +236,7 @@
   }
   // Записывает завершённую игру в «день активности»: какая игра, в какое время суток, выполнены ли задания дня
   function touchDay(s, game, d) {
-    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64, code: 128 }[game]; if (!gbit) return;
+    const gbit = { chess: 1, draughts: 2, sudoku: 4, crossword: 8, nonogram: 16, sto: 32, words: 64, code: 128, five: 256 }[game]; if (!gbit) return;
     const now = new Date(), k = keyOf(now), h = now.getHours(), tb = h < 5 ? 8 : h < 12 ? 1 : h < 18 ? 2 : 4;
     if (!s.d[k]) { const prev = Object.keys(s.d).sort().pop(); if (prev && dnum(k) - dnum(prev) >= 14) s.c.comeback = (s.c.comeback || 0) + 1; s.d[k] = { g: 0, t: 0, n: 0, q: 0, w: 0 }; }
     const day = s.d[k]; day.g |= gbit; day.t |= tb; day.n = (day.n | 0) + 1; day.q |= 8; if (d.daily) day.q |= ({ sudoku: 1, crossword: 2, nonogram: 4, words: 16, code: 32 }[game] || 0); if (d.result === 'win') day.w |= gbit;
@@ -248,8 +252,8 @@
       if (d.result === 'win') { inc(p + 'W'); if (d.online) inc(p + 'On'); else if (d.level) max(p + 'Bot', d.level); if (d.color === 'b') inc(p + 'Blk'); if (!d.online && d.level >= 3 && d.moves && d.moves <= (game === 'chess' ? 30 : 40)) inc(p + 'Mini'); }
       if (d.moves >= (game === 'chess' ? 120 : 100)) inc(p + 'Long');
     }
-    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
-    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code';
+    if (game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code' || game === 'five') { const h = new Date().getHours(); if (h < 5) inc('night'); else if (h < 8) inc('early'); if (navigator.onLine === false) inc('offline'); }
+    const completion = game === 'sudoku' || game === 'crossword' || game === 'nonogram' || game === 'chess' || game === 'draughts' || game === 'sto' || game === 'words' || game === 'code' || game === 'five';
     if (completion) {
       touchDay(s, game, d); const now = new Date(), H = now.getHours(), M = now.getMinutes(), dd = now.getDate(), mm = now.getMonth() + 1, hhmm = String(H).padStart(2, '0') + String(M).padStart(2, '0');
       if (dd === 13 && now.getDay() === 5) inc('fri13'); if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1)) inc('ny'); if (mm === 2 && dd === 29) inc('leap'); if (mm === 4 && dd === 1) inc('apr1'); if (dd === mm) inc('round');
@@ -260,6 +264,7 @@
       if (game === 'nonogram') { const nm = String(d.name || '').split(' · ')[0]; if (nm && nm !== 'Картина' && s.p.indexOf(nm) < 0) s.p.push(nm); if (d.cat && s.p.indexOf('cat:' + d.cat) < 0) s.p.push('cat:' + d.cat); }
     }
     if (game === 'secret' && d.id === 'logo') inc('slogo');
+    if (game === 'five') { inc('fv'); inc('done'); if (d.result === 'win') { inc('fvwin'); if (d.tries <= 2) inc('fv2'); if (d.daily) max('fvstreak', d.streak || 1); } }      // «Пять букв»
     if (game === 'code') { inc('kw'); if (d.level >= 3) inc('kwhard'); if (d.level >= 2 && !d.hints && !d.checks) inc('kwclean'); if (d.daily) max('kwstreak', d.streak || 1); }
     if (game === 'words') { inc('ws'); if (d.level >= 4) inc('wsexp'); if (d.secret) inc('wssecret'); if (d.daily) max('wsstreak', d.streak || 1); if (d.mode === 'fil' && d.noList && d.level >= 2 && !d.hints) inc('wsnolist'); }
     if (game === 'sto') { inc('sto'); if (d.full) inc('stofull'); if (d.bigWin) inc('stobig'); }

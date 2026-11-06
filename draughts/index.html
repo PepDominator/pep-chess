@@ -75,10 +75,10 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 <script>window.PG_DRAUGHTS = true;</script>
 <script src="../shared/pg-settings.js?v=b0785522ee"></script>
 <script src="../shared/pg-chat.js?v=4b9bee20e9"></script>
-<script src="../shared/pg-sync.js?v=77f69e1012"></script>
+<script src="../shared/pg-sync.js?v=1d1f0318d6"></script>
 <script src="../shared/pg-friends.js?v=245c705b9c"></script>
-<script src="../shared/pg-ach.js?v=f066c7fc2f"></script>
-<script src="../shared/pg-rules.js?v=f9d2277062"></script>
+<script src="../shared/pg-ach.js?v=9477906bc5"></script>
+<script src="../shared/pg-rules.js?v=36370d77cb"></script>
 <script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png?v=4">
@@ -989,7 +989,7 @@ let histKind = 'local'; // какой список партий открыт: 'l
 let lastRec = null;  // запись последней сыгранной партии (для кнопки «Разобрать партию»)
 let online = null; // { id, myColor, host, started, unsub, poll, syncing, pending, suppress, oppName }
 const OD = () => window.OnlineDraughts;
-const BUILD = '2.9.8 · 6 ноября 2026';
+const BUILD = '2.10.0 · 6 ноября 2026';
 $('ver').textContent = 'Версия ' + BUILD;
 const CFG = Object.assign({ warn: 45000, claim: 90000, beat: 15000 }, window.__draughtsCfg || {});   // пороги присутствия (в тестах уменьшаются)
 // Журнал ошибок клиентов (не больше 5 за сеанс) — попадает в коллекцию clientErrors, чтобы проблемы были видны без скриншотов.

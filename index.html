@@ -8,20 +8,20 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Pep Games — шахматы, шашки, судоку и кроссворды</title>
-<meta name="description" content="Шахматы, шашки (международные и русские), судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. С компьютером и по сети — бесплатно, без рекламы и даже без интернета.">
+<meta name="description" content="Шахматы, шашки (международные и русские), судоку, кроссворды, японские кроссворды, «Сто к одному», филворд, ключворд и «Пять букв». С компьютером и по сети — бесплатно, без рекламы и даже без интернета.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pep Games">
 <meta property="og:title" content="Pep Games — восемь игр для ума">
-<meta property="og:description" content="Восемь игр для ума — бесплатно и без рекламы: шахматы, шашки, судоку, кроссворды и другие. С компьютером, по сети и даже без интернета.">
+<meta property="og:description" content="Девять игр для ума — бесплатно и без рекламы: шахматы, шашки, судоку, кроссворды, «Пять букв» и другие. С компьютером, по сети и даже без интернета.">
 <meta property="og:image" content="https://pepdominator.github.io/pep-chess/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <script src="shared/pg-settings.js?v=b0785522ee"></script>
-<script src="shared/pg-sync.js?v=77f69e1012"></script>
+<script src="shared/pg-sync.js?v=1d1f0318d6"></script>
 <script src="shared/pg-friends.js?v=245c705b9c"></script>
-<script src="shared/pg-ach.js?v=f066c7fc2f"></script>
-<script src="shared/pg-rules.js?v=f9d2277062"></script>
+<script src="shared/pg-ach.js?v=9477906bc5"></script>
+<script src="shared/pg-rules.js?v=36370d77cb"></script>
 <script src="shared/pg-tutor.js?v=1e14fcb6e3"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png?v=5">
@@ -110,6 +110,10 @@ h1 { font-weight:400; font-style:italic; font-size:clamp(34px, 6vw, 56px); line-
 .card:hover .sto-rv, .card:focus-visible .sto-rv { opacity:1; transform:none; } .card:hover .sto-num, .card:focus-visible .sto-num { opacity:0; }
 .fw-h { transition:fill .3s var(--d), stroke .3s var(--d); } .fw-ht { transition:fill .3s var(--d); } .fw-hp { stroke-dasharray:160; stroke-dashoffset:160; transition:stroke-dashoffset .45s calc(var(--d) + .1s) var(--ease); }
 .card:hover .fw-h, .card:focus-visible .fw-h { fill:var(--c); stroke:var(--c); } .card:hover .fw-ht, .card:focus-visible .fw-ht { fill:var(--k-panel); } .card:hover .fw-hp, .card:focus-visible .fw-hp { stroke-dashoffset:0; }
+.fvmini { background:var(--k-panel); display:flex; align-items:center; justify-content:center; } .fvmini svg { width:100%; height:100%; }
+.fv-t { fill:var(--k-panel); stroke:#C9CBBB; stroke-width:1.5; } .fv-t.fv-m { fill:#8C9083; stroke:none; } .fv-t.fv-n { fill:#C49A36; stroke:none; }
+.fv-t.fv-w { fill:var(--k-panel); stroke:var(--k-mu2); transition:fill .35s var(--d), stroke .35s var(--d); } .fv-l { font:700 19px 'Noto Sans',sans-serif; fill:var(--k-panel); } .fv-l.fv-w { fill:var(--k-tx); transition:fill .35s var(--d); }
+.card:hover .fv-t.fv-w, .card:focus-visible .fv-t.fv-w { fill:#3B7D4F; stroke:#3B7D4F; } .card:hover .fv-l.fv-w, .card:focus-visible .fv-l.fv-w { fill:var(--k-panel); }
 .kwmini { background:var(--k-panel) !important; background-image:none !important; } .kwmini svg { width:100%; height:100%; } .kw-c { fill:var(--k-surf); stroke:var(--k-nt); stroke-width:1.3; } .kw-n { fill:var(--k-mu2); font:600 9px 'Noto Sans',sans-serif; } .kw-k { fill:var(--k-gt); font:700 19px Georgia,serif; } .kw-h { fill:var(--k-nt); font:700 19px Georgia,serif; opacity:0; transform:translateY(5px); transform-box:fill-box; transition:opacity .25s var(--d), transform .25s var(--d); }
 .card:hover .kw-h, .card:focus-visible .kw-h { opacity:1; transform:none; }
 .card:hover .mini i.mv, .card:focus-visible .mini i.mv { transform:translate(calc(var(--hx)*100%), calc(var(--hy)*100%)); }
@@ -330,7 +334,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
   <header>
     <div class="brand">Pep Games</div>
     <h1 class="serif">Во что сыграем?</h1>
-    <p class="lead">Восемь игр для ума — бесплатно и без рекламы. Шахматы и шашки с компьютером или с друзьями, судоку, кроссворды, японские кроссворды, «Сто к одному», филворд и ключворд. Играйте даже без интернета и ставьте на телефон как приложение.</p>
+    <p class="lead">Девять игр для ума — бесплатно и без рекламы. Шахматы и шашки с компьютером или с друзьями, судоку, кроссворды, японские кроссворды, «Сто к одному», филворд, ключворд и «Пять букв». Играйте даже без интернета и ставьте на телефон как приложение.</p>
   </header>
 
   <main class="cards">
@@ -410,6 +414,16 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
         <div class="foot"><span class="count" id="cnt-code"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
       </div>
     </a>
+
+    <a class="card" href="five/" id="card-five" aria-label="Играть в «Пять букв»">
+      <div class="art"><div class="mini fvmini"><svg viewBox="0 0 250 250" aria-hidden="true"><rect x="35" y="16" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.0s"/><text x="51" y="38" text-anchor="middle" class="fv-l fv-m" style="--d:0.0s">В</text><rect x="72" y="16" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.1s"/><text x="88" y="38" text-anchor="middle" class="fv-l fv-m" style="--d:0.1s">Е</text><rect x="109" y="16" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.2s"/><text x="125" y="38" text-anchor="middle" class="fv-l fv-m" style="--d:0.2s">Т</text><rect x="146" y="16" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.3s"/><text x="162" y="38" text-anchor="middle" class="fv-l fv-m" style="--d:0.3s">Е</text><rect x="183" y="16" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.4s"/><text x="199" y="38" text-anchor="middle" class="fv-l fv-m" style="--d:0.4s">Р</text><rect x="35" y="54" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.0s"/><text x="51" y="76" text-anchor="middle" class="fv-l fv-m" style="--d:0.0s">П</text><rect x="72" y="54" width="32" height="32" rx="3" class="fv-t fv-n" style="--d:0.1s"/><text x="88" y="76" text-anchor="middle" class="fv-l fv-n" style="--d:0.1s">И</text><rect x="109" y="54" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.2s"/><text x="125" y="76" text-anchor="middle" class="fv-l fv-m" style="--d:0.2s">Л</text><rect x="146" y="54" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.3s"/><text x="162" y="76" text-anchor="middle" class="fv-l fv-m" style="--d:0.3s">О</text><rect x="183" y="54" width="32" height="32" rx="3" class="fv-t fv-m" style="--d:0.4s"/><text x="199" y="76" text-anchor="middle" class="fv-l fv-m" style="--d:0.4s">Т</text><rect x="35" y="90" width="32" height="32" rx="3" class="fv-t fv-w" style="--d:0.0s"/><text x="51" y="112" text-anchor="middle" class="fv-l fv-w" style="--d:0.0s">К</text><rect x="72" y="90" width="32" height="32" rx="3" class="fv-t fv-w" style="--d:0.1s"/><text x="88" y="112" text-anchor="middle" class="fv-l fv-w" style="--d:0.1s">Н</text><rect x="109" y="90" width="32" height="32" rx="3" class="fv-t fv-w" style="--d:0.2s"/><text x="125" y="112" text-anchor="middle" class="fv-l fv-w" style="--d:0.2s">И</text><rect x="146" y="90" width="32" height="32" rx="3" class="fv-t fv-w" style="--d:0.3s"/><text x="162" y="112" text-anchor="middle" class="fv-l fv-w" style="--d:0.3s">Г</text><rect x="183" y="90" width="32" height="32" rx="3" class="fv-t fv-w" style="--d:0.4s"/><text x="199" y="112" text-anchor="middle" class="fv-l fv-w" style="--d:0.4s">А</text><rect x="35" y="128" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="72" y="128" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="109" y="128" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="146" y="128" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="183" y="128" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="35" y="164" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="72" y="164" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="109" y="164" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="146" y="164" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="183" y="164" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="35" y="202" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="72" y="202" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="109" y="202" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="146" y="202" width="32" height="32" rx="3" class="fv-t fv-e"/><rect x="183" y="202" width="32" height="32" rx="3" class="fv-t fv-e"/></svg></div></div>
+      <div class="info">
+        <h2 class="serif">Пять букв</h2>
+        <p>Угадайте слово из пяти букв за шесть попыток. Зелёная буква стоит на месте, жёлтая есть в слове — остальное подскажет логика. Слово дня одно для всех: сравните, кто угадал быстрее.</p>
+        <div class="chips"><b>Слово дня</b><b>Свободная игра</b><b>Поделиться</b><b>Офлайн</b></div>
+        <div class="foot"><span class="count" id="cnt-five"></span><span class="go">Играть <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+      </div>
+    </a>
   </main>
 
   <section class="rank" id="rank">
@@ -423,7 +437,7 @@ html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="c
 
   <footer>
     <div>Pep Games · бесплатно, без рекламы</div>
-    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.9.8 · 6 ноября 2026</div><div style="font-size:11px;color:var(--k-mu2)"><a href="#" id="fb-open" style="color:inherit">Обратная связь</a> · <a href="licenses/" style="color:inherit">Лицензии и авторы</a></div>
+    <div style="margin-top:6px;font-size:11px;color:var(--k-mu2)">Версия 2.10.0 · 6 ноября 2026</div><div style="font-size:11px;color:var(--k-mu2)"><a href="#" id="fb-open" style="color:inherit">Обратная связь</a> · <a href="licenses/" style="color:inherit">Лицензии и авторы</a></div>
   </footer>
 </div>
 
@@ -487,6 +501,7 @@ function count(key) { try { const n = JSON.parse(localStorage.getItem(key) || '[
 document.getElementById('cnt-chess').textContent = count('chessGameHistory');
 document.getElementById('cnt-draughts').textContent = count('draughtsHistory');
 try { const st = JSON.parse(localStorage.getItem('codeStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-code').textContent = n ? `Разгадано: ${n}` : 'Новая игра'; } catch (e) {}
+  try { const st = JSON.parse(localStorage.getItem('fiveStats') || '{}'); document.getElementById('cnt-five').textContent = st.wins ? `Угадано: ${st.wins}` : 'Новая игра'; } catch (e) {}
 try { const st = JSON.parse(localStorage.getItem('wordsStats') || '{}'), n = Object.values(st.solved || {}).concat(Object.values((st.fil || {}).solved || {})).reduce((a, b) => a + b, 0); document.getElementById('cnt-words').textContent = n ? `Решено: ${n}` : 'Новая игра'; } catch (e) {}
 try { const st = JSON.parse(localStorage.getItem('stoStats') || '{}'); document.getElementById('cnt-sto').textContent = st.games ? `Сыграно игр: ${st.games}` : 'Новая игра'; } catch (e) {}
 try { const st = JSON.parse(localStorage.getItem('crosswordStats') || '{}'), n = Object.values(st.solved || {}).reduce((a, b) => a + b, 0); document.getElementById('cnt-crossword').textContent = n ? `Разгадано: ${n}` : 'Новая игра'; } catch (e) { document.getElementById('cnt-crossword').textContent = ''; }
@@ -649,7 +664,7 @@ const PF = (() => {
   const keyOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   const pl = (n, a, b, c) => { const m = n % 10, x = n % 100; return m === 1 && x !== 11 ? a : m >= 2 && m <= 4 && (x < 10 || x >= 20) ? b : c; };
-  const GAMES = [[1, 'chess', '♞', 'Шахматы'], [2, 'draughts', '⛀', 'Шашки'], [4, 'sudoku', '🔢', 'Судоку'], [8, 'crossword', '🔤', 'Кроссворды'], [16, 'nonogram', '🧩', 'Японские кроссворды'], [32, 'sto', '🎤', 'Сто к одному'], [64, 'words', '🔍', 'Филворд'], [128, 'code', '🔑', 'Ключворд']];
+  const GAMES = [[1, 'chess', '♞', 'Шахматы'], [2, 'draughts', '⛀', 'Шашки'], [4, 'sudoku', '🔢', 'Судоку'], [8, 'crossword', '🔤', 'Кроссворды'], [16, 'nonogram', '🧩', 'Японские кроссворды'], [32, 'sto', '🎤', 'Сто к одному'], [64, 'words', '🔍', 'Филворд'], [128, 'code', '🔑', 'Ключворд'], [256, 'five', '🟩', 'Пять букв']];
   let dsel = 'sudoku';
   const ach = () => { const A = load('pgAch', { u: {}, c: {}, d: {} }); return { u: A.u || {}, c: A.c || {}, d: A.d || {} }; };
   // «Обзор»: звание, сводка, последние достижения
@@ -686,7 +701,7 @@ const PF = (() => {
     $('pf-perday').innerHTML = totalN ? `<svg class="pf-chart" viewBox="0 0 ${W} ${H + 22}"><line class="ax" x1="0" y1="${H}" x2="${W}" y2="${H}"/>` + pts.map(([dt, n], i) => `<rect class="bar2" x="${i * bw + 3}" y="${H - (n / mx) * (H - 10)}" width="${bw - 6}" height="${(n / mx) * (H - 10)}"><title>${dt.getDate()} ${months[dt.getMonth()]}: ${n}</title></rect>` + (i % 5 === 0 || i === 29 ? `<text x="${i * bw + bw / 2}" y="${H + 16}" text-anchor="middle">${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}</text>` : '')).join('') + `<text x="2" y="12">${mx}</text></svg>` : '<div class="pf-empty">Пока пусто — сыграйте во что-нибудь.</div>';
     const cnt = GAMES.map(([bit, , ic, n]) => [ic + ' ' + n, Object.values(d).filter((x) => (x.g | 0) & bit).length]).sort((a, b) => b[1] - a[1]), top = Math.max(1, cnt[0][1]);
     $('pf-fav').innerHTML = cnt[0][1] ? cnt.filter((x) => x[1]).map(([n, v]) => `<div><span>${n}</span><span class="b"><i style="width:${Math.round(100 * v / top)}%"></i></span><span>${v} ${pl(v, 'день', 'дня', 'дней')}</span></div>`).join('') : '<div class="pf-empty">Здесь появятся игры, в которые вы играете чаще всего.</div>';
-    const st = (k) => load(k, {}), sto = st('stoStats'), ws = st('wordsStats'), code = st('codeStats');
+    const st = (k) => load(k, {}), sto = st('stoStats'), ws = st('wordsStats'), code = st('codeStats'), five = st('fiveStats');
     const pct = (w, p) => (p ? Math.round(100 * w / p) + '%' : '—'), sumS = (o) => Object.values((o && o.solved) || {}).reduce((a, b) => a + (+b || 0), 0);
     const daily = (k) => { const o = st(k).daily || {}; return `${num(o.streak)} ${pl(num(o.streak), 'день', 'дня', 'дней')}`; };
     const cards = [
@@ -697,7 +712,8 @@ const PF = (() => {
       ['nonogram', '🧩 Японские', [['Картинок', C('jp')], ['Без подсказок', C('jpclean')], ['Больших полей', C('jpbig')], ['Серия картинки дня', daily('nonogramStats')]]],
       ['sto', '🎤 Сто к одному', [['Игр', num(sto.games)], ['Лучший счёт', num(sto.best)], ['Побед в большой игре', num(sto.bigWins)], ['Полных табло', num(sto.fullBoards)]]],
       ['words', '🔍 Филворд', [['Филвордов', sumS(ws.fil)], ['«Поиск слов»', sumS(ws)], ['Тайных слов', num(ws.secrets)], ['Серия филворда дня', daily('wordsStats')]]],
-      ['code', '🔑 Ключворд', [['Разгадано', sumS(code)], ['Сложных', num((code.solved || {})[3])], ['Серия ключворда дня', daily('codeStats')]]]];
+      ['code', '🔑 Ключворд', [['Разгадано', sumS(code)], ['Сложных', num((code.solved || {})[3])], ['Серия ключворда дня', daily('codeStats')]]],
+      ['five', '🟩 Пять букв', [['Сыграно', num(five.played)], ['Угадано', num(five.wins)], ['Серия слова дня', `${num((five.daily || {}).streak)} ${pl(num((five.daily || {}).streak), 'день', 'дня', 'дней')}`]]]];
     $('pf-games').innerHTML = cards.map(([href, n, rows]) => `<a class="pf-game" href="${href}/"><div class="n">${n}</div><dl>${rows.map(([a, b]) => `<dt>${a}</dt><dd>${esc(b)}</dd>`).join('')}</dl></a>`).join('');
     const DS = [['sudoku', 'Судоку', 'sudokuStats', 1000], ['crossword', 'Кроссворд', 'crosswordStats', 1000], ['nonogram', 'Картинка', 'nonogramStats', 1000], ['words', 'Филворд', 'wordsStats', 1], ['code', 'Ключворд', 'codeStats', 1]];
     $('pf-dsel').innerHTML = DS.map(([id, n]) => `<button type="button" data-g="${id}" class="${dsel === id ? 'on' : ''}">${n}</button>`).join('');

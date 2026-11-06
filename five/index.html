@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script>/*PGDARK-EARLY*/(function(){try{var s=JSON.parse(localStorage.getItem('pgSettings')||'{}'),t=s.theme||'auto';var d=t==='dark'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.dataset.theme=d?'dark':'light';r.dataset.pal=d?(s.palDark||'night'):(s.palLight||'paper')}catch(e){}})()</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF0E7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Пять букв</title>
+<meta name="description" content="Угадайте слово из пяти букв за шесть попыток: зелёная буква — на месте, жёлтая — есть в слове. Слово дня — одно для всех.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pep Games">
+<meta property="og:title" content="Пять букв — Pep Games">
+<meta property="og:description" content="Угадайте слово из пяти букв за шесть попыток. Слово дня — одно для всех.">
+<meta property="og:image" content="https://pepdominator.github.io/pep-chess/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script src="../shared/pg-settings.js?v=b0785522ee"></script>
+<script src="../shared/pg-sync.js?v=1d1f0318d6"></script>
+<script src="../shared/pg-records.js?v=21ef3a03a6"></script>
+<script src="../shared/pg-ach.js?v=9477906bc5"></script>
+<script src="../shared/pg-rules.js?v=36370d77cb"></script>
+<script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png?v=1">
+<link rel="apple-touch-icon" href="icon-192.png?v=1">
+<style>
+:root { --bg:#EEF0E7; --panel:#FDFDFA; --border:#D9DBCC; --text:#2A2E24; --muted:#6E7568; --green:#3B5D4A; --navy:#2F3A56;
+  --hit:#3B7D4F; --near:#C49A36; --miss:#8C9083; --key:#E3E5DA; --tile:58px; --keyh:56px; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; height:100%; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans',system-ui,sans-serif; display:flex; flex-direction:column; align-items:center; overflow:hidden;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px); }
+header { width:100%; max-width:560px; display:flex; align-items:center; gap:8px; padding:10px 12px 4px; }
+header a.back { color:var(--muted); text-decoration:none; font-size:13.5px; white-space:nowrap; }
+header h1 { flex:1; text-align:center; margin:0; font:italic 400 26px Georgia,serif; letter-spacing:.01em; }
+.ibtn { border:1px solid var(--border); background:var(--panel); color:var(--text); width:36px; height:36px; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.modes { display:flex; gap:6px; width:100%; max-width:380px; padding:6px 12px 0; }
+.modes button { flex:1; border:1px solid var(--border); background:var(--panel); padding:8px 6px; font:700 13px 'Noto Sans',sans-serif; color:var(--text); cursor:pointer; }
+.modes button.on { background:var(--green); color:#fff; border-color:var(--green); }
+.modes button small { display:block; font-weight:500; font-size:11px; opacity:.8; }
+main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; min-height:0; padding:8px 0; }
+#grid { display:grid; grid-template-rows:repeat(6, var(--tile)); gap:6px; }
+.row { display:grid; grid-template-columns:repeat(5, var(--tile)); gap:6px; }
+.row.shake { animation:shake .42s; }
+@keyframes shake { 10%, 90% { transform:translateX(-2px); } 20%, 80% { transform:translateX(4px); } 30%, 50%, 70% { transform:translateX(-7px); } 40%, 60% { transform:translateX(7px); } }
+.tile { width:var(--tile); height:var(--tile); border:2px solid var(--border); background:var(--panel); display:flex; align-items:center; justify-content:center;
+  font:700 calc(var(--tile) * .5) 'Noto Sans',sans-serif; text-transform:uppercase; color:var(--text); user-select:none; }
+.tile.filled { border-color:#9A9D8E; animation:pop .1s; }
+@keyframes pop { 50% { transform:scale(1.08); } }
+.tile.hit, .tile.near, .tile.miss { color:#fff; border-color:transparent; }
+.tile.hit { background:var(--hit); } .tile.near { background:var(--near); } .tile.miss { background:var(--miss); }
+.tile.flip { animation:flip .5s ease forwards; }
+@keyframes flip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
+.tile.win { animation:jump .5s; } @keyframes jump { 40% { transform:translateY(-14px); } 70% { transform:translateY(3px); } }
+#kb { width:100%; max-width:560px; padding:6px 6px 10px; display:flex; flex-direction:column; gap:6px; user-select:none; }
+.krow { display:flex; gap:5px; justify-content:center; }
+.key { flex:1 1 0; max-width:46px; height:var(--keyh); border:none; background:var(--key); color:var(--text); font:700 calc(var(--keyh) * .32) 'Noto Sans',sans-serif; text-transform:uppercase; cursor:pointer; padding:0; border-radius:4px; }
+.key.wide { flex:1.6 1 0; max-width:74px; font-size:calc(var(--keyh) * .24); }
+.key.hit { background:var(--hit); color:#fff; } .key.near { background:var(--near); color:#fff; } .key.miss { background:var(--miss); color:#fff; opacity:.75; }
+.key:active { filter:brightness(.92); }
+#toast { position:fixed; top:84px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg); padding:10px 16px; font-weight:700; font-size:14px; opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; max-width:90vw; text-align:center; }
+#toast.on { opacity:1; }
+.ov { position:fixed; inset:0; background:rgba(20,24,20,.45); display:flex; align-items:center; justify-content:center; padding:16px; z-index:30; }
+.ov.hidden { display:none; }
+.card { background:var(--panel); border:1px solid var(--border); width:100%; max-width:400px; padding:22px 24px; box-shadow:0 30px 80px rgba(0,0,0,.3); max-height:calc(100dvh - 32px); overflow-y:auto; text-align:center; }
+.card h2 { margin:0 0 4px; font:italic 400 28px Georgia,serif; }
+.card .word { font:700 30px 'Noto Sans',sans-serif; letter-spacing:.18em; text-transform:uppercase; margin:6px 0 2px; color:var(--green); }
+.card .sub { color:var(--muted); font-size:13.5px; margin-bottom:14px; }
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0 14px; }
+.stats b { display:block; font-size:24px; } .stats span { font-size:11.5px; color:var(--muted); line-height:1.2; display:block; }
+.dist { text-align:left; margin-bottom:16px; } .dist div { display:flex; align-items:center; gap:6px; margin:3px 0; font-size:13px; }
+.dist i { display:block; height:18px; min-width:20px; background:var(--miss); color:#fff; font-style:normal; font-weight:700; font-size:12px; text-align:right; padding:1px 6px; }
+.dist i.me { background:var(--hit); }
+.btns { display:flex; flex-direction:column; gap:8px; } .big { border:none; background:var(--green); color:#fff; padding:12px; font:700 15px 'Noto Sans',sans-serif; cursor:pointer; }
+.big.light { background:var(--panel); color:var(--text); border:1px solid var(--border); }
+.next { font-size:13px; color:var(--muted); margin-top:10px; }
+footer { font-size:11px; color:var(--k-mu2); padding-bottom:4px; }
+@media (max-height:640px) { header h1 { font-size:21px; } .modes button small { display:none; } }
+/*PGDARK-VARS*/
+:root{--k-bg:#EEF0E7;--k-panel:#FDFDFA;--k-surf:#F3F2EA;--k-hover:#EAEADF;--k-line:#D9DBCC;--k-line2:#B7BAA5;--k-tx:#2A2E24;--k-mu:#6E7568;--k-mu2:#9A9D8E;--k-gt:#3B5D4A;--k-rt:#A23B33;--k-nt:#2F3A56;--k-warm:#F3EEDD;--k-acc:#3B5D4A;color-scheme:light}
+html[data-theme="dark"]{--k-bg:#131815;--k-panel:#1C221E;--k-surf:#252C27;--k-hover:#2E372F;--k-line:#39443C;--k-line2:#4D5A50;--k-tx:#E5E9DE;--k-mu:#A5AC9B;--k-mu2:#7E8677;--k-gt:#8CC3A0;--k-rt:#E8887E;--k-nt:#A9B9E0;--k-warm:#2B291E;--k-acc:#3B5D4A;--bg:#131815;--panel:#1C221E;--side-bg:#1C221E;--text:#E5E9DE;--muted:#A5AC9B;--ink-muted:#A5AC9B;--border:#39443C;--highlight:#2B3A2E;--green2:#8CC3A0;color-scheme:dark}
+
+/* кнопки-переключатели и «светлые острова» в тёмной теме */
+html[data-theme="dark"] .pg-sw::after, html[data-theme="dark"] .sw::after, html[data-theme="dark"] .toggle::after { background:#F1F3EA !important; }
+html[data-theme="dark"] img.piece, html[data-theme="dark"] .piece img { filter:none; }
+html[data-theme="dark"] ::selection { background:#3E6B52; color:#fff; }
+html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { color-scheme:dark; }
+/* судоку: тёмные клетки вместо палитры светлой доски */
+html[data-theme="dark"] .cell { background:#1F2622; border-right-color:#38443B; border-bottom-color:#38443B; }
+html[data-theme="dark"] .cell.alt { background:#262E29; }
+html[data-theme="dark"] .cell.peer { background:color-mix(in srgb, #4C7A5C 34%, #1F2622); }
+html[data-theme="dark"] .cell.alt.peer { background:color-mix(in srgb, #4C7A5C 34%, #262E29); }
+html[data-theme="dark"] .cell.same { background:color-mix(in srgb, #5878B8 42%, #1F2622) !important; }
+html[data-theme="dark"] .cell.sel { background:color-mix(in srgb, #C49A36 46%, #1F2622) !important; }
+html[data-theme="dark"] .cell.wrong { background:color-mix(in srgb, #C0463C 48%, #1F2622) !important; }
+/* кроссворд */
+html[data-theme="dark"] .c.l { background:#222A25; border-color:rgba(229,233,222,.38); box-shadow:0 1px 1px rgba(0,0,0,.4); }
+html[data-theme="dark"] .c.l.aw { background:color-mix(in srgb, #C49A36 30%, #222A25); border-color:rgba(214,180,90,.6); }
+html[data-theme="dark"] .c.l.ac { background:color-mix(in srgb, #C49A36 56%, #222A25); box-shadow:0 0 0 2px #8CC3A0, 0 2px 4px rgba(0,0,0,.45); }
+html[data-theme="dark"] .c.l.bad { background:color-mix(in srgb, #C0463C 46%, #222A25); }
+html[data-theme="dark"] { --navy:#5B76B8; }
+html[data-theme="dark"] .cell .v, html[data-theme="dark"] .c.l .ch { color:#9DB4EE; }
+html[data-theme="dark"] .cell.given .v { color:#EEF1E6; font-weight:700; }
+html[data-theme="dark"] .cell.wrong .v { color:#FF9A8E; }
+html[data-theme="dark"] .cell.hinted .v { color:#8CC3A0; }
+html[data-theme="dark"] #pad button, html[data-theme="dark"] #kb button { background:#252C27; border-color:#39443C; color:#CBD6F2; }
+html[data-theme="dark"] #pad button:disabled, html[data-theme="dark"] #kb button:disabled { color:#5A6760; }
+html[data-theme="dark"] #minimap { background:rgba(28,34,30,.93); border-color:rgba(229,233,222,.45); box-shadow:0 4px 14px rgba(0,0,0,.5); }
+/* шахматная и шашечная доски чуть приглушены, чтобы не слепили */
+html[data-theme="dark"] #board, html[data-theme="dark"] .board, html[data-theme="dark"] #chessboard { filter:brightness(.86) contrast(1.02); }
+/* кружок «чёрных» шашек и подобные тёмные значки не должны сливаться с тёмным фоном */
+html[data-theme="dark"] .side i.b { box-shadow:0 0 0 1px #6B766D; }
+
+html[data-theme="light"][data-pal="sepia"]{--k-bg:#EFE6D4;--k-panel:#FBF6EB;--k-surf:#F5ECDC;--k-hover:#EADFC8;--k-line:#D8C9AB;--k-line2:#BFAE8C;--k-tx:#3A2E21;--k-mu:#76664F;--k-mu2:#9E8E77;--k-gt:#7A4E24;--k-rt:#A23B33;--k-nt:#4A3A2A;--k-warm:#F2E4C6;--k-acc:#8A5A2B;--bg:#EFE6D4;--panel:#FBF6EB;--side-bg:#FBF6EB;--text:#3A2E21;--muted:#76664F;--ink-muted:#76664F;--border:#D8C9AB;--green:#8A5A2B;--green2:#7A4E24;--navy:#4A3A2A}
+html[data-theme="light"][data-pal="sea"]{--k-bg:#E4EDF0;--k-panel:#FAFCFC;--k-surf:#EDF3F5;--k-hover:#DCE8EB;--k-line:#C6D6DB;--k-line2:#A4BCC2;--k-tx:#1D2A33;--k-mu:#596C77;--k-mu2:#8A9BA4;--k-gt:#1D6A7A;--k-rt:#B5483C;--k-nt:#23446B;--k-warm:#EEF0E2;--k-acc:#1D6A7A;--bg:#E4EDF0;--panel:#FAFCFC;--side-bg:#FAFCFC;--text:#1D2A33;--muted:#596C77;--ink-muted:#596C77;--border:#C6D6DB;--green:#1D6A7A;--green2:#1D6A7A;--navy:#23446B}
+html[data-theme="light"][data-pal="pine"]{--k-bg:#D6E3D2;--k-panel:#F6FAF3;--k-surf:#E5EEE0;--k-hover:#D0DDC8;--k-line:#B7C9AC;--k-line2:#93AA87;--k-tx:#1E291D;--k-mu:#5B6955;--k-mu2:#8B9884;--k-gt:#24543A;--k-rt:#A23B33;--k-nt:#2B3C2B;--k-warm:#F1E9CF;--k-acc:#24543A;--bg:#D6E3D2;--panel:#F6FAF3;--side-bg:#F6FAF3;--text:#1E291D;--muted:#5B6955;--ink-muted:#5B6955;--border:#B7C9AC;--green:#24543A;--green2:#24543A;--navy:#2B3C2B}
+html[data-theme="light"][data-pal="contrast"]{--k-bg:#FFFFFF;--k-panel:#FFFFFF;--k-surf:#F2F2F2;--k-hover:#E4E4E4;--k-line:#5C5C5C;--k-line2:#2E2E2E;--k-tx:#000000;--k-mu:#2B2B2B;--k-mu2:#444444;--k-gt:#005A2B;--k-rt:#B00000;--k-nt:#00227A;--k-warm:#FFF3BF;--k-acc:#00552A;--bg:#FFFFFF;--panel:#FFFFFF;--side-bg:#FFFFFF;--text:#000000;--muted:#2B2B2B;--ink-muted:#2B2B2B;--border:#5C5C5C;--green:#00552A;--green2:#005A2B;--navy:#00227A}
+html[data-theme="dark"][data-pal="studio"]{--k-bg:#111A2E;--k-panel:#18233F;--k-surf:#202C4C;--k-hover:#283659;--k-line:#334169;--k-line2:#4A5884;--k-tx:#EEF1F8;--k-mu:#AAB3CD;--k-mu2:#7E89A8;--k-gt:#E9C46A;--k-rt:#F08A7E;--k-nt:#B9C8F0;--k-warm:#2B2A24;--k-acc:#B8862A;--bg:#111A2E;--panel:#18233F;--side-bg:#18233F;--text:#EEF1F8;--muted:#AAB3CD;--ink-muted:#AAB3CD;--border:#334169;--green:#B8862A;--green2:#E9C46A;--navy:#B9C8F0}
+html[data-pal="studio"][data-theme="dark"] .cell { background:#1A2441; border-right-color:#344168; border-bottom-color:#344168; } html[data-pal="studio"][data-theme="dark"] .cell.alt { background:#202B4B; } html[data-pal="studio"][data-theme="dark"] .c.l { background:#1C2643; }
+html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="contrast"] :focus-visible { outline:3px solid #00227A !important; outline-offset:2px; }</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../">← Все игры</a>
+  <h1>Пять букв</h1>
+  <button class="ibtn" id="rules-btn" title="Правила" aria-label="Правила">?</button>
+  <button class="ibtn" id="stats-btn" title="Статистика" aria-label="Статистика">📊</button>
+</header>
+<div class="modes" role="tablist">
+  <button id="m-daily" class="on" role="tab">Слово дня<small id="daily-sub">одно для всех</small></button>
+  <button id="m-free" role="tab">Свободная игра<small>случайное слово</small></button>
+</div>
+<main><div id="grid" aria-label="Поле: шесть попыток по пять букв"></div></main>
+<div id="kb" aria-label="Клавиатура"></div>
+<footer>Версия 2.10.0 · 6 ноября 2026</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+<div class="ov hidden" id="end-ov"><div class="card" id="end-card"></div></div>
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const W = {"answers":["абзац","автор","азарт","актер","актив","акула","акция","аллея","алмаз","ангел","арбуз","арена","арест","армия","архив","аудио","аудит","афиша","бабка","багаж","багет","базар","байка","балет","балка","банан","банда","банка","баран","баржа","барин","барон","башня","бедро","белка","белок","берег","бетон","билет","биржа","битва","бланк","блеск","блюдо","богач","бокал","бомба","бонус","борец","бочка","брань","бремя","бренд","бровь","броня","брюки","брюхо","бугор","будка","буква","букет","буфет","бухта","бытие","вагон","ванна","вахта","вдова","ведро","венец","венок","весло","весна","ветвь","ветер","ветка","вечер","взвод","вздор","вздох","взлет","взнос","видео","визит","вилка","вилла","вирус","виски","висок","виток","вихрь","вклад","влага","водка","вождь","возня","война","волна","вопль","ворон","время","въезд","выбор","вывоз","выезд","вызов","выкуп","вылет","вышка","газон","гамма","гараж","гений","герой","глава","глина","глубь","глыба","голод","голос","гонка","горка","горло","гость","грант","грань","грипп","гроза","груда","грудь","грунт","груша","грязь","губка","гудок","гуляш","дверь","девиз","декан","демон","диван","диета","добро","дождь","дозор","домен","домик","доска","досуг","доход","дочка","драка","драма","дрова","дрожь","дуэль","дымка","дырка","жажда","жених","живот","жизнь","жилец","забор","завет","закат","закон","залив","залог","замок","заряд","затея","заход","зачет","звено","земля","зенит","зерно","злоба","знамя","иврит","идеал","изгиб","икона","имидж","искра","испуг","истец","исток","исход","кабак","казак","казна","казнь","камин","канат","канон","капля","капот","карма","карта","каска","касса","катер","каюта","кепка","киоск","кисть","кишка","класс","клоун","книга","князь","ковер","койка","колея","комар","комок","конек","конец","копия","копье","корка","корма","кость","косяк","кошка","кража","кровь","крона","крыло","крыса","крыша","кубик","кубок","кузов","кукла","кулак","культ","кумир","купец","купля","купол","кураж","кухня","кучка","лавка","ладья","лазер","лампа","лапка","ларек","ласка","лента","лилия","лимон","линза","лицей","ловля","лодка","ложка","лоток","магия","мадам","майор","малыш","марка","маска","масло","масса","матча","мафия","мачта","медик","мерка","месть","месяц","метро","мечта","миска","мишка","модем","монах","морда","мороз","моряк","мотив","мотор","музей","мусор","мысль","мышка","мышца","мэрия","мюсли","мятеж","навык","налог","напор","наряд","насос","наука","недуг","нефть","нитка","ножка","носик","носок","нужда","нюанс","обзор","обида","облик","обман","обрыв","обряд","обувь","обход","объем","обыск","овраг","огонь","озеро","океан","оклад","олень","опека","опера","опора","опрос","опция","орган","орден","осада","осень","особа","особь","отбор","ответ","отдых","отзыв","отрыв","отряд","отсек","отход","очерк","ощупь","пакет","палач","палец","палка","панда","папка","парад","парик","парта","парус","паста","пауза","пафос","пачка","певец","пение","пепел","перец","песня","песок","петля","петух","печка","пешка","пилот","пират","пирог","пламя","пласт","плато","плеер","племя","плечо","плита","плоть","побег","повар","погон","поезд","пожар","позор","показ","полис","полка","полюс","порог","порок","порох","порча","порыв","посев","посол","поход","почва","почка","почта","поэма","пресс","принц","приют","проба","проза","пульс","пульт","пункт","пучок","пушка","пчела","пытка","пьеса","пятка","пятно","радио","разум","рамка","раунд","ребро","редис","режим","релиз","рельс","рента","рифма","робот","родня","ролик","роман","рояль","рубль","ружье","рукав","русло","ручей","ручка","рыбак","рыбка","рывок","рынок","рычаг","рюмка","сабля","садик","салат","салон","самец","самка","сапог","сарай","сахар","свеча","свист","свита","сдача","сдвиг","сеанс","седло","сезон","секта","семья","сенат","сетка","синяк","скала","сквер","склад","склон","скрип","скука","слеза","слово","слуга","слюна","смесь","собор","совет","сокол","сосед","сосна","сосуд","спина","спирт","спорт","спуск","среда","ссора","стадо","сталь","старт","ствол","стейк","стена","стенд","степь","столб","стопа","страж","страх","струя","судно","судья","суета","сумма","сцена","съезд","сынок","сюжет","табак","тайга","тайна","такси","талия","танец","тариф","тачка","театр","тезис","текст","тепло","тесто","тетка","тираж","тиран","титул","товар","тонна","топор","тоска","точка","трава","тракт","трата","треск","треть","тропа","труба","туман","тупик","туфля","уголь","удача","уклад","уклон","улика","успех","устав","устье","ущерб","факел","фанат","фасад","ферзь","ферма","физик","фильм","финал","фишка","фланг","фокус","форум","фотка","франк","фронт","фрукт","халат","хвост","химик","химия","хобби","холод","холст","хохот","хурма","хутор","центр","цифра","чайка","чашка","червь","череп","честь","чехол","число","чудак","чужак","шаман","шапка","шарик","шахта","шашка","шишка","шкала","школа","шкура","шланг","шляпа","шорох","шорты","шоссе","шофер","шпага","шпион","шприц","шрифт","штамп","штора","шторм","штраф","штрих","штурм","шутка","щенок","щетка","экран","элита","эпоха","этика","юноша","юрист","ягода","якорь","ярлык"],"valid":["аббат","абзац","абрек","абрис","аванс","авель","автор","агама","агнец","агора","адепт","азарт","айран","акита","актер","актив","акула","акциз","акция","алиби","аллея","аллюр","алмаз","алтын","алыча","амбар","амвон","амеба","ампер","ампир","ангар","ангел","аниме","анкер","анонс","аорта","арбуз","аргус","ареал","арена","арест","аркан","армия","армяк","архар","архив","аскет","астма","астра","атлас","атлет","атолл","аудио","аудит","афера","афина","афиша","ахилл","бабка","багаж","багет","багор","бажов","базар","базис","байка","балда","балет","балка","балык","банан","банда","банка","баран","бараш","баржа","барий","барин","барит","барон","барри","барса","барто","басня","батат","батон","батут","батый","батыр","бахча","башня","бегун","бедро","бекар","бекас","бекон","белка","белов","белок","белый","беляш","бенин","берег","берет","бетон","бивак","бигль","бигос","бигус","бидон","бизон","билет","билль","бинго","биржа","битва","битлз","битов","битум","битюг","бланк","блеск","блины","блоха","блуза","блюдо","богач","бойня","бокал","болид","бомба","бонза","бонна","бонус","борец","босяк","ботва","бочка","брамс","брань","брасс","брейк","бремя","бренд","брешь","бридж","бровь","бронх","бронь","броня","брошь","брюки","брюхо","бубен","бубка","бугай","бугор","будка","буква","букет","булка","буран","бурда","бурка","бурун","бутик","бутон","бутсы","буфет","бухта","бытие","бычок","бьюик","бэмби","бэнкс","вагон","валет","валик","валун","вальс","ванна","варан","варяг","ватин","вафли","вафля","вахта","вдова","ведро","велес","венди","венец","веник","венок","вепрь","верба","верди","верта","верфь","весло","весна","веста","ветвь","ветер","ветка","вечер","взвод","вздор","вздох","взлет","взлом","взмах","взнос","видак","видео","визир","визит","вилка","вилла","винни","вираж","вирус","виски","висок","виток","вихрь","вицин","вишня","вклад","влага","вобла","водка","вожак","вождь","вожжа","возня","война","вокал","волан","волна","волхв","вольт","вопль","ворон","ворох","ворье","вотум","время","вуаль","вчера","въезд","выбор","вывих","вывоз","выгул","выдох","выдра","выезд","вызов","выкуп","вылет","вылов","выпад","выпас","вырез","вычет","вышка","вьюга","газон","гайдн","гайка","галит","галич","галка","галоп","гамак","гамма","гараж","гарри","гауда","гаусс","гевея","гейша","гелий","гений","герой","гжель","гидра","гиена","гимли","гирос","глава","гладь","глина","глубь","глушь","глыба","гниль","гномы","гобой","говор","гоген","голод","голос","гольф","гомер","гонец","гонка","гонор","гопак","горец","горка","горло","горох","гость","грант","грань","грива","гриль","гримм","грипп","гроза","груда","грудь","грунт","груша","грязь","гуава","гуашь","губка","гудок","гуляш","гумно","гусак","гусар","гусля","гюйер","дамба","данко","данте","дартс","дацан","дверь","дебет","дебош","дебют","девиз","дедал","дедус","декан","декор","делец","демон","денди","дерби","десна","дефис","джайв","джинн","дзюба","дзюдо","диван","диета","динар","динго","диско","длань","днище","добра","добро","догма","дождь","дозор","долма","домен","домик","домна","донна","донор","донос","доска","досуг","досье","доход","дочка","драже","драйв","драка","драма","древо","дрейф","дрель","дробь","дрова","дрожь","дрозд","дрофа","друид","дрянь","дубль","дувал","дудка","дукат","дупло","дуэль","дымка","дырка","дюрер","дятел","егерь","ересь","есаул","жабры","жавер","жажда","жакет","жатва","жатка","желоб","желчь","жених","жердь","жетон","живот","жизнь","жилет","жилец","жилка","жираф","жокей","жрица","жупан","забег","забор","завал","завет","завуч","загар","загон","загул","задор","заезд","зажим","зазор","закат","закон","залив","залог","замах","замок","замша","занос","запор","зарез","заряд","засов","затея","затон","заход","зачет","звено","зебра","зевок","зелье","земля","зенит","зерно","зефир","зидан","зимой","зипун","злато","злоба","знамя","зомби","зразы","зубец","иаков","ибсен","иврит","игрек","идеал","иерей","извоз","изгиб","изгой","излом","износ","изъян","изыск","икона","имидж","индюк","инжир","интер","исаак","исида","искра","искус","испуг","истец","исток","исход","йодль","йотун","кабак","кабан","кавур","кагор","кадет","кадык","казак","казан","казна","казнь","казус","кайло","кайма","кайра","какао","калач","калий","камаз","камин","камыш","канат","канва","канон","каноэ","канун","капли","капля","капот","карат","карга","карма","карри","карта","карты","каска","касса","каста","катер","катет","каток","кафка","кашне","кашпо","каюта","кварц","квест","кебаб","кегли","келья","кендо","кепка","кефир","кешью","кивот","кизил","кинза","киоск","кирка","кисет","кисть","кишка","кладь","класс","клатч","клерк","клест","клеть","клещи","клинч","клоун","кляча","книга","князь","коала","кобра","ковер","кожух","козел","козла","койка","койот","кокон","кокос","колба","колея","колит","колли","колос","колун","кольт","комар","комод","комок","комом","конек","конец","конус","конюх","копия","копна","копье","корги","корка","корма","короб","кость","косяк","котик","кофта","кочан","кочка","кошка","кошма","кощей","кража","краса","красс","кредо","крепы","кровь","кройф","крона","кросс","кроха","круиз","крупа","круча","крыло","крыса","крыша","кубик","кубок","кузен","кузов","кукла","кулак","кулеш","кулик","кулич","кулон","культ","кумач","кумир","кумыс","купец","купля","купол","купон","кураж","курок","кухня","кучер","кучка","кушак","лаваш","лавка","ладан","ладья","лазер","лайка","лакей","лампа","лапка","лапти","лапша","ларек","ласка","ласты","латка","латте","лафет","лацио","левин","левша","легат","лейбл","лейка","лемех","лемма","лемур","лента","лепет","лепта","летун","леший","лиана","ливан","лизин","ликаз","ликер","лилия","лиман","лимит","лимон","лимфа","линза","линзы","литий","лихва","лицей","лобби","лобио","ловец","ловля","логин","лодка","ложка","ложки","локон","лопух","лосяш","лоток","лотос","лукум","лыжня","людей","люпин","лютер","лютик","магия","магма","мадам","мажор","мазда","мазок","мазут","майор","макет","малер","малыш","маляр","мамай","манат","манга","манго","манеж","мания","манка","манто","манты","манул","марал","марка","марля","марпл","маска","масло","масон","масса","матка","матча","мафия","махра","мачта","медея","медик","медяк","мелки","мелок","мерин","мерка","месса","месси","месть","месье","месяц","метан","метис","метка","метла","метро","меццо","мечта","мешок","мидия","минор","минос","мираж","миска","митоз","митра","мишка","модем","мокко","молва","молот","молох","моляр","монах","мопед","морда","мороз","моряк","мосье","мотив","мотор","музей","мумия","мусор","муфта","мцыри","мысль","мышка","мышца","мэрия","мюсли","мякиш","мятеж","мячик","набег","навар","навес","навет","навоз","навык","наган","нагар","наезд","нажим","наказ","накал","налим","налог","напор","нарды","нарты","наряд","насос","наука","науки","нахал","начос","наяда","невод","недуг","нерка","нерон","нерпа","нефть","нимфа","нинья","нитка","ничья","нищий","ножка","нолик","норка","носик","носов","носок","нотка","нужда","нутро","нырок","нюанс","оазис","обвал","обзор","обида","облик","облом","обман","обрез","обруч","обрыв","обряд","обувь","обуза","обход","объем","обыск","овраг","огонь","озеро","озноб","окапи","океан","окись","оклад","окрас","оксид","окунь","олень","олеша","олива","олимп","олово","олуша","ольха","омега","омлет","омуль","оникс","онучи","опека","опель","опера","опись","опиум","оплот","опора","опрос","опция","орган","орден","ореол","орион","орлан","орфей","осада","осень","осетр","осина","оскал","особа","особь","осока","остер","остин","отара","отбой","отбор","отвал","отвар","отвес","ответ","отвод","отгул","отдых","отжим","отзыв","откат","откос","откуп","отлив","отлов","отпор","отрыв","отряд","отсек","отход","отчим","офорт","охват","охота","очерк","ощупь","падеж","пазлы","пакет","палас","палач","палаш","палех","палец","палка","панда","панно","папка","папус","парад","парик","парис","паром","парта","парус","парфе","парча","паска","паста","пауза","пафос","пачка","пашня","певец","пегас","пекан","пекло","пемза","пенал","пение","пенне","пенни","пепел","пеппи","перец","перов","перро","перст","перун","песец","песнь","песня","песок","петля","петух","печка","пешка","пиала","пиано","пижма","пижон","пикап","пикет","пикша","пилат","пилон","пилот","пинта","пират","пирит","пирог","писец","питон","пифия","пихта","пицца","пламя","планк","пласт","плато","плаха","плебс","плева","плеер","племя","плеск","плеть","плечо","плешь","плита","плоть","побег","повар","погон","подол","поезд","пожар","позор","позыв","пойма","показ","покер","покос","полис","полка","полоз","полюс","помин","помол","помор","помпа","порез","порог","порок","порох","порча","порше","порыв","посев","посол","посох","посул","потоп","поход","почва","почка","почки","почта","пошиб","поэма","прадо","прайс","пресс","прима","принц","приют","проба","проза","просо","пруда","прыть","прядь","пряжа","птица","пуант","пуаро","пудра","пульс","пульт","пункт","пупок","пурга","пуфик","пучок","пушка","пхали","пчела","пшено","пытка","пышка","пьеро","пьеса","пятак","пятка","пятно","рабле","радар","радий","радио","радон","разум","ралли","рамен","рамка","рампа","ранец","ранчо","раунд","рахит","ребро","ребус","регби","регги","редис","редут","режим","резак","резец","резня","резон","резус","релиз","рельс","рента","репин","репка","ретро","рикша","рифма","робот","рогоз","родео","родич","родня","рожки","розга","рознь","рокот","ролик","роллы","роман","ромео","ромул","ропот","ротор","рояль","ртуть","рубец","рубин","рубль","ружье","руина","рукав","рулет","рулон","румба","рунет","рупия","рупор","русло","ручей","ручка","рыбак","рыбка","рывок","рыжик","рында","рынок","рысак","рычаг","рэкет","рюмка","рюрик","сабля","саван","садик","сазан","салат","салки","салон","салют","самба","самбо","самец","самка","самса","санки","санчо","сапер","сапог","сарай","сатин","сатир","сауна","сахар","сброс","свара","свеча","свист","свита","свифт","свора","сдача","сдвиг","сеанс","седан","седло","сезон","секта","селен","семья","сенат","сенча","сепия","серов","серый","сетка","силач","симба","симка","синий","синод","синус","синяк","сироп","ситец","скала","скарб","скаут","сквер","сквош","скетч","склад","склеп","склон","скоба","скотч","скрип","скука","скула","скунс","слайд","слеза","слезы","сленг","слива","слизь","слово","слуга","слэнг","слюда","слюна","смерч","смесь","смета","смола","смоль","смотр","смрад","смута","собор","совет","совок","созыв","сойер","сойка","сокол","солод","сонар","сонет","сопло","сорго","сосед","сосна","сосуд","софит","спина","спирт","спица","спицы","сплав","сплин","спора","спорт","спрут","спуск","среда","ссора","ссуда","стадо","сталь","станс","старт","ствол","створ","стезя","стейк","стела","стена","стенд","степь","стерх","столб","столп","стопа","страж","страх","стриж","стрим","строп","струя","стужа","судак","судно","судья","суета","сукно","сумка","сумма","сурок","сутки","сутра","суфле","сушка","сцена","съезд","сынок","сэмпл","сюжет","сюита","табак","табло","табор","табун","таган","тажин","тайга","тайна","такса","такси","талия","талон","танго","танец","танин","тапас","тапир","тапок","таран","тариф","тауэр","тафта","тахта","тачка","тварь","твист","театр","тезис","текст","тенге","тенор","тепло","терем","терка","тесак","тесла","тесто","тесть","тетка","тиара","тигра","типаж","тираж","тиран","тиски","титан","титры","титул","товар","токай","толма","толща","томат","тонна","тонус","топаз","топор","топот","торба","торец","торий","торос","тоска","точка","трава","тракт","транш","трата","траур","траян","трель","тренд","треск","трест","треть","тромб","тропа","труба","труха","трюмо","тубус","тукан","тулуп","туман","тумба","тунец","тупик","турка","турне","туфли","туфля","тщета","тыква","тюбик","тюфяк","тягач","тяжба","тяпка","уголь","угорь","удача","ужасы","уклад","уклон","укроп","уксус","уланы","улика","умбра","упырь","успех","устав","устой","уступ","устье","утеха","утиль","ухват","ущерб","фагот","фазан","файер","факел","факир","фалда","фанат","фарси","фасад","фасон","фатум","фауна","фауст","фаянс","фелпс","ферзь","ферма","феска","фетиш","физик","фикус","филин","фильм","финал","финик","финиш","фиорд","фишка","фланг","флокс","флора","флюид","фляга","фобия","фокус","фондю","форте","форум","фотка","франк","франт","фрахт","фрейм","фрейя","френч","фродо","фронт","фрукт","фужер","фураж","фурия","фурор","фьорд","хабар","хаджи","халат","халва","хамон","хамса","хармс","харчо","хаски","хвала","хворь","хвост","херес","химик","химия","хинди","хитон","хлыст","хмель","хобби","хобот","холод","холоп","холст","холуй","хомут","хомяк","хонда","хорал","хорда","хорей","хорек","хохма","хохот","хруст","хумус","хунта","хурма","хутор","цапля","цезий","центр","цефей","цехин","цигун","цинга","цифра","чабан","чайка","чакра","чалма","чашка","челка","челси","чепец","червь","череп","черти","честь","четки","чехол","чешуя","чибис","чирок","число","чрево","чубук","чувак","чугун","чудак","чужак","чулан","чулки","чурек","шабер","шабли","шагал","шайба","шайка","шакал","шалаш","шалун","шаман","шапка","шарик","шасси","шаттл","шахта","шашка","шашки","шельф","шериф","ширма","шифон","шишка","шкала","шквал","школа","шкура","шланг","шлейф","шляпа","шмель","шнапс","шопен","шорох","шорты","шоссе","шофер","шпага","шпала","шпиль","шпион","шприц","шпуля","шрифт","штамм","штамп","штиль","штифт","штора","шторм","штраф","штрих","штурм","шулер","шуман","шурин","шурпа","шуруп","шутка","шхуна","щебет","щегол","щенок","щепка","щетка","щипцы","щитки","щурка","эгида","эдикт","эйлер","эклер","экран","элвис","элита","эмаль","эпоха","эрзац","эрида","эркер","эскиз","эстет","этика","этнос","юнона","юноша","юрист","юрфак","ягель","ягода","ягуар","яичко","якорь","ямщик","ярлык","ясень"]};
+const ANSWERS = W.answers, VALID = new Set(W.valid);
+const ROWS = 6, LEN = 5;
+const KB = ['йцукенгшщзхъ', 'фывапролджэ', '<ячсмитьбю>'];
+const LAT = { KeyQ: 'й', KeyW: 'ц', KeyE: 'у', KeyR: 'к', KeyT: 'е', KeyY: 'н', KeyU: 'г', KeyI: 'ш', KeyO: 'щ', KeyP: 'з', BracketLeft: 'х', BracketRight: 'ъ', KeyA: 'ф', KeyS: 'ы', KeyD: 'в', KeyF: 'а', KeyG: 'п', KeyH: 'р', KeyJ: 'о', KeyK: 'л', KeyL: 'д', Semicolon: 'ж', Quote: 'э', KeyZ: 'я', KeyX: 'ч', KeyC: 'с', KeyV: 'м', KeyB: 'и', KeyN: 'т', KeyM: 'ь', Comma: 'б', Period: 'ю' };
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const pad2 = (n) => String(n).padStart(2, '0'), keyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const human = (k) => { const [y, m, d] = k.split('-').map(Number); return `${d} ${MONTHS[m - 1]} ${y}`; };
+const todayKey = () => keyOf(new Date());
+const dayBefore = (k) => { const [y, m, d] = k.split('-').map(Number); return keyOf(new Date(y, m - 1, d - 1)); };
+function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// слово дня: одна и та же перестановка ответов для всех, по слову на день — без повторов, пока список не кончится
+const PERM = (() => { const a = ANSWERS.slice(), r = mulberry32(20261107); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+const dayIndex = (k) => { const [y, m, d] = k.split('-').map(Number); return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(2026, 10, 7)) / 86400000); };
+const dailyWord = (k) => PERM[((dayIndex(k) % PERM.length) + PERM.length) % PERM.length];
+// раскраска попытки: 2 — на месте, 1 — есть в слове, 0 — нет; повторы букв учитываются по числу в ответе
+function score(guess, ans) {
+  const res = Array(LEN).fill(0), left = {};
+  for (let i = 0; i < LEN; i++) { if (guess[i] === ans[i]) res[i] = 2; else left[ans[i]] = (left[ans[i]] || 0) + 1; }
+  for (let i = 0; i < LEN; i++) if (res[i] !== 2 && left[guess[i]] > 0) { res[i] = 1; left[guess[i]]--; }
+  return res;
+}
+const CLS = ['miss', 'near', 'hit'];
+let stats = load('fiveStats', null) || { played: 0, wins: 0, dist: [0, 0, 0, 0, 0, 0], daily: { results: {}, streak: 0, best: 0, last: null } };
+let save = load('fiveSave', {}), mode = save.mode === 'free' ? 'free' : 'daily', G = null, cur = '', busy = false;
+function freshDaily() { const k = todayKey(); return save.daily && save.daily.date === k ? save.daily : { date: k, answer: dailyWord(k), guesses: [], done: false, win: false }; }
+function freshFree() { if (save.free && !save.free.done) return save.free; let a; do { a = ANSWERS[Math.floor(Math.random() * ANSWERS.length)]; } while (a === dailyWord(todayKey())); return { answer: a, guesses: [], done: false, win: false }; }
+function persist() { save.mode = mode; save[mode] = G; store('fiveSave', save); }
+/* ---------- построение ---------- */
+function build() {
+  const g = $('grid'); g.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) { const row = document.createElement('div'); row.className = 'row'; for (let c = 0; c < LEN; c++) { const t = document.createElement('div'); t.className = 'tile'; row.appendChild(t); } g.appendChild(row); }
+  const kb = $('kb'); kb.innerHTML = '';
+  for (const line of KB) { const row = document.createElement('div'); row.className = 'krow'; for (const ch of line) { const b = document.createElement('button'); b.className = 'key';
+    if (ch === '<') { b.textContent = 'Ввод'; b.className += ' wide'; b.dataset.k = 'Enter'; } else if (ch === '>') { b.textContent = '⌫'; b.className += ' wide'; b.dataset.k = 'Backspace'; b.setAttribute('aria-label', 'Стереть'); } else { b.textContent = ch; b.dataset.k = ch; }
+    b.onclick = () => press(b.dataset.k); row.appendChild(b); } kb.appendChild(row); }
+}
+function resize() {
+  const vw = Math.min(innerWidth, 560), vh = innerHeight, keyh = Math.max(42, Math.min(58, Math.floor(vh * 0.068)));
+  const free = vh - 64 - 52 - 3 * keyh - 40 - 18 - 30;           // шапка, вкладки, клавиатура, отступы
+  const tile = Math.max(36, Math.min(64, Math.floor((free - 5 * 6) / 6), Math.floor((vw - 48 - 4 * 6) / 5)));
+  document.documentElement.style.setProperty('--tile', tile + 'px'); document.documentElement.style.setProperty('--keyh', keyh + 'px');
+}
+addEventListener('resize', resize);
+/* ---------- отрисовка ---------- */
+function render(revealRow) {
+  const rows = $('grid').children, best = {};
+  G.guesses.forEach((w, r) => { const sc = score(w, G.answer); [...w].forEach((ch, i) => { best[ch] = Math.max(best[ch] == null ? -1 : best[ch], sc[i]); });
+    [...rows[r].children].forEach((t, i) => { t.textContent = w[i]; t.className = 'tile ' + CLS[sc[i]]; if (r === revealRow) { t.className += ' flip'; t.style.animationDelay = (i * 0.18) + 's'; } }); });
+  for (let r = G.guesses.length; r < ROWS; r++) [...rows[r].children].forEach((t, i) => { const ch = r === G.guesses.length ? (cur[i] || '') : ''; t.textContent = ch; t.className = 'tile' + (ch ? ' filled' : ''); t.style.animationDelay = ''; });
+  document.querySelectorAll('#kb .key').forEach((b) => { const s = best[b.dataset.k]; b.classList.remove('hit', 'near', 'miss'); if (s != null && s >= 0) b.classList.add(CLS[s]); });
+  $('m-daily').classList.toggle('on', mode === 'daily'); $('m-free').classList.toggle('on', mode === 'free');
+  const dk = todayKey(), dr = stats.daily.results[dk]; $('daily-sub').textContent = dr != null ? (dr ? `угадано за ${dr}/6 ✓` : 'сегодня не угадано') : 'одно для всех';
+}
+const sfx = (n) => { try { if (window.PGSfx && PGSfx.play) PGSfx.play(n); } catch (e) {} };      // звук и вибрация — общими настройками (их можно выключить)
+let toastT = null; function toast(t, ms) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms || 1500); }
+/* ---------- ввод ---------- */
+function press(k) {
+  if (!G || G.done || busy || !$('end-ov').classList.contains('hidden')) return;
+  if (k === 'Enter') return submit();
+  if (k === 'Backspace') { cur = cur.slice(0, -1); render(); return; }
+  if (/^[а-я]$/.test(k) && cur.length < LEN) { cur += k; render(); }
+}
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape' && !$('end-ov').classList.contains('hidden')) { $('end-ov').classList.add('hidden'); return; }
+  let k = e.key; if (k === 'Enter' || k === 'Backspace') { e.preventDefault(); return press(k); }
+  k = k.toLowerCase().replace('ё', 'е'); if (!/^[а-я]$/.test(k)) k = LAT[e.code] || '';
+  if (k) press(k);
+});
+function shake(msg) { const row = $('grid').children[G.guesses.length]; row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake'); toast(msg); sfx('bad'); }
+function submit() {
+  if (cur.length < LEN) return shake('Нужно пять букв');
+  if (!VALID.has(cur)) return shake('Такого слова нет в словаре');
+  G.guesses.push(cur); cur = ''; const r = G.guesses.length - 1, win = G.guesses[r] === G.answer;
+  if (win || G.guesses.length === ROWS) { G.done = true; G.win = win; }
+  persist(); busy = true; render(r); sfx('flip');
+  setTimeout(() => { busy = false; if (G.done) finish(); }, 0.18 * 4 * 1000 + 520);
+}
+/* ---------- конец игры ---------- */
+function finish() {
+  const n = G.guesses.length, daily = mode === 'daily', first = !G.counted;
+  if (first) {
+    G.counted = true; stats.played++; if (G.win) { stats.wins++; stats.dist[n - 1]++; }
+    if (daily) { const d = stats.daily, k = G.date; d.results[k] = G.win ? n : 0; if (G.win) { d.streak = d.last === dayBefore(k) ? d.streak + 1 : 1; d.last = k; d.best = Math.max(d.best || 0, d.streak); } else d.streak = 0; }
+    store('fiveStats', stats); persist();
+    if (window.PGA) PGA.event('five', { result: G.win ? 'win' : 'loss', tries: n, daily, streak: daily ? stats.daily.streak : 0 });
+  }
+  if (first) sfx(G.win ? 'win' : 'bad');
+  if (G.win) [...$('grid').children[n - 1].children].forEach((t, i) => { t.classList.add('win'); t.style.animationDelay = (i * 0.09) + 's'; });
+  setTimeout(() => showEnd(), G.win ? 900 : 300);
+}
+function shareText() {
+  const rows = G.guesses.map((w) => score(w, G.answer).map((s) => ['⬜', '🟨', '🟩'][s]).join('')).join('\n');
+  return `Пять букв · ${mode === 'daily' ? human(G.date) : 'свободная игра'} · ${G.win ? G.guesses.length : 'X'}/6\n${rows}\n${location.origin + location.pathname}`;
+}
+async function share() {
+  const t = shareText();
+  try { if (navigator.share) { await navigator.share({ text: t }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(t); toast('Результат скопирован — можно вставить в сообщение'); } catch (e) { toast('Не удалось скопировать'); }
+}
+function statsHtml() {
+  const s = stats, pct = s.played ? Math.round(100 * s.wins / s.played) : 0, mx = Math.max(1, ...s.dist), me = G && G.done && G.win ? G.guesses.length - 1 : -1;
+  return `<div class="stats"><div><b>${s.played}</b><span>сыграно</span></div><div><b>${pct}%</b><span>угадано</span></div><div><b>${s.daily.streak || 0}</b><span>серия дней</span></div><div><b>${s.daily.best || 0}</b><span>лучшая серия</span></div></div>
+    <div class="dist">${s.dist.map((v, i) => `<div><span>${i + 1}</span><i class="${i === me ? 'me' : ''}" style="width:${Math.max(8, Math.round(100 * v / mx))}%">${v}</i></div>`).join('')}</div>`;
+}
+function showEnd() {
+  const daily = mode === 'daily', c = $('end-card');
+  c.innerHTML = `<h2>${G.win ? ['Гениально!', 'Блестяще!', 'Отлично!', 'Хорошо!', 'Неплохо!', 'Фух, успели!'][G.guesses.length - 1] : 'Не угадано'}</h2>
+    <div class="word">${G.answer}</div><div class="sub">${daily ? 'Слово дня · ' + human(G.date) : 'Свободная игра'}${G.win ? ' · попыток: ' + G.guesses.length : ''}</div>${statsHtml()}
+    <div class="btns">${daily ? '<button class="big" id="e-share">Поделиться результатом</button>' : ''}<button class="big ${daily ? 'light' : ''}" id="e-free">${daily ? 'Сыграть ещё — случайное слово' : 'Новое слово'}</button><button class="big light" id="e-close">Закрыть</button></div>
+    ${daily ? '<div class="next">Новое слово дня — завтра</div>' : ''}`;
+  $('end-ov').classList.remove('hidden');
+  if ($('e-share')) $('e-share').onclick = share;
+  $('e-free').onclick = () => { $('end-ov').classList.add('hidden'); if (mode === 'free') save.free = null; setMode('free'); };
+  $('e-close').onclick = () => $('end-ov').classList.add('hidden');
+}
+function showStats() { const c = $('end-card'); c.innerHTML = `<h2>Статистика</h2><div class="sub">Сколько попыток понадобилось</div>${statsHtml()}<div class="btns"><button class="big light" id="e-close">Закрыть</button></div>`; $('end-ov').classList.remove('hidden'); $('e-close').onclick = () => $('end-ov').classList.add('hidden'); }
+$('end-ov').addEventListener('click', (e) => { if (e.target.id === 'end-ov') $('end-ov').classList.add('hidden'); });
+/* ---------- режимы ---------- */
+function setMode(m) { if (G && !busy) persist(); mode = m; G = m === 'daily' ? freshDaily() : freshFree(); cur = ''; persist(); render(); if (G.done) setTimeout(showEnd, 200); }
+$('m-daily').onclick = () => setMode('daily'); $('m-free').onclick = () => setMode('free');
+$('stats-btn').onclick = showStats; $('rules-btn').onclick = () => { if (window.PGRules) PGRules.open('five'); };
+// данные пришли с другого устройства
+window.addEventListener('pgsync-applied', (e) => { const k = e.detail && e.detail.key; if (k === 'fiveStats') { stats = load('fiveStats', stats); render(); } });
+// новые сутки, пока страница открыта: слово дня меняется
+setInterval(() => { if (mode === 'daily' && G && G.date !== todayKey() && $('end-ov').classList.contains('hidden')) setMode('daily'); }, 60000);
+build(); resize(); setMode(mode);
+if (!load('fiveSeenRules', false)) { store('fiveSeenRules', true); setTimeout(() => { if (window.PGRules) PGRules.open('five'); }, 500); }
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('service-worker.js').catch(() => {});
+window.__five = { get G() { return G; }, get stats() { return stats; }, get mode() { return mode; }, press, setMode, score, dailyWord, todayKey, ANSWERS, VALID, PERM };
+})();
+</script>
+</body>
+</html>

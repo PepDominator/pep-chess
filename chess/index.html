@@ -66,10 +66,10 @@ html[data-pal="studio"][data-theme="dark"] .cell { background:#1A2441; border-ri
 html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="contrast"] :focus-visible { outline:3px solid #00227A !important; outline-offset:2px; }</style>
     <script src="../shared/pg-settings.js?v=b0785522ee"></script>
 <script src="../shared/pg-chat.js?v=4b9bee20e9"></script>
-<script src="../shared/pg-sync.js?v=77f69e1012"></script>
+<script src="../shared/pg-sync.js?v=1d1f0318d6"></script>
 <script src="../shared/pg-friends.js?v=245c705b9c"></script>
-<script src="../shared/pg-ach.js?v=f066c7fc2f"></script>
-<script src="../shared/pg-rules.js?v=f9d2277062"></script>
+<script src="../shared/pg-ach.js?v=9477906bc5"></script>
+<script src="../shared/pg-rules.js?v=36370d77cb"></script>
 <script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon-512.png?v=4">
@@ -2142,6 +2142,8 @@ if (typeof define !== 'undefined')
             display: none; flex-direction: column; align-items: stretch; margin-right: 6px; flex-shrink: 0; width: 40px;
         }
         #eval-bar-outer.visible { display: flex; }
+        /* Движок — только в разборе законченной партии: во время игры (с компьютером или по сети) ни оценки, ни линий, ни переключателя */
+        #game-ui:not(.analysis-mode) #analysis-bar-row, #game-ui:not(.analysis-mode) #eval-bar-outer, #game-ui:not(.analysis-mode) #analysis-lines { display: none !important; }
         #eval-bar-score-label {
             text-align: center; font-family: 'Roboto Mono', monospace; font-size: 14px; font-weight: 700;
             color: var(--text); background: var(--k-surf); padding: 4px 0; margin-bottom: 4px; border-radius: 2px; border: 1px solid var(--border);
@@ -3171,6 +3173,8 @@ function createLive(cfg) {
         let analysisLinesData = {}; // { multipvIndex: {depth, scoreType, scoreValue, pv} }
 
         function toggleAnalysis() {
+            // во время партии подсказки движка запрещены — включить анализ можно только в разборе законченной партии
+            if (!document.getElementById('game-ui').classList.contains('analysis-mode')) document.getElementById('analysis-checkbox').checked = false;
             analysisEnabled = document.getElementById('analysis-checkbox').checked;
             document.getElementById('eval-bar-outer').classList.toggle('visible', analysisEnabled);
             if (analysisEnabled) {
@@ -4587,7 +4591,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2.9.8 · 6 ноября 2026';
+        const BUILD = '2.10.0 · 6 ноября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
