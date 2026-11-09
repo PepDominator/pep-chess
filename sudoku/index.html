@@ -351,7 +351,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const { SDK, SDK12 } = new Function($('sdk-engine').textContent + '\nreturn { SDK, SDK12 };')();      // 9×9 и 12×12
-const BUILD = '2.10.1 · 6 ноября 2026';
+const BUILD = '2.10.2 · 9 ноября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };
