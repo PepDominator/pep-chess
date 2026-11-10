@@ -384,7 +384,7 @@ const $ = (id) => document.getElementById(id);
 const CW = new Function($('cw-engine').textContent + '\nreturn CW;')();
 let DICT = null, DICT_TEXT = '';              // словарь подгружается отдельным файлом после открытия страницы (и хранится для офлайна)
 const dictReady = fetch('dict.json').then((r) => { if (!r.ok) throw new Error('dict'); return r.text(); }).then((s) => { DICT_TEXT = s; DICT = JSON.parse(s); return DICT; });
-const BUILD = '2.10.2 · 9 ноября 2026';
+const BUILD = '2.10.4 · 10 ноября 2026';
 const SIZE = { small: 'Малый', medium: 'Средний', large: 'Большой', huge: 'Огромный', super: 'Супербольшой', mega: 'Суперкроссворд' };
 const LVL = { 1: 'Очень лёгкий', 2: 'Лёгкий', 3: 'Средний', 4: 'Сложный', 5: 'Эксперт' };
 const LVL_INFO = { 1: 'Самые знакомые слова, простые вопросы', 2: 'Знакомые слова, прямые вопросы', 3: 'Разные слова, как в обычном кроссворде', 4: 'Редкие слова, вопросы с намёком', 5: 'Редкие и узкие слова, вопросы с подвохом' };
