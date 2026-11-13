@@ -17,10 +17,10 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<script src="../shared/pg-settings.js?v=b0785522ee"></script>
-<script src="../shared/pg-sync.js?v=1d1f0318d6"></script>
-<script src="../shared/pg-records.js?v=21ef3a03a6"></script>
-<script src="../shared/pg-ach.js?v=9477906bc5"></script>
+<script src="../shared/pg-settings.js?v=b95ea454f2"></script>
+<script src="../shared/pg-sync.js?v=807c02fb82"></script>
+<script src="../shared/pg-records.js?v=ca2d10da86"></script>
+<script src="../shared/pg-ach.js?v=b0b78657dc"></script>
 <script src="../shared/pg-rules.js?v=36370d77cb"></script>
 <script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
 <link rel="manifest" href="manifest.json">
@@ -351,7 +351,7 @@ if (typeof module !== 'undefined') module.exports = SDK;
 'use strict';
 const $ = (id) => document.getElementById(id);
 const { SDK, SDK12 } = new Function($('sdk-engine').textContent + '\nreturn { SDK, SDK12 };')();      // 9×9 и 12×12
-const BUILD = '2.10.4 · 10 ноября 2026';
+const BUILD = '2.10.10 · 13 ноября 2026';
 const DIFF = { easy: 'Легко', medium: 'Средне', hard: 'Сложно', expert: 'Эксперт' };
 const HINTS = { easy: 'Хватает «одиночек»: в клетке остаётся единственная цифра.', medium: 'Понадобятся «скрытые одиночки» — цифра, которая возможна только в одной клетке ряда, столбца или блока.', hard: 'Нужны пары, «указующие» пары и взаимодействие блоков и линий.', expert: 'Простых приёмов не хватит. Только для опытных.' };
 const LS = { save: 'sudokuSave', stats: 'sudokuStats', prefs: 'sudokuPrefs' };

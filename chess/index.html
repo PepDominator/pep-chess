@@ -64,11 +64,11 @@ html[data-theme="light"][data-pal="contrast"]{--k-bg:#FFFFFF;--k-panel:#FFFFFF;-
 html[data-theme="dark"][data-pal="studio"]{--k-bg:#111A2E;--k-panel:#18233F;--k-surf:#202C4C;--k-hover:#283659;--k-line:#334169;--k-line2:#4A5884;--k-tx:#EEF1F8;--k-mu:#AAB3CD;--k-mu2:#7E89A8;--k-gt:#E9C46A;--k-rt:#F08A7E;--k-nt:#B9C8F0;--k-warm:#2B2A24;--k-acc:#B8862A;--bg:#111A2E;--panel:#18233F;--side-bg:#18233F;--text:#EEF1F8;--muted:#AAB3CD;--ink-muted:#AAB3CD;--border:#334169;--green:#B8862A;--green2:#E9C46A;--navy:#B9C8F0}
 html[data-pal="studio"][data-theme="dark"] .cell { background:#1A2441; border-right-color:#344168; border-bottom-color:#344168; } html[data-pal="studio"][data-theme="dark"] .cell.alt { background:#202B4B; } html[data-pal="studio"][data-theme="dark"] .c.l { background:#1C2643; }
 html[data-pal="contrast"] body { -webkit-font-smoothing:auto; } html[data-pal="contrast"] :focus-visible { outline:3px solid #00227A !important; outline-offset:2px; }</style>
-    <script src="../shared/pg-settings.js?v=b0785522ee"></script>
+    <script src="../shared/pg-settings.js?v=b95ea454f2"></script>
 <script src="../shared/pg-chat.js?v=4b9bee20e9"></script>
-<script src="../shared/pg-sync.js?v=1d1f0318d6"></script>
-<script src="../shared/pg-friends.js?v=245c705b9c"></script>
-<script src="../shared/pg-ach.js?v=9477906bc5"></script>
+<script src="../shared/pg-sync.js?v=807c02fb82"></script>
+<script src="../shared/pg-friends.js?v=a01abcdeb8"></script>
+<script src="../shared/pg-ach.js?v=b0b78657dc"></script>
 <script src="../shared/pg-rules.js?v=36370d77cb"></script>
 <script src="../shared/pg-tutor.js?v=1e14fcb6e3"></script>
     <link rel="manifest" href="manifest.json">
@@ -2671,8 +2671,7 @@ if (typeof define !== 'undefined')
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
             getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, deleteField,
-            collection, query, orderBy, limit, getDocs, runTransaction, where, addDoc, deleteDoc
-        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+            collection, query, orderBy, limit, getDocs, runTransaction, where, addDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import {
             getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, signInAnonymously
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -2715,7 +2714,8 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
 
             async createGame({ minutes, inc, hostColor, hostName, hostUid, hostRating, hostAuthUid, open, hostPublic }) {
                 const gameId = randomGameId();
-                await setDoc(doc(db, 'games', gameId), {
+                // партия и отметка времени — одной пачкой: правила не дают создавать партии чаще раза в 10 секунд (защита квоты)
+                const b = writeBatch(db); b.set(doc(db, 'games', gameId), {
                     createdAt: serverTimestamp(),
                     status: 'waiting',
                     hostColor,
@@ -2738,6 +2738,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
                     drawOfferBy: null,
                     result: null
                 });
+                b.set(doc(db, 'limits', auth.currentUser.uid), { game: serverTimestamp() }, { merge: true }); await b.commit();
                 return gameId;
             },
 
@@ -2920,6 +2921,7 @@ if (typeof module !== 'undefined') module.exports = { eloUpdate };
         let db, auth, authInflight = null;
         try {
             const app = initializeApp(firebaseConfig);
+            if (window.pgInitAppCheck) await window.pgInitAppCheck(app);      // защита от чужих скриптов (включается ключом reCAPTCHA)
             db = getFirestore(app);
             auth = getAuth(app);
             onAuthStateChanged(auth, (user) => {
@@ -4384,6 +4386,21 @@ function createLive(cfg) {
             }, 3000);
         }
 
+        // Перестроить сетевую партию по полному списку ходов с сервера (data.moves) — с честной историей для просмотра, разбора и PGN.
+        // Итоговая позиция сверяется с серверной; если не сошлось — возвращаем false, и вызывающий код берёт позицию из FEN.
+        function rebuildFromServerMoves(data) {
+            const moves = (data && data.moves) || [];
+            if (!moves.length && data && data.moveNumber) return false;          // ходы были, а списка нет — старая запись, перестроить нечем
+            const g = new Chess(), fens = [g.fen()], sans = [];
+            for (const san of moves) { let m = null; try { m = g.move(san); } catch (e) { m = null; } if (!m) return false; fens.push(g.fen()); sans.push(m.san); }
+            const pos = (f) => String(f || '').split(' ').slice(0, 3).join(' ');      // расстановка, очередь, рокировки (поле взятия на проходе пишут по-разному)
+            if (data.fen && pos(g.fen()) !== pos(data.fen)) return false;
+            const last = g.history({ verbose: true }).pop();
+            game = g; historyFens = fens; historySAN = sans; viewIndex = -1;
+            lastMoveSquares = last ? { from: last.from, to: last.to } : null; highlightedSquares = {}; arrows = [];
+            updateHistory(); render(); return true;
+        }
+
         function handleOnlineGameUpdate(data) {
             if (!data || gameMode !== 'online') return;
             onlineLastData = data;
@@ -4408,13 +4425,19 @@ function createLive(cfg) {
                     historyFens.push(game.fen());
                     historySAN.push(move.san);
                     viewIndex = -1;
+                    // сверка с сервером: ход мог случайно лечь и на неверную позицию — тогда вся партия на сервере другая
+                    const sm = data.moves || [];
+                    if (sm.length && sm.join(' ') !== historySAN.join(' ')) rebuildFromServerMoves(data);
                     updateHistory();
                     render();
                     botThinking = false;
                     checkGameOver();
                     if (!gameOver) tryExecutePremove();
+                } else if (rebuildFromServerMoves(data)) {
+                    // Ход не лёг на нашу позицию — пропустили обновления (обрыв связи): перестроили партию по всем ходам с сервера
+                    playSound({ captured: null }); botThinking = false; checkGameOver(); if (!gameOver) tryExecutePremove();
                 } else if (data.fen) {
-                    // Ход не лёг на нашу локальную позицию — скорее всего, мы ранее пропустили
+                    // Запасной путь (старые партии без полного списка ходов): ход не лёг на нашу локальную позицию — скорее всего, мы ранее пропустили
                     // одно или несколько обновлений (например, из-за кратковременного обрыва связи).
                     // Вместо того чтобы остаться рассинхронизированными насовсем, просто подтягиваем
                     // всю партию заново из присланного FEN — без анимации пропущенных ходов, зато
@@ -4439,6 +4462,8 @@ function createLive(cfg) {
             updateOnlineBanner(data);
             updateBotStatus();
 
+            if (data.status === 'finished' && gameOver && onlineAfter && !onlineAfter.done) finishOnlineRated(onlineGameId);      // завершение пришло позже — дописываем рейтинг
+            if (data.status === 'finished' && gameOver && ratePending.list().some((x) => x.id === onlineGameId)) retryPendingRatings();      // рейтинг не записался — пробуем снова
             if (data.status === 'finished' && data.result && !gameOver) {
                 const iWon = data.result.winner === onlineMyColor;
                 const isDraw = data.result.winner === 'draw';
@@ -4591,7 +4616,7 @@ function createLive(cfg) {
 
         // Показывает ошибку сети прямо в интерфейсе (не только в консоли разработчика) —
         // чтобы было видно даже без DevTools, что именно и почему не отправилось.
-        const BUILD = '2.10.4 · 10 ноября 2026';
+        const BUILD = '2.10.10 · 13 ноября 2026';
         document.getElementById('ver').innerText = 'Версия ' + BUILD;
         function identityChanged() { const o = window.OnlineChess; return !!(gameMode === 'online' && onlineAuthUid && o && o.authUid && o.authUid !== onlineAuthUid); }
         window.addEventListener('onlinechess-auth-changed', () => { if (identityChanged() && !gameOver) { const b = document.getElementById('online-banner'); b.style.display = 'flex'; b.innerHTML = '<span style="color:var(--k-rt)">Ваш вход в аккаунт изменился во время партии (например, вы вошли или вышли в другой вкладке). Продолжить эту партию нельзя: выйдите по «✕» и начните новую.</span>'; } });
@@ -4633,7 +4658,21 @@ function createLive(cfg) {
                 blackTimeMs: Math.round(timers.b * 1000),
                 moveNumber: myMoveNumber,
                 moves: historySAN.slice()
-            }).catch((err) => showOnlineSyncError('отправить ваш ход сопернику', err));
+            }).catch(async (err) => {
+                showOnlineSyncError('отправить ваш ход сопернику', err);
+                // ход не дошёл до сервера (нет связи или правила отклонили): берём партию с сервера, чтобы не «зависнуть»
+                try {
+                    if (identityChanged()) return;      // вход сменился посреди партии — продолжать её нельзя
+                    const id = onlineGameId, d = await window.OnlineChess.peekGame(id);
+                    if (!d || id !== onlineGameId || gameOver || !(d.moveNumber < myMoveNumber)) return;
+                    if (!rebuildFromServerMoves(d) && d.fen) { game = new Chess(d.fen); render(); }
+                    onlineMoveNumber = d.moveNumber || 0;
+                    if (typeof d.whiteTimeMs === 'number') timers.w = d.whiteTimeMs / 1000;
+                    if (typeof d.blackTimeMs === 'number') timers.b = d.blackTimeMs / 1000;
+                    lastTickAt = null; botThinking = game.turn() !== onlineMyColor; updateBotStatus();      // снова наш ход — снимаем «ждём соперника»
+                    showOnlineSyncError('сделать ход: он не дошёл до сервера — позиция восстановлена, сходите ещё раз', err);
+                } catch (e2) { console.warn('Не удалось перечитать партию:', e2); }
+            });
         }
 
         function sendOnlineDrawOffer() {
@@ -4660,7 +4699,40 @@ function createLive(cfg) {
             if (resultCode === 'draw') winner = 'draw';
             else if (resultCode === 'win') winner = onlineMyColor;
             else winner = onlineMyColor === 'w' ? 'b' : 'w';
-            window.OnlineChess.sendResult(onlineGameId, { winner, reason: onlineReasonCode(message) }).catch((err) => showOnlineSyncError('сообщить результат партии', err));
+            return confirmOnlineResult(onlineGameId, { winner, reason: onlineReasonCode(message) });
+        }
+        // Запись результата с подтверждением: true — партия на сервере завершена (нашей записью или раньше соперником,
+        // тогда наша запись отклоняется правилами — это не ошибка); false — не удалось после трёх попыток (нет связи).
+        async function confirmOnlineResult(id, result) {
+            let err = null;
+            for (let k = 0; k < 3; k++) {
+                try { await window.OnlineChess.sendResult(id, result); return true; } catch (e) { err = e; }
+                try { const d = await window.OnlineChess.peekGame(id); if (d && d.status === 'finished') { if (id === onlineGameId) onlineLastData = d; return true; } } catch (e) {}
+                await new Promise((r) => setTimeout(r, 1200 * (k + 1)));
+            }
+            showOnlineSyncError('сообщить результат партии', err); return false;
+        }
+        // Рейтинг и публичная копия — по итогу, который признал сервер (может отличаться от нашего, если соперник записал результат первым).
+        let onlineAfter = null;
+        function finishOnlineRated(id) {
+            if (!onlineAfter || onlineAfter.done || onlineAfter.id !== id) return;
+            onlineAfter.done = true;                                        // итог подтверждён — согласуем всё по нему
+            const d = onlineLastData, code = serverCode(d, onlineMyColor) || onlineAfter.code;
+            let message = onlineAfter.message;
+            if (code !== onlineAfter.code && d && d.result) { message = onlineResultText(d.result.reason, code); reconcileOnlineResult(id, code, message); }      // сервер признал другой итог
+            if (window.PGA) PGA.event('chess', { result: code, online: true, level: null, moves: historySAN.length, color: userCol });      // достижения — по итогу сервера
+            publishPublicChess(code, message);
+            applyOnlineRating(code, id, d, true).then((r) => { if (r === 'fail') ratePending.add(id, onlineMyColor); else ratePending.drop(id); });
+        }
+        // Сервер признал другой итог: исправляем экран, историю в браузере и в облаке — всё должно совпадать с сервером.
+        function reconcileOnlineResult(id, code, message) {
+            const box = document.getElementById('post-game-buttons');
+            if (box) { const sl = box.querySelector('.result-score-line'), tl = box.querySelector('.result-text-line'); if (sl) sl.innerText = scoreLineForResult(code); if (tl) tl.innerText = message; }
+            const status = document.querySelector('.status-bar'); if (status) status.innerHTML = `<span style="color:var(--k-rt)">${escapeHtml(message)}</span>`;
+            lastEndedGameMessage = message; lastEndedGameResultCode = code;
+            const list = loadGameHistory(), rec = list.find((x) => x.gameId === id);
+            if (rec) { rec.result = code; rec.resultText = message; try { localStorage.setItem(GAME_HISTORY_KEY, JSON.stringify(list)); } catch (e) {} }
+            saveOnlineGameToMyHistory(message, code);
         }
 
         // ==================== АККАУНТ (вход через Google) ====================
@@ -4841,7 +4913,7 @@ function createLive(cfg) {
 
         function loadNickname() {
             try {
-                return localStorage.getItem(NICKNAME_KEY) || '';
+                return (localStorage.getItem(NICKNAME_KEY) || '').replace(/[<>]/g, '').slice(0, 30);      // ник видят другие игроки: без < и >
             } catch (e) {
                 return '';
             }
@@ -4850,7 +4922,7 @@ function createLive(cfg) {
         function saveNickname() {
             const input = document.getElementById('nickname-input');
             try {
-                localStorage.setItem(NICKNAME_KEY, input.value.trim());
+                localStorage.setItem(NICKNAME_KEY, input.value.replace(/[<>]/g, '').trim().slice(0, 30));
             } catch (e) {
                 console.warn('Не удалось сохранить никнейм:', e);
             }
@@ -5608,15 +5680,19 @@ function createLive(cfg) {
             sounds.end.currentTime = 0;
             sounds.end.play().catch((err) => console.warn('Не удалось воспроизвести звук окончания партии:', err));
             const status = document.querySelector('.status-bar');
-            status.innerHTML = `<span style="color:var(--k-rt)">${message}</span>`;
+            status.innerHTML = `<span style="color:var(--k-rt)">${escapeHtml(message)}</span>`;      // текст итога — только экранированным
             saveGameToHistory(message, resultCode);
             showResultAndPostGameButtons(message, resultCode);
+            let resultSent = Promise.resolve(true);
             if (gameMode === 'online' && !suppressOnlineReport) {
-                reportOnlineResultIfNeeded(message, resultCode);
+                resultSent = reportOnlineResultIfNeeded(message, resultCode) || Promise.resolve(false);
             }
             if (gameMode === 'online') {
                 saveOnlineGameToMyHistory(message, resultCode);
-                applyOnlineRating(resultCode); publishPublicChess(resultCode, message);
+                // рейтинг и публичная копия — когда сервер уже принял результат: правила разрешают их только для завершённой партии
+                // если подтвердить не удалось — допишем, когда сервер пришлёт завершение (handleOnlineGameUpdate)
+                onlineAfter = { id: onlineGameId, code: resultCode, message, done: false }; const gid = onlineGameId;
+                resultSent.then((ok) => { if (ok) finishOnlineRated(gid); });
                 clearActiveGame(); if (onlineBeat) { clearInterval(onlineBeat); onlineBeat = null; }
             }
             suppressOnlineReport = false;
@@ -5644,33 +5720,49 @@ function createLive(cfg) {
         }
 
         // Рейтинговая партия: оба вошли через Google, у обоих известен рейтинг на старте, и каждый сделал хотя бы один ход (как на lichess и chess.com).
-        async function applyOnlineRating(resultCode) {
+        // Рейтинг по данным партии с сервера (d) — работает и сразу после партии, и при повторе после перезагрузки страницы.
+        // Возвращает 'ok' (записан или уже был записан), 'skip' (партия нерейтинговая) или 'fail' (ошибка — повторим позже).
+        async function applyOnlineRating(resultCode, gid, d, showLine) {
             try {
-                const OC = window.OnlineChess, u = OC && OC.currentUser, d = onlineLastData;
-                if (!u || !d || !onlineGameId || !d.hostUid) return;
-                const amHost = u.uid === d.hostUid;
-                const oppUid = amHost ? d.guestUid : d.hostUid;
-                const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : myRatingSnap);
-                const oppR = amHost ? d.guestRating : d.hostRating;
-                if (!oppUid || oppUid === u.uid || myR == null || oppR == null) return;
+                const OC = window.OnlineChess, u = OC && OC.currentUser;
+                if (!u || !d || !d.hostUid) return 'skip';
+                const amHost = u.uid === d.hostUid, oppUid = amHost ? d.guestUid : d.hostUid;
+                const myR = amHost ? d.hostRating : (d.guestRating != null ? d.guestRating : myRatingSnap), oppR = amHost ? d.guestRating : d.hostRating;
+                if (!oppUid || oppUid === u.uid || myR == null || oppR == null) return 'skip';
                 const score = resultCode === 'win' ? 1 : resultCode === 'draw' ? 0.5 : 0;
-                const tcx = d.timeControl || onlineTc || {}, rkey = ratingKeyFor('chess', tcx.minutes, tcx.inc);
-                if (!rkey) return;                                          // партия без часов — нерейтинговая
-                if (historySAN.length < 2) {                                // как на lichess и chess.com: рейтинговой партия становится, когда каждый сделал хотя бы один ход
-                    const box = document.getElementById('post-game-buttons'), line = document.createElement('div');
-                    line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;color:var(--k-mu)';
-                    line.textContent = 'Партия закончилась до первых ходов — рейтинг не меняется';
-                    if (box) box.insertBefore(line, box.firstChild); return;
+                const tcx = d.timeControl || {}, rkey = ratingKeyFor('chess', tcx.minutes, tcx.inc);
+                if (!rkey) return 'skip';                                   // партия без часов — нерейтинговая
+                const nMoves = Math.max((d.moves || []).length, gid === onlineGameId ? historySAN.length : 0);      // по серверу; для текущей партии — и по доске
+                if (nMoves < 2) {                           // как на lichess и chess.com: рейтинговой партия становится, когда каждый сделал хотя бы один ход
+                    if (showLine) { const box = document.getElementById('post-game-buttons'), line = document.createElement('div');
+                        line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;color:var(--k-mu)'; line.textContent = 'Партия закончилась до первых ходов — рейтинг не меняется'; if (box) box.insertBefore(line, box.firstChild); }
+                    return 'skip';
                 }
-                const res = await OC.applyRated({ user: u, key: rkey, gameId: onlineGameId, myRating: myR, oppRating: oppR, score, oppName: onlineOpponentName, oppUid });
-                if (!res) return;
-                const box = document.getElementById('post-game-buttons');
-                const line = document.createElement('div');
-                line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;font-weight:700;color:' + (res.delta >= 0 ? '#3B5D4A' : '#A23B33');
-                line.textContent = 'Рейтинг (' + CAT_NAME[rkey.split('_')[1]] + '): ' + res.r + ' (' + (res.delta >= 0 ? '+' : '') + res.delta + ')';
-                if (box) box.insertBefore(line, box.firstChild);
-            } catch (e) { console.error('Рейтинг не обновился:', e); }
+                const res = await OC.applyRated({ user: u, key: rkey, gameId: gid, myRating: myR, oppRating: oppR, score, oppName: amHost ? d.guestName : d.hostName, oppUid });
+                if (res && showLine) {
+                    const box = document.getElementById('post-game-buttons'), line = document.createElement('div');
+                    line.style.cssText = 'text-align:center;font-size:13px;margin-bottom:10px;font-weight:700;color:' + (res.delta >= 0 ? '#3B5D4A' : '#A23B33');
+                    line.textContent = 'Рейтинг (' + CAT_NAME[rkey.split('_')[1]] + '): ' + res.r + ' (' + (res.delta >= 0 ? '+' : '') + res.delta + ')';
+                    if (box) box.insertBefore(line, box.firstChild);
+                }
+                return 'ok';                                                // res === null — рейтинг за эту партию уже записан (отметка в базе)
+            } catch (e) { console.error('Рейтинг не обновился — повторим позже:', e); return 'fail'; }
         }
+        // Партии, по которым рейтинг ещё не записан: хранятся в браузере и повторяются при обновлении партии и при входе в аккаунт.
+        const RPKEY = 'chessRatePending';
+        const ratePending = { list() { try { return JSON.parse(localStorage.getItem(RPKEY) || '[]'); } catch (e) { return []; } },
+            add(id, color) { const l = this.list().filter((x) => x.id !== id); l.push({ id, color, at: Date.now() }); try { localStorage.setItem(RPKEY, JSON.stringify(l.slice(-20))); } catch (e) {} },
+            drop(id) { try { localStorage.setItem(RPKEY, JSON.stringify(this.list().filter((x) => x.id !== id))); } catch (e) {} } };
+        const serverCode = (d, color) => { const w = d && d.result && d.result.winner; return w ? (w === 'draw' ? 'draw' : (w === color ? 'win' : 'loss')) : null; };
+        async function retryPendingRatings() {
+            const l = ratePending.list(), OC = window.OnlineChess; if (!l.length || !OC || !OC.currentUser) return;
+            for (const p of l) {
+                if (Date.now() - p.at > 7 * 86400000) { ratePending.drop(p.id); continue; }
+                try { const d = await OC.peekGame(p.id); if (!d) { ratePending.drop(p.id); continue; } if (d.status !== 'finished') continue;
+                    const r = await applyOnlineRating(serverCode(d, p.color), p.id, d, false); if (r !== 'fail') ratePending.drop(p.id); } catch (e) {}
+            }
+        }
+        window.addEventListener('onlinechess-auth-changed', () => { if (window.OnlineChess && window.OnlineChess.currentUser) setTimeout(retryPendingRatings, 1500); });
 
         function saveOnlineGameToMyHistory(message, resultCode) {
             const user = window.OnlineChess && window.OnlineChess.currentUser;
@@ -5710,12 +5802,13 @@ function createLive(cfg) {
                     userColor: userCol,
                     level: gameMode === 'online' ? null : level,
                     opponent: gameMode === 'online' ? (onlineOpponentName || 'Соперник') : null,
+                    ...(gameMode === 'online' && onlineGameId ? { gameId: onlineGameId } : {}),
                     result: resultCode || 'unknown', // 'win' | 'loss' | 'draw'
                     resultText: message,
                     moves: historySAN.slice(),
                     finalFen: game.fen()
                 };
-                if (window.PGA) PGA.event('chess', { result: resultCode, online: gameMode === 'online', level: gameMode === 'online' ? null : level, moves: historySAN.length, color: userCol });
+                if (window.PGA && gameMode !== 'online') PGA.event('chess', { result: resultCode, online: false, level, moves: historySAN.length, color: userCol });      // сетевая партия — после подтверждения итога (finishOnlineRated)
                 const list = loadGameHistory();
                 list.unshift(record);
                 if (list.length > GAME_HISTORY_LIMIT) list.length = GAME_HISTORY_LIMIT;

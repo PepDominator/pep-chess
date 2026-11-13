@@ -11,7 +11,8 @@
   async function firebaseBackend() {
     const [A, Au, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')]);
     let app = null; for (let i = 0; i < 60 && !app; i++) { const apps = A.getApps(); if (apps.length) app = apps[0]; else await sleep(50); }
-    if (!app) app = A.initializeApp(CFG); const auth = Au.getAuth(app), db = F.getFirestore(app);
+    if (!app) app = A.initializeApp(CFG);
+    if (window.pgInitAppCheck) await window.pgInitAppCheck(app);      // защита от чужих скриптов (включается ключом reCAPTCHA) const auth = Au.getAuth(app), db = F.getFirestore(app);
     return {
       onUser(cb) { Au.onAuthStateChanged(auth, (u) => cb(u && !u.isAnonymous ? { uid: u.uid, name: u.displayName || u.email || 'Игрок', photo: u.photoURL || null } : null)); },
       async get(board, uid) { const s = await F.getDoc(F.doc(db, 'leaderboards', board, 'entries', uid)); return s.exists() ? s.data() : null; },

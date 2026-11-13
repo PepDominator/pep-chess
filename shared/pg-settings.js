@@ -312,3 +312,13 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', season); else season();
   window.PGShare = { text, share, attach };
 })();
+
+// ============ App Check: Firebase принимает запросы только с нашего сайта (защита квоты от чужих скриптов) ============
+// Ключ reCAPTCHA v3 — из консоли Firebase (App Check → регистрация веб-приложения). Пока ключ пустой, защита выключена и ничего не меняется.
+window.PG_APPCHECK_KEY = window.PG_APPCHECK_KEY || '';
+window.pgInitAppCheck = async function (app) {
+  const key = window.PG_APPCHECK_KEY; if (!key || !app || app.__pgAppCheck) return; app.__pgAppCheck = true;
+  try { const AC = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check.js');
+    AC.initializeAppCheck(app, { provider: new AC.ReCaptchaV3Provider(key), isTokenAutoRefreshEnabled: true });
+  } catch (e) { console.warn('App Check не запустился (без интернета это нормально):', e); }
+};

@@ -142,6 +142,7 @@
     const [A, Au, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')]);
     let app = null; for (let i = 0; i < 60 && !app; i++) { const apps = A.getApps(); if (apps.length) app = apps[0]; else await sleep(50); }
     if (!app) app = A.initializeApp(CFG);
+    if (window.pgInitAppCheck) await window.pgInitAppCheck(app);      // защита от чужих скриптов (включается ключом reCAPTCHA)
     const auth = Au.getAuth(app), db = F.getFirestore(app), col = (u) => F.collection(db, 'userData', u, 'docs');
     return {
       onUser(cb) { Au.onAuthStateChanged(auth, (u) => cb(u && !u.isAnonymous ? { uid: u.uid, name: u.displayName || u.email || 'Игрок' } : null)); },
